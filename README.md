@@ -18,16 +18,24 @@ Multi-Retinal-Disease-Model/
 │   └── 04_Pitch_Deck.md
 ├── src/                    # Production-ready code
 │   ├── 02_Model_Development.py      # Model training script
-│   └── mobile_deployment.py         # Mobile deployment utilities
+│   ├── mobile_deployment.py         # Mobile deployment utilities
+│   ├── export_models.py             # Kaggle model export
+│   └── api_server.py                # FastAPI REST API server
 ├── models/                 # Trained models & outputs
 │   ├── checkpoints/        # Model checkpoints
 │   ├── exports/            # Exported models (ONNX, TorchScript)
 │   └── outputs/            # Training outputs & visualizations
 ├── deployment/             # Deployment configurations
 │   ├── setup.sh            # Deployment setup script
-│   └── install_dependencies.sh
+│   ├── install_dependencies.sh
+│   ├── local_test.sh       # Local Docker testing
+│   ├── DEPLOYMENT_GUIDE.md # Complete deployment guide
+│   ├── API_DOCUMENTATION.md # API reference
+│   └── README.md           # Deployment overview
 ├── .github/workflows/      # CI/CD pipelines
-│   └── ml-pipeline.yml     # Automated testing & deployment
+│   ├── ml-pipeline.yml     # Automated testing
+│   └── deploy-gcp.yml      # Production deployment (Docker + GCP)
+├── Dockerfile              # Container definition
 ├── requirements.txt        # Python dependencies
 └── README.md              # This file
 ```
@@ -106,26 +114,29 @@ max_workers = 2     # Parallel training on 2 GPUs
 | SceneGraphTransformer | TBD | TBD | TBD | TBD |
 | ViGNN | TBD | TBD | TBD | TBD |
 
-## 🔧 Development
+## 🧪 Testing
 
-### Running Tests
+### Unit Tests
 ```bash
 pytest tests/ -v
 ```
 
-### Code Formatting
+### API Testing
+```bash
+# Local testing
+./deployment/local_test.sh
+
+# Test production API
+curl https://YOUR-API.run.app/health
+```
+
+### Code Quality
 ```bash
 black src/
 flake8 src/
 ```
 
-### CI/CD Pipeline
-- Automated testing on push/PR
-- Model validation
-- Notebook compatibility checks
-- Deployment to production (on main branch)
-
-## 📝 Notebooks
+## 📦 Requirements
 
 - **notebookc18697ca98.ipynb**: Main training pipeline with all 4 models
 - **EDA_Analysis_Clean.ipynb**: Exploratory data analysis
@@ -135,35 +146,145 @@ flake8 src/
 
 ## 🚢 Deployment
 
-### Local Deployment
+### 🐳 Docker Deployment (NEW!)
+
+**Quick Test Locally:**
 ```bash
-./deployment/setup.sh
+# Automated local testing
+./deployment/local_test.sh
+
+# Manual Docker deployment
+docker build -t retinal-disease-model .
+docker run -p 8080:8080 retinal-disease-model
+# API available at http://localhost:8080
 ```
 
-### Kaggle Deployment
+**Production Deployment to Google Cloud:**
+```bash
+# See complete guide
+cat deployment/DEPLOYMENT_GUIDE.md
+
+# Quick steps:
+1. Configure GitHub Secrets (DOCKERHUB_*, GCP_*)
+2. Export models from Kaggle
+3. Push to GitHub (auto-deploys via Actions)
+4. Access API at https://YOUR-SERVICE.run.app
+```
+
+### 📚 Deployment Documentation
+- **[DEPLOYMENT_GUIDE.md](deployment/DEPLOYMENT_GUIDE.md)** - Complete setup guide
+- **[API_DOCUMENTATION.md](deployment/API_DOCUMENTATION.md)** - API reference & examples
+- **[deployment/README.md](deployment/README.md)** - Infrastructure overview
+
+### 🚀 CI/CD Pipeline
+
+**GitHub Actions Workflow:**
+1. **Trigger:** Push to `main` with model changes
+2. **Build:** Docker image with latest model
+3. **Push:** Image to Docker Hub
+4. **Deploy:** Automatically to Google Cloud Run
+5. **Test:** Health checks & validation
+
+### 🔌 API Endpoints
+
+```bash
+# Health check
+curl https://YOUR-API.run.app/health
+
+# List all 45 diseases
+curl https://YOUR-API.run.app/diseases
+
+# Predict diseases from image
+curl -X POST https://YOUR-API.run.app/predict \
+  -F "file=@retinal_image.jpg"
+```
+
+Response:
+```json
+{
+  "predictions": [
+    {
+      "disease": "Diabetic Retinopathy (DR)",
+      "probability": 0.87,
+      "confidence": "high"
+    }
+  ]
+}
+```
+
+### Kaggle Model Export
+
+**Add to your training notebook (Cell 46):**
+```python
+# After training completes
+from export_models import export_all_trained_models
+export_paths = export_all_trained_models(cv_results, selected_models)
+# Download from /kaggle/working/exports/
+```
+
+### Kaggle Training Environment
 ```bash
 # Upload notebook to Kaggle
 # Configure 2x T4 GPU runtime
 # Run Cell 46 for parallel training
 ```
 
-### Production Deployment
-```bash
-# Export model
-python src/mobile_deployment.py --export --model-name GraphCLIP
+## 🌐 MLOps Pipeline
 
-# Deploy to cloud (configure in .github/workflows/ml-pipeline.yml)
+### Complete Workflow: Kaggle → GitHub → Docker Hub → GCP
+
 ```
+┌─────────────┐
+│   Kaggle    │  1. Train models (2x T4 GPU)
+│  Training   │  2. Export with export_models.py
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│   GitHub    │  3. Push models to repository
+│ Repository  │  4. Trigger GitHub Actions
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│ Docker Hub  │  5. Build & push Docker image
+│   Registry  │  6. Tag with version
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│   Google    │  7. Deploy to Cloud Run
+│  Cloud Run  │  8. Auto-scale REST API
+└─────────────┘
+```
+
+### Infrastructure as Code
+- **Dockerfile** - Container definition
+- **deploy-gcp.yml** - GitHub Actions workflow
+- **api_server.py** - FastAPI application
+- **requirements.txt** - Python dependencies
+
+All automatically deployed on `git push`!
+
+## 🧪 Testing
 
 ## 📦 Requirements
 
+### Core Dependencies
 - Python 3.10+
 - PyTorch 2.0+
 - CUDA 11.8+ (for GPU training)
 - 32GB RAM (recommended)
 - 2x GPU with 16GB VRAM each
 
+### Deployment Dependencies
+- Docker
+- Google Cloud SDK (for GCP deployment)
+- FastAPI & Uvicorn (API server)
+
 See `requirements.txt` for full dependencies.
+
+## 📝 Notebooks
 
 ## 🤝 Contributing
 
