@@ -48,18 +48,69 @@ async def load_model():
         logger.info(f"Using device: {DEVICE}")
         
         if os.path.exists(MODEL_PATH):
-            # Load model checkpoint
-            checkpoint = torch.load(MODEL_PATH, map_location=DEVICE)
-            MODEL = checkpoint.get('model', checkpoint)  # Handle different checkpoint formats
-            MODEL.to(DEVICE)
-            MODEL.eval()
-            logger.info(f"Model loaded successfully from {MODEL_PATH}")
+            logger.info(f"Found model file at {MODEL_PATH}")
+            
+            try:
+                # Try to load model checkpoint with weights_only=False for compatibility
+                checkpoint = torch.load(MODEL_PATH, map_location=DEVICE, weights_only=False)
+                
+                logger.info(f"Checkpoint type: {type(checkpoint)}")
+                
+                # Handle different checkpoint formats
+                if isinstance(checkpoint, dict):
+                    if 'model_state_dict' in checkpoint:
+                        # State dict only - need model architecture to load weights
+                        logger.warning("=" * 60)
+                        logger.warning("MODEL ARCHITECTURE REQUIRED")
+                        logger.warning("=" * 60)
+                        logger.warning(f"Checkpoint contains model_state_dict with {len(checkpoint['model_state_dict'])} parameters")
+                        logger.warning("To load this model, you need to:")
+                        logger.warning("  1. Add the GraphCLIP model class definition to api_server.py")
+                        logger.warning("  2. Instantiate the model architecture")
+                        logger.warning("  3. Load the state_dict into the model")
+                        logger.warning("")
+                        logger.warning("Running in DEMO MODE - predictions will be random")
+                        logger.warning("=" * 60)
+                        MODEL = None
+                    elif 'model' in checkpoint:
+                        # Full model object
+                        model_obj = checkpoint['model']
+                        if hasattr(model_obj, 'to') and hasattr(model_obj, 'eval'):
+                            MODEL = model_obj
+                            MODEL.to(DEVICE)
+                            MODEL.eval()
+                            logger.info(f"✓ Model loaded successfully from checkpoint['model']")
+                        else:
+                            logger.warning(f"Model object in checkpoint is not a PyTorch model: {type(model_obj)}")
+                            MODEL = None
+                    else:
+                        # Unknown format
+                        logger.warning(f"Checkpoint keys: {list(checkpoint.keys())}")
+                        logger.warning("Unknown checkpoint format - cannot load model")
+                        MODEL = None
+                else:
+                    # Checkpoint is the model itself
+                    if hasattr(checkpoint, 'to') and hasattr(checkpoint, 'eval'):
+                        MODEL = checkpoint
+                        MODEL.to(DEVICE)
+                        MODEL.eval()
+                        logger.info(f"✓ Model loaded successfully (direct model object)")
+                    else:
+                        logger.warning(f"Checkpoint is not a PyTorch model: {type(checkpoint)}")
+                        MODEL = None
+                        
+            except Exception as load_error:
+                logger.error(f"Error loading checkpoint: {load_error}")
+                logger.exception("Full traceback:")
+                MODEL = None
         else:
-            logger.warning(f"Model not found at {MODEL_PATH}. API will run in demo mode.")
+            logger.warning(f"Model not found at {MODEL_PATH}")
+            logger.warning("API will run in DEMO MODE with random predictions")
             MODEL = None
             
     except Exception as e:
-        logger.error(f"Error loading model: {e}")
+        logger.error(f"Unexpected error in startup: {e}")
+        logger.exception("Full traceback:")
         MODEL = None
 
 

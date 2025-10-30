@@ -1,0 +1,385 @@
+{
+  "DR": {
+    "full_name": "Diabetic Retinopathy",
+    "severity": "HIGH",
+    "urgency": "URGENT",
+    "description": "Retinal damage from diabetes complications",
+    "screening_interval_months": 6,
+    "risk_factors": [
+      "Diabetes",
+      "Hypertension",
+      "Poor glucose control"
+    ]
+  },
+  "ARMD": {
+    "full_name": "Age-Related Macular Degeneration",
+    "severity": "HIGH",
+    "urgency": "SEMI_URGENT",
+    "description": "Age-related deterioration of central vision",
+    "screening_interval_months": 12,
+    "risk_factors": [
+      "Age >50",
+      "Smoking",
+      "Family history"
+    ]
+  },
+  "HTR": {
+    "full_name": "Hypertensive Retinopathy",
+    "severity": "MEDIUM",
+    "urgency": "SEMI_URGENT",
+    "description": "Retinal changes from high blood pressure",
+    "screening_interval_months": 6,
+    "risk_factors": [
+      "Hypertension",
+      "Cardiovascular disease"
+    ]
+  },
+  "MH": {
+    "full_name": "Macular Hole",
+    "severity": "HIGH",
+    "urgency": "URGENT",
+    "description": "Small break in the macula",
+    "screening_interval_months": 3,
+    "risk_factors": [
+      "Age >60",
+      "Eye trauma",
+      "High myopia"
+    ]
+  },
+  "DN": {
+    "full_name": "DN",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "MYA": {
+    "full_name": "MYA",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "BRVO": {
+    "full_name": "BRVO",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "TSLN": {
+    "full_name": "TSLN",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "ERM": {
+    "full_name": "ERM",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "LS": {
+    "full_name": "LS",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "MS": {
+    "full_name": "MS",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "CSR": {
+    "full_name": "CSR",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "ODC": {
+    "full_name": "ODC",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "CRVO": {
+    "full_name": "CRVO",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "TV": {
+    "full_name": "TV",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "AH": {
+    "full_name": "AH",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "ODP": {
+    "full_name": "ODP",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "ODE": {
+    "full_name": "ODE",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "ST": {
+    "full_name": "ST",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "AION": {
+    "full_name": "AION",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "PT": {
+    "full_name": "PT",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "RT": {
+    "full_name": "RT",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "RS": {
+    "full_name": "RS",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "CRS": {
+    "full_name": "CRS",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "EDN": {
+    "full_name": "EDN",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "RPEC": {
+    "full_name": "RPEC",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "MHL": {
+    "full_name": "MHL",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "RP": {
+    "full_name": "RP",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "CWS": {
+    "full_name": "CWS",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "CB": {
+    "full_name": "CB",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "ODPM": {
+    "full_name": "ODPM",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "PRH": {
+    "full_name": "PRH",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "MNF": {
+    "full_name": "MNF",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "HR": {
+    "full_name": "HR",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "CRAO": {
+    "full_name": "CRAO",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "TD": {
+    "full_name": "TD",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "CME": {
+    "full_name": "CME",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "PTCR": {
+    "full_name": "PTCR",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "CF": {
+    "full_name": "CF",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "VH": {
+    "full_name": "VH",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "MCA": {
+    "full_name": "MCA",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "VS": {
+    "full_name": "VS",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "BRAO": {
+    "full_name": "BRAO",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "PLQ": {
+    "full_name": "PLQ",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "HPED": {
+    "full_name": "HPED",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  },
+  "CL": {
+    "full_name": "CL",
+    "severity": "MEDIUM",
+    "urgency": "ROUTINE",
+    "description": "Retinal condition requiring evaluation",
+    "screening_interval_months": 12,
+    "risk_factors": []
+  }
+}
