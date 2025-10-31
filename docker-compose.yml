@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  retinal-api-gpu:
+    image: landwind/retinal-screening-gpu:latest
+    container_name: retinal-screening-gpu
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - MODEL_PATH=/app/models/exports/best_model.pth
+      - API_HOST=0.0.0.0
+      - API_PORT=8080
+      - LOG_LEVEL=INFO
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - ./models:/app/models
+      - ./logs:/app/logs
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - retinal-network
+
+  # CPU-only version for testing without GPU
+  retinal-api-cpu:
+    image: landwind/retinal-screening-gpu:latest
+    container_name: retinal-screening-cpu
+    profiles:
+      - cpu
+    ports:
+      - "8081:8080"
+    environment:
+      - MODEL_PATH=/app/models/exports/best_model.pth
+      - API_HOST=0.0.0.0
+      - API_PORT=8080
+      - LOG_LEVEL=INFO
+      - CUDA_VISIBLE_DEVICES=-1
+    volumes:
+      - ./models:/app/models
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - retinal-network
+
+networks:
+  retinal-network:
+    driver: bridge
+
+# Usage:
+# GPU mode (default):
+#   docker-compose up -d
+#
+# CPU mode:
+#   docker-compose --profile cpu up -d
+#
+# View logs:
+#   docker-compose logs -f
+#
+# Stop:
+#   docker-compose down
+#
+# Rebuild:
+#   docker-compose up --build -d
