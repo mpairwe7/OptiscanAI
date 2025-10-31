@@ -1,0 +1,167 @@
+name: Docker Build & Push to Docker Hub
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'models/**'
+      - 'Dockerfile'
+      - 'requirements.txt'
+  workflow_dispatch:
+
+env:
+  DOCKERHUB_USERNAME: landwind
+  DOCKER_IMAGE: landwind/retinal-screening-api
+  
+jobs:
+  build-and-push:
+    name: Build and Push to Docker Hub
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      
+      - name: Extract metadata
+        id: meta
+        run: |
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          VERSION="v1.0-${SHORT_SHA}"
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKER_IMAGE }}:latest
+            ${{ env.DOCKER_IMAGE }}:${{ steps.meta.outputs.version }}
+          cache-from: type=registry,ref=${{ env.DOCKER_IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.DOCKER_IMAGE }}:buildcache,mode=max
+          platforms: linux/amd64
+      
+      - name: Test image
+        run: |
+          docker run -d --name test-api -p 8080:8080 ${{ env.DOCKER_IMAGE }}:latest
+          sleep 20
+          curl -f http://localhost:8080/health || exit 1
+          docker stop test-api
+      
+      - name: Create deployment summary
+        run: |
+          echo "## ✅ Docker Image Built Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ env.DOCKER_IMAGE }}:${{ steps.meta.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags:** latest, ${{ steps.meta.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Pull command:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ env.DOCKER_IMAGE }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Run locally:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "docker run -p 8080:8080 ${{ env.DOCKER_IMAGE }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+  deploy-cranecloud:
+    name: Deploy to Crane Cloud
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Deploy to Crane Cloud
+        run: |
+          echo "🚀 Deploying to Crane Cloud..."
+          echo "Image: ${{ env.DOCKER_IMAGE }}:latest"
+          echo "Port: 8080"
+          
+          # Create deployment instructions
+          cat > cranecloud-deploy.md << 'EOF'
+          # Crane Cloud Deployment Instructions
+          
+          ## Manual Deployment Steps:
+          
+          1. **Login to Crane Cloud**
+             - Go to: https://cranecloud.io
+             - Login with your credentials
+          
+          2. **Create New App**
+             - Click "Create App" or "New Application"
+             - Choose "Docker Image" as deployment method
+          
+          3. **Configure App**
+             - **App Name:** retinal-screening-api
+             - **Docker Image:** landwind/retinal-screening-api:latest
+             - **Port:** 8080
+             - **Resources:** 
+               - CPU: 1-2 cores
+               - Memory: 2GB minimum
+               - GPU: Optional (if available)
+          
+          4. **Environment Variables** (if needed)
+             - MODEL_PATH=/app/models/best_model_mobile.pt
+             - PORT=8080
+          
+          5. **Deploy**
+             - Click "Deploy" button
+             - Wait for deployment to complete (2-5 minutes)
+          
+          6. **Verify Deployment**
+             ```bash
+             curl https://your-app-url.cranecloud.io/health
+             curl https://your-app-url.cranecloud.io/diseases
+             ```
+          
+          ## Automated Deployment (if Crane Cloud API available):
+          
+          If you have Crane Cloud API credentials, add these secrets to GitHub:
+          - CRANECLOUD_API_TOKEN
+          - CRANECLOUD_PROJECT_ID
+          
+          Then uncomment the automated deployment section in this workflow.
+          EOF
+          
+          cat cranecloud-deploy.md
+      
+      - name: Upload deployment guide
+        uses: actions/upload-artifact@v3
+        with:
+          name: cranecloud-deployment-guide
+          path: cranecloud-deploy.md
+      
+      - name: Deployment summary
+        run: |
+          echo "## 🚀 Ready for Crane Cloud Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Docker Image" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** \`${{ env.DOCKER_IMAGE }}:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Port:** 8080" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ✅ Ready" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Login to [Crane Cloud](https://cranecloud.io)" >> $GITHUB_STEP_SUMMARY
+          echo "2. Create new app with Docker image: \`${{ env.DOCKER_IMAGE }}:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "3. Set port to **8080**" >> $GITHUB_STEP_SUMMARY
+          echo "4. Deploy and test endpoints" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📥 Download the deployment guide artifact for detailed instructions" >> $GITHUB_STEP_SUMMARY
