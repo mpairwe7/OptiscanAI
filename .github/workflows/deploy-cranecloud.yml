@@ -10,12 +10,12 @@ on:
       - 'Dockerfile'
       - 'requirements.txt'
       - '.github/workflows/deploy-cranecloud.yml'
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:
 
 env:
   DOCKERHUB_USERNAME: landwind
-  DOCKER_IMAGE: landwind/retinal-screening-gpu
-  CRANECLOUD_REGISTRY: cranecloud.io
+  DOCKER_IMAGE: landwind/retinal-screening-api
+  APP_PORT: 8080
   
 jobs:
   build-and-push:

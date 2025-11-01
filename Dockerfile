@@ -20,7 +20,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies including Python
+# Install system dependencies including Python and ngrok
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.10 \
     python3-pip \
@@ -32,8 +32,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxrender1 \
     libgomp1 \
     curl \
+    wget \
+    unzip \
+    supervisor \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
+
+# Install ngrok
+RUN curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | \
+    tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null && \
+    echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | \
+    tee /etc/apt/sources.list.d/ngrok.list && \
+    apt-get update && apt-get install -y ngrok && \
+    rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip
 RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel
@@ -58,8 +69,13 @@ COPY src/ ./src/
 COPY models/ ./models/
 
 # Create necessary directories with proper permissions
-RUN mkdir -p models/checkpoints models/exports logs uploads \
+RUN mkdir -p models/checkpoints models/exports logs uploads /var/log/supervisor \
     && chmod -R 755 /app
+
+# Copy ngrok configuration and startup script
+COPY deployment/ngrok-entrypoint.sh /usr/local/bin/
+COPY deployment/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+RUN chmod +x /usr/local/bin/ngrok-entrypoint.sh
 
 # Expose port for API (Crane Cloud typically uses 80 or 8080)
 EXPOSE 8080
@@ -68,8 +84,8 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
-# Run the application with uvicorn
-CMD ["python3", "-m", "uvicorn", "src.api_server:app", \
-    "--host", "0.0.0.0", \
-    "--port", "8080", \
-    "--workers", "1"]
+# Use custom entrypoint for ngrok support
+ENTRYPOINT ["/usr/local/bin/ngrok-entrypoint.sh"]
+
+# Default command - can be overridden
+CMD ["api"]
