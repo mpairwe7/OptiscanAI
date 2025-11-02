@@ -2,6 +2,8 @@
 FastAPI server for retinal disease classification model inference
 """
 import os
+import sys
+from pathlib import Path
 import torch
 import uvicorn
 from fastapi import FastAPI, File, UploadFile, HTTPException
@@ -11,6 +13,12 @@ import io
 import numpy as np
 from typing import Dict, List
 import logging
+
+# Add src directory to path
+sys.path.append(str(Path(__file__).parent))
+
+# Import model architecture
+from models.vignn import SceneGraphTransformer, create_scene_graph_model
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -59,19 +67,28 @@ async def load_model():
                 # Handle different checkpoint formats
                 if isinstance(checkpoint, dict):
                     if 'model_state_dict' in checkpoint:
-                        # State dict only - need model architecture to load weights
-                        logger.warning("=" * 60)
-                        logger.warning("MODEL ARCHITECTURE REQUIRED")
-                        logger.warning("=" * 60)
-                        logger.warning(f"Checkpoint contains model_state_dict with {len(checkpoint['model_state_dict'])} parameters")
-                        logger.warning("To load this model, you need to:")
-                        logger.warning("  1. Add the GraphCLIP model class definition to api_server.py")
-                        logger.warning("  2. Instantiate the model architecture")
-                        logger.warning("  3. Load the state_dict into the model")
-                        logger.warning("")
-                        logger.warning("Running in DEMO MODE - predictions will be random")
-                        logger.warning("=" * 60)
-                        MODEL = None
+                        # State dict only - instantiate model architecture and load weights
+                        logger.info("Loading SceneGraphTransformer model architecture...")
+                        MODEL = SceneGraphTransformer(
+                            num_classes=45,
+                            num_regions=12,
+                            hidden_dim=384,
+                            num_layers=2,
+                            num_heads=4,
+                            dropout=0.1,
+                            num_ensemble_branches=3
+                        )
+                        MODEL.load_state_dict(checkpoint['model_state_dict'])
+                        MODEL.to(DEVICE)
+                        MODEL.eval()
+                        logger.info(f"✓ Model loaded successfully from state_dict")
+                        
+                        # Log checkpoint metadata if available
+                        if 'best_f1' in checkpoint:
+                            logger.info(f"  Best F1 Score: {checkpoint['best_f1']:.4f}")
+                        if 'best_auc' in checkpoint:
+                            logger.info(f"  Best AUC Score: {checkpoint['best_auc']:.4f}")
+                        
                     elif 'model' in checkpoint:
                         # Full model object
                         model_obj = checkpoint['model']
