@@ -17,6 +17,18 @@ import os
 from pathlib import Path
 import time
 import cv2
+import warnings
+
+# Fix for sklearn numpy compatibility issues
+# Suppress warnings about numpy data types
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
+
+# Ensure numpy integer arrays are compatible with sklearn
+# sklearn doesn't support np.int64 in some contexts, prefers int32 for labels
+# Note: For model quantization (INT8), this doesn't affect torch.qint8
+np.int = np.int32  # sklearn expects np.int alias
+np.float = np.float64  # sklearn expects np.float alias
 
 # Add src directory to path
 sys.path.append(str(Path(__file__).parent))
@@ -38,12 +50,12 @@ LIME_AVAILABLE = False
 ELI5_AVAILABLE = False
 
 try:
-    import grad_cam
+    import pytorch_grad_cam
     GRADCAM_AVAILABLE = True
-    GRADCAM_LIBRARY = 'grad-cam'
-    print("✓ grad-cam available")
+    GRADCAM_LIBRARY = 'pytorch_grad_cam'
+    print("✓ pytorch-grad-cam available (GradCAM, GradCAM++, ScoreCAM, EigenCAM)")
 except ImportError:
-    print("⚠ grad-cam not installed - GradCAM features will be disabled")
+    print("⚠ pytorch-grad-cam not installed - GradCAM features will be disabled")
     GRADCAM_AVAILABLE = False
     GRADCAM_LIBRARY = None
 
@@ -249,7 +261,7 @@ def load_model():
             model_path = Path(__file__).parent.parent / 'models' / 'best_model_mobile.pth'
             
             if not model_path.exists():
-                st.error(f"❌ Model not found at {model_path}")
+                st.error(f"Model not found at {model_path}")
                 return None, None
             
             # Initialize model with correct SceneGraphTransformer parameters
@@ -273,11 +285,11 @@ def load_model():
             model.to(device)
             model.eval()
             
-            st.success(f'✅ Model loaded successfully on {device}!')
+            st.info(f'Model loaded successfully on {device}!')
             return model, device
     
     except Exception as e:
-        st.error(f"❌ Error loading model: {str(e)}")
+        st.error(f"Error loading model: {str(e)}")
         return None, None
 
 
@@ -298,7 +310,7 @@ def load_explainer(_model, _device):
         )
         return explainer
     except Exception as e:
-        st.warning(f"⚠️ Explainability features unavailable: {str(e)}")
+        st.warning(f"Explainability features unavailable: {str(e)}")
         return None
 
 
@@ -335,7 +347,7 @@ def predict(model, device, image_tensor):
         
         return probabilities
     except Exception as e:
-        st.error(f"❌ Prediction error: {str(e)}")
+        st.error(f"Prediction error: {str(e)}")
         return None
 
 
@@ -352,7 +364,7 @@ def get_comprehensive_analysis(explainer, image_tensor, device, top_k=5):
         
         return results
     except Exception as e:
-        st.error(f"❌ Analysis error: {str(e)}")
+        st.error(f"Analysis error: {str(e)}")
         return None
 
 
@@ -449,7 +461,7 @@ def get_clinical_recommendation(prediction):
         severity = "HIGH RISK"
         color = "error"
         recommendation = f"""
-        **🚨 High Confidence Detection ({prediction['percentage']})**
+        **High Confidence Detection ({prediction['percentage']})**
         
         **Detected Condition:** {disease_name}
         
@@ -468,7 +480,7 @@ def get_clinical_recommendation(prediction):
         severity = "MODERATE RISK"
         color = "warning"
         recommendation = f"""
-        **⚠️ Moderate Confidence Detection ({prediction['percentage']})**
+        **Moderate Confidence Detection ({prediction['percentage']})**
         
         **Detected Condition:** {disease_name}
         
@@ -487,7 +499,7 @@ def get_clinical_recommendation(prediction):
         severity = "LOW RISK"
         color = "info"
         recommendation = f"""
-        **ℹ️ Low Confidence Detection ({prediction['percentage']})**
+        **Low Confidence Detection ({prediction['percentage']})**
         
         **Potential Condition:** {disease_name}
         
@@ -506,7 +518,7 @@ def get_clinical_recommendation(prediction):
         severity = "VERY LOW RISK"
         color = "success"
         recommendation = f"""
-        **✅ Very Low Detection ({prediction['percentage']})**
+        **Very Low Detection ({prediction['percentage']})**
         
         **Condition:** {disease_name}
         
@@ -528,17 +540,30 @@ def get_clinical_recommendation(prediction):
 def main():
     """Main Streamlit application"""
     
-    # Header
-    st.markdown('<div class="main-header">👁️ Explainable Retinal Disease Screening</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">AI-Powered Medical Image Analysis with GPU Acceleration</div>', unsafe_allow_html=True)
+    # Header with retinal image
+    col_img, col_title = st.columns([1, 3])
+    
+    with col_img:
+        # Display professional retinal screening image
+        # Using a reliable medical imaging icon/illustration
+        st.image("https://cdn-icons-png.flaticon.com/512/2913/2913133.png", 
+                 use_container_width=True,
+                 caption="Retinal Fundus Analysis")
+    
+    with col_title:
+        st.markdown('<div class="main-header">Explainable Retinal Disease Screening</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sub-header">AI-Powered Medical Image Analysis</div>', unsafe_allow_html=True)
+        st.markdown("**Advanced deep learning model for detecting 45 retinal conditions with explainable AI**")
+    
+    st.divider()
     
     # Sidebar
     with st.sidebar:
         st.image("https://img.icons8.com/color/96/000000/ophthalmology.png", width=100)
-        st.title("🔬 Analysis Settings")
+        st.title("Analysis Settings")
         
         # GPU Status
-        device_status = "🟢 GPU Available" if torch.cuda.is_available() else "🔵 CPU Mode"
+        device_status = "GPU Available" if torch.cuda.is_available() else "CPU Mode"
         st.info(f"**Device:** {device_status}")
         
         if torch.cuda.is_available():
@@ -549,7 +574,7 @@ def main():
         st.divider()
         
         # Settings
-        st.subheader("⚙️ Configuration")
+        st.subheader("Configuration")
         top_k = st.slider("Top predictions to show", 3, 10, 5)
         show_explainability = st.checkbox("Show explainability features", value=EXPLAINABILITY_AVAILABLE)
         confidence_threshold = st.slider("Confidence threshold", 0.0, 1.0, 0.3, 0.05)
@@ -557,7 +582,7 @@ def main():
         st.divider()
         
         # Model info
-        st.subheader("📊 Model Information")
+        st.subheader("Model Information")
         
         # Load and display metadata
         metadata = load_model_metadata()
@@ -596,34 +621,34 @@ def main():
         st.divider()
         
         # Explainability Frameworks Status
-        st.subheader("🔍 Explainability Tools")
+        st.subheader("Explainability Tools")
         
         frameworks_status = []
         
         if GRADCAM_AVAILABLE:
-            frameworks_status.append(f"✅ GradCAM ({GRADCAM_LIBRARY})")
+            frameworks_status.append(f"[Active] GradCAM ({GRADCAM_LIBRARY})")
         else:
-            frameworks_status.append("❌ GradCAM")
+            frameworks_status.append("[Inactive] GradCAM")
         
         if CAPTUM_AVAILABLE:
-            frameworks_status.append("✅ Captum (Integrated Gradients)")
+            frameworks_status.append("[Active] Captum (Integrated Gradients)")
         else:
-            frameworks_status.append("❌ Captum")
+            frameworks_status.append("[Inactive] Captum")
         
         if SHAP_AVAILABLE:
-            frameworks_status.append("✅ SHAP")
+            frameworks_status.append("[Active] SHAP")
         else:
-            frameworks_status.append("❌ SHAP")
+            frameworks_status.append("[Inactive] SHAP")
         
         if LIME_AVAILABLE:
-            frameworks_status.append("✅ LIME")
+            frameworks_status.append("[Active] LIME")
         else:
-            frameworks_status.append("❌ LIME")
+            frameworks_status.append("[Inactive] LIME")
         
         if ELI5_AVAILABLE:
-            frameworks_status.append("✅ ELI5")
+            frameworks_status.append("[Active] ELI5")
         else:
-            frameworks_status.append("❌ ELI5")
+            frameworks_status.append("[Inactive] ELI5")
         
         frameworks_text = "\n".join(frameworks_status)
         
@@ -634,13 +659,13 @@ def main():
         elif total_available >= 2:
             st.info(f"**{total_available}/5 frameworks available**\n\n{frameworks_text}")
         else:
-            st.warning(f"**{total_available}/5 frameworks available**\n\n{frameworks_text}\n\n💡 Install missing packages to enable all explainability features.")
+            st.warning(f"**{total_available}/5 frameworks available**\n\n{frameworks_text}\n\nInstall missing packages to enable all explainability features.")
         
         st.divider()
         
         # Medical disclaimer
         st.warning("""
-        **⚠️ Medical Disclaimer**
+        **Medical Disclaimer**
         
         This is a screening tool for educational and research purposes. 
         
@@ -653,7 +678,7 @@ def main():
     model, device = load_model()
     
     if model is None:
-        st.error("❌ Cannot proceed without model. Please check configuration.")
+        st.error("Cannot proceed without model. Please check configuration.")
         return
     
     # Load explainer if enabled
@@ -662,7 +687,7 @@ def main():
         explainer = load_explainer(model, device)
     
     # Main content
-    tab1, tab2, tab3 = st.tabs(["📤 Upload & Analyze", "📊 Results Dashboard", "ℹ️ About"])
+    tab1, tab2, tab3 = st.tabs(["Upload & Analyze", "Results Dashboard", "About"])
     
     with tab1:
         st.header("Upload Retinal Fundus Image")
@@ -673,14 +698,14 @@ def main():
             # Image source selection
             image_source = st.radio(
                 "Select Image Source:",
-                options=["📁 Upload from File", "📷 Capture from Camera"],
+                options=["Upload from File", "Capture from Camera"],
                 horizontal=True
             )
             
             uploaded_file = None
             camera_image = None
             
-            if image_source == "📁 Upload from File":
+            if image_source == "Upload from File":
                 uploaded_file = st.file_uploader(
                     "Choose a retinal image (JPG, PNG, JPEG)",
                     type=['jpg', 'jpeg', 'png'],
@@ -702,7 +727,7 @@ def main():
             
             else:  # Camera capture
                 camera_image = st.camera_input(
-                    "📷 Capture retinal image from camera",
+                    "Capture retinal image from camera",
                     help="Position the retinal fundus camera and capture the image"
                 )
                 
@@ -723,8 +748,8 @@ def main():
         with col2:
             if uploaded_file is not None:
                 # Analyze button
-                if st.button("🔍 Analyze Image", type="primary"):
-                    with st.spinner("🧠 AI Analysis in progress..."):
+                if st.button("Analyze Image", type="primary"):
+                    with st.spinner("AI Analysis in progress..."):
                         # Preprocess
                         progress_bar = st.progress(0)
                         progress_bar.progress(25, text="Preprocessing image...")
@@ -761,7 +786,7 @@ def main():
                                 time.sleep(0.5)
                                 progress_bar.empty()
                                 
-                                st.success(f"✅ Comprehensive analysis complete in {inference_time:.3f} seconds!")
+                                st.success(f"Comprehensive analysis complete in {inference_time:.3f} seconds!")
                                 st.balloons()
                         else:
                             # Standard prediction
@@ -787,7 +812,7 @@ def main():
                                 time.sleep(0.5)
                                 progress_bar.empty()
                                 
-                                st.success(f"✅ Analysis complete in {inference_time:.3f} seconds!")
+                                st.success(f"Analysis complete in {inference_time:.3f} seconds!")
                                 st.balloons()
     
     with tab2:
@@ -830,14 +855,14 @@ def main():
                 
                 # Overall assessment banner
                 overall = clinical_insights['overall_assessment']
-                st.subheader("🏥 Clinical Assessment Summary")
+                st.subheader("Clinical Assessment Summary")
                 
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("Primary Diagnosis", overall['top_diagnosis'])
                 with col2:
                     reliability = overall['reliability_score']
-                    reliability_color = "🟢" if reliability >= 75 else "🟡" if reliability >= 50 else "🔴"
+                    reliability_color = "HIGH" if reliability >= 75 else "MEDIUM" if reliability >= 50 else "LOW"
                     st.metric("Reliability Score", f"{reliability_color} {reliability:.1f}/100")
                 with col3:
                     action = overall['clinical_action_required']
@@ -846,26 +871,26 @@ def main():
                 st.divider()
                 
                 # Clinical Recommendations
-                st.subheader("📋 Clinical Recommendations")
+                st.subheader("Clinical Recommendations")
                 recommendations = clinical_insights['recommendations']
                 
                 for i, rec in enumerate(recommendations[:3], 1):  # Show top 3
-                    priority_emoji = {
-                        'Urgent': '🔴',
-                        'High': '🟠',
-                        'Medium': '🟡',
-                        'Low': '🟢',
-                        'Review': '🔵'
-                    }.get(rec['priority'], '⚪')
+                    priority_label = {
+                        'Urgent': '[URGENT]',
+                        'High': '[HIGH]',
+                        'Medium': '[MEDIUM]',
+                        'Low': '[LOW]',
+                        'Review': '[REVIEW]'
+                    }.get(rec['priority'], '[INFO]')
                     
-                    with st.expander(f"{priority_emoji} {rec['type']} - {rec['priority']} Priority", expanded=(i==1)):
+                    with st.expander(f"{priority_label} {rec['type']} - {rec['priority']} Priority", expanded=(i==1)):
                         st.write(f"**Recommendation:** {rec['recommendation']}")
                         st.write(f"**Action Required:** {rec['action']}")
                 
                 st.divider()
                 
                 # Uncertainty Metrics
-                st.subheader("📊 Reliability & Uncertainty Analysis")
+                st.subheader("Reliability & Uncertainty Analysis")
                 uncertainty = clinical_insights['uncertainty_metrics']
                 
                 col1, col2, col3 = st.columns(3)
@@ -884,7 +909,7 @@ def main():
                 # Multi-disease interactions
                 if clinical_insights.get('multi_disease_interactions'):
                     st.divider()
-                    st.subheader("🔗 Multi-Disease Interactions Detected")
+                    st.subheader("Multi-Disease Interactions Detected")
                     interactions = clinical_insights['multi_disease_interactions']
                     
                     for interaction in interactions:
@@ -897,7 +922,7 @@ def main():
             col1, col2 = st.columns([2, 1])
             
             with col1:
-                st.subheader("📊 Prediction Confidence Scores")
+                st.subheader("Prediction Confidence Scores")
                 
                 # Format predictions for plotting
                 if use_comprehensive:
@@ -917,7 +942,7 @@ def main():
                 st.plotly_chart(fig, use_container_width=True)
             
             with col2:
-                st.subheader("🎯 Primary Detection")
+                st.subheader("Primary Detection")
                 if use_comprehensive:
                     confidence_val = predictions[0]['confidence_score']
                 else:
@@ -929,7 +954,7 @@ def main():
             
             # Clinical recommendations (standard mode fallback)
             if not use_comprehensive:
-                st.subheader("🏥 Clinical Assessment")
+                st.subheader("Clinical Assessment")
                 
                 top_pred = predictions[0]
                 severity, recommendation, color = get_clinical_recommendation(top_pred)
@@ -948,7 +973,7 @@ def main():
                 st.divider()
             
             # Detailed predictions table
-            st.subheader("📋 Detailed Predictions")
+            st.subheader("Detailed Predictions")
             
             if use_comprehensive:
                 df_data = [
@@ -977,7 +1002,7 @@ def main():
             # Explainability section
             if show_explainability and explainer is not None and 'image' in st.session_state:
                 st.divider()
-                st.subheader("🔍 Explainability Analysis")
+                st.subheader("Explainability Analysis")
                 
                 # Show available frameworks status
                 available_frameworks = []
@@ -993,14 +1018,14 @@ def main():
                     available_frameworks.append("**ELI5** (Explain Like I'm 5)")
                 
                 if available_frameworks:
-                    st.success(f"✅ **Available Explainability Frameworks:**\n\n" + "\n- ".join([""] + available_frameworks))
+                    st.success(f"Available Explainability Frameworks:\n\n" + "\n- ".join([""] + available_frameworks))
                 else:
-                    st.warning("⚠️ No explainability frameworks are currently available. Install the required packages to enable these features.")
+                    st.warning("No explainability frameworks are currently available. Install the required packages to enable these features.")
                 
                 # Check if GradCAM is available
                 if not GRADCAM_AVAILABLE:
                     st.error("""
-                    ❌ **GradCAM Not Available**
+                    **GradCAM Not Available**
                     
                     The `grad-cam` package is not installed in this environment.
                     
@@ -1018,8 +1043,8 @@ def main():
                     """)
                 else:
                     # GradCAM Visualization
-                    with st.expander("🎯 View GradCAM Heatmap", expanded=True):
-                        st.info(f"🔍 Using **{GRADCAM_LIBRARY}** for visualization")
+                    with st.expander("View GradCAM Heatmap", expanded=True):
+                        st.info(f"Using **{GRADCAM_LIBRARY}** for visualization")
                         with st.spinner("Generating attention heatmap..."):
                             try:
                                 # Generate GradCAM
@@ -1058,23 +1083,33 @@ def main():
                                     st.image(heatmap, caption=f"GradCAM: {predictions[0].get('disease', predictions[0].get('name', 'Top Prediction'))}", use_container_width=True)
                                 
                                 st.info("""
-                                **🔍 Heatmap Interpretation Guide:**
+                                **Heatmap Interpretation Guide:**
                                 
-                                - **🔴 Red/Hot Regions:** High importance areas where the AI focused for diagnosis
-                                - **🟡 Yellow/Warm Regions:** Moderate importance areas contributing to the decision
-                                - **🔵 Blue/Cool Regions:** Lower relevance areas with minimal impact
+                                - **Red/Hot Regions:** High importance areas where the AI focused for diagnosis
+                                - **Yellow/Warm Regions:** Moderate importance areas contributing to the decision
+                                - **Blue/Cool Regions:** Lower relevance areas with minimal impact
                                 
                                 The heatmap shows which parts of the retinal image influenced the AI's prediction most strongly.
                                 Clinicians should verify that highlighted regions align with actual pathological features.
                                 """)
                             
                             except Exception as e:
-                                st.error(f"❌ Could not generate heatmap: {str(e)}")
-                                st.info("💡 **Troubleshooting:** Ensure grad-cam is installed in the container.")
+                                error_msg = str(e)
+                                st.error(f"Could not generate heatmap: {error_msg}")
+                                with st.expander("Debug Information"):
+                                    st.code(f"""
+Error Type: {type(e).__name__}
+Error Message: {error_msg}
+Target Class: {target_class if 'target_class' in locals() else 'Not set'}
+Image Tensor Shape: {img_tensor.shape if 'img_tensor' in locals() else 'Not loaded'}
+Device: {device}
+GradCAM Library: {GRADCAM_LIBRARY}
+                                    """, language="text")
+                                st.info("**Troubleshooting:**\n- Ensure grad-cam is installed: `pip install grad-cam>=1.5.2`\n- Check that the model is properly loaded\n- Verify image preprocessing is correct")
                     
                     # Captum - Integrated Gradients
                     if CAPTUM_AVAILABLE:
-                        with st.expander("📊 Integrated Gradients (Captum)", expanded=False):
+                        with st.expander("Integrated Gradients (Captum)", expanded=False):
                             st.info("""
                             **About Integrated Gradients:**
                             
@@ -1111,11 +1146,11 @@ def main():
                                         else:
                                             st.error(f"Error: {ig_results['error']}")
                                     except Exception as e:
-                                        st.error(f"❌ Could not generate Integrated Gradients: {str(e)}")
+                                        st.error(f"Could not generate Integrated Gradients: {str(e)}")
                     
                     # SHAP Explanations
                     if SHAP_AVAILABLE:
-                        with st.expander("🎲 SHAP Explanations", expanded=False):
+                        with st.expander("SHAP Explanations", expanded=False):
                             st.info("""
                             **About SHAP (SHapley Additive exPlanations):**
                             
@@ -1126,13 +1161,13 @@ def main():
                             """)
                             
                             st.warning("""
-                            ⚠️ **Note:** SHAP explanations for deep learning models can be computationally intensive.
+                            **Note:** SHAP explanations for deep learning models can be computationally intensive.
                             Implementation requires model-specific adapters for retinal images.
                             """)
                     
                     # LIME Explanations
                     if LIME_AVAILABLE:
-                        with st.expander("🔬 LIME Explanations", expanded=False):
+                        with st.expander("LIME Explanations", expanded=False):
                             st.info("""
                             **About LIME (Local Interpretable Model-agnostic Explanations):**
                             
@@ -1143,13 +1178,13 @@ def main():
                             """)
                             
                             st.warning("""
-                            ⚠️ **Note:** LIME for medical images requires careful segmentation and perturbation strategies.
+                            **Note:** LIME for medical images requires careful segmentation and perturbation strategies.
                             Implementation requires additional configuration for retinal fundus images.
                             """)
                     
                     # ELI5 Explanations
                     if ELI5_AVAILABLE:
-                        with st.expander("📝 ELI5 Explanations", expanded=False):
+                        with st.expander("ELI5 Explanations", expanded=False):
                             st.info("""
                             **About ELI5 (Explain Like I'm 5):**
                             
@@ -1160,12 +1195,12 @@ def main():
                             """)
                             
                             st.warning("""
-                            ⚠️ **Note:** ELI5 is most effective with traditional ML models.
+                            **Note:** ELI5 is most effective with traditional ML models.
                             Deep learning support is limited and requires custom adapters.
                             """)
                     
                     # Framework Comparison Guide
-                    with st.expander("📚 Explainability Framework Comparison", expanded=False):
+                    with st.expander("Explainability Framework Comparison", expanded=False):
                         comparison_df = pd.DataFrame({
                             'Framework': ['GradCAM', 'Captum (IG)', 'SHAP', 'LIME', 'ELI5'],
                             'Type': ['Visual', 'Visual + Numerical', 'Numerical', 'Visual + Numerical', 'Numerical'],
@@ -1192,7 +1227,7 @@ def main():
                         """)
         
         else:
-            st.info("👆 Upload and analyze an image in the 'Upload & Analyze' tab to see results here.")
+            st.info("Upload and analyze an image in the 'Upload & Analyze' tab to see results here.")
     
     with tab3:
         st.header("About This Application")
@@ -1200,13 +1235,13 @@ def main():
         col1, col2 = st.columns(2)
         
         with col1:
-            st.subheader("🎯 Purpose")
+            st.subheader("Purpose")
             st.write("""
             This application provides AI-powered screening for retinal diseases using 
             state-of-the-art deep learning technology with explainable AI features.
             """)
             
-            st.subheader("🔬 Technology Stack")
+            st.subheader("Technology Stack")
             st.write("""
             - **Deep Learning:** PyTorch with CUDA GPU acceleration
             - **Architecture:** SceneGraphTransformer
@@ -1223,7 +1258,7 @@ def main():
             """)
         
         with col2:
-            st.subheader("📋 Detectable Conditions")
+            st.subheader("Detectable Conditions")
             st.write("""
             The model can screen for 45 different retinal diseases including:
             
@@ -1237,7 +1272,7 @@ def main():
             **And 40 other retinal conditions...**
             """)
             
-            st.subheader("⚡ Performance")
+            st.subheader("Performance")
             st.write(f"""
             - **Inference Time:** ~200ms on GPU
             - **Model Size:** 119 MB (quantized)
@@ -1247,7 +1282,7 @@ def main():
         
         st.divider()
         
-        st.subheader("📚 How to Use")
+        st.subheader("How to Use")
         st.write("""
         1. **Upload** a clear retinal fundus photograph
         2. **Analyze** the image using the AI model
@@ -1260,7 +1295,7 @@ def main():
         st.divider()
         
         st.error("""
-        **⚠️ IMPORTANT MEDICAL DISCLAIMER**
+        **IMPORTANT MEDICAL DISCLAIMER**
         
         This application is for screening, educational, and research purposes only.
         It is NOT intended to replace professional medical diagnosis, treatment, or advice.

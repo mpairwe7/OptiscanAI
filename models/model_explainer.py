@@ -10,6 +10,18 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import cv2
 import json
+import warnings
+
+# Suppress sklearn compatibility warnings
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
+
+# Fix numpy compatibility for sklearn (sklearn expects int32/int64 for labels, not int8)
+# Note: For model quantization (INT8), this doesn't affect torch.qint8 used in the models
+if not hasattr(np, 'int'):
+    np.int = np.int32
+if not hasattr(np, 'float'):
+    np.float = np.float64
 
 # ============================================================================
 # DISEASE NAME MAPPING - Short Form to Full Name
@@ -100,18 +112,44 @@ try:
 except ImportError:
     CAPTUM_AVAILABLE = False
 
-# Import grad-cam library
+# Import grad-cam library (pytorch-grad-cam package)
 GRADCAM_AVAILABLE = False
 GRADCAM_LIBRARY = None
 
 try:
-    from grad_cam import GradCAM, GradCAMPlusPlus
-    from grad_cam.utils import ClassifierOutputTarget, show_cam_on_image
+    from pytorch_grad_cam import GradCAM, GradCAMPlusPlus, ScoreCAM, EigenCAM
+    from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
+    from pytorch_grad_cam.utils.image import show_cam_on_image
     GRADCAM_AVAILABLE = True
-    GRADCAM_LIBRARY = 'grad_cam'
+    GRADCAM_LIBRARY = 'pytorch_grad_cam'
 except ImportError:
     GRADCAM_AVAILABLE = False
     GRADCAM_LIBRARY = None
+
+
+class ModelWrapper(torch.nn.Module):
+    """
+    Wrapper for models that return tuples to ensure single tensor output
+    This is needed for compatibility with pytorch-grad-cam
+    """
+    def __init__(self, model):
+        super().__init__()
+        # Store reference to wrapped model without copying modules to avoid conflicts
+        self._wrapped_model = model
+    
+    def forward(self, x):
+        output = self._wrapped_model(x)
+        # If model returns tuple, extract first element (main output)
+        if isinstance(output, tuple):
+            return output[0]
+        return output
+    
+    def __getattr__(self, name):
+        """Forward attribute access to the wrapped model"""
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            return getattr(self._wrapped_model, name)
 
 
 class ModelExplainer:
@@ -133,7 +171,9 @@ class ModelExplainer:
             disease_names: List of disease class names (can be short forms)
             mobile_mode: If True, use only lightweight methods
         """
-        self.model = model
+        self.original_model = model
+        # Wrap model to handle tuple outputs for GradCAM compatibility
+        self.model = ModelWrapper(model)
         self.device = device
         # Convert short names to full names
         if disease_names:
@@ -148,11 +188,14 @@ class ModelExplainer:
         
     def _get_target_layer(self):
         """Find appropriate layer for CAM methods"""
-        if hasattr(self.model, 'visual_encoder'):
-            if hasattr(self.model.visual_encoder, 'blocks'):
-                return self.model.visual_encoder.blocks[-1]
+        # Access the wrapped model
+        model = self.model._wrapped_model if hasattr(self.model, '_wrapped_model') else self.model
         
-        for name, module in reversed(list(self.model.named_modules())):
+        if hasattr(model, 'visual_encoder'):
+            if hasattr(model.visual_encoder, 'blocks'):
+                return model.visual_encoder.blocks[-1]
+        
+        for name, module in reversed(list(model.named_modules())):
             if isinstance(module, (torch.nn.Conv2d, torch.nn.MultiheadAttention)):
                 return module
         return None
@@ -164,6 +207,9 @@ class ModelExplainer:
         
         with torch.no_grad():
             output = self.model(image)
+            # Handle models that return tuples (e.g., aux outputs)
+            if isinstance(output, tuple):
+                output = output[0]
             predictions = torch.sigmoid(output).cpu().numpy()[0]
         
         if target_classes is None:
@@ -176,8 +222,8 @@ class ModelExplainer:
                      'ScoreCAM': ScoreCAM}.get(method, GradCAM)
         
         try:
-            cam = cam_method(model=self.model, target_layers=[self.target_layer], 
-                           use_cuda=(self.device == 'cuda'))
+            # Note: use_cuda parameter removed in pytorch-grad-cam >= 1.4.0
+            cam = cam_method(model=self.model, target_layers=[self.target_layer])
             
             results = {}
             for class_idx in target_classes:
@@ -201,6 +247,9 @@ class ModelExplainer:
         
         with torch.no_grad():
             output = self.model(image)
+            # Handle models that return tuples (e.g., aux outputs)
+            if isinstance(output, tuple):
+                output = output[0]
             predictions = torch.sigmoid(output).cpu().numpy()[0]
         
         if target_classes is None:
@@ -387,9 +436,14 @@ class ModelExplainer:
         """
         with torch.no_grad():
             output = self.model(image)
+            # Handle models that return tuples (e.g., aux outputs)
+            if isinstance(output, tuple):
+                output = output[0]
             predictions = torch.sigmoid(output).cpu().numpy()[0]
         
-        top_indices = np.argsort(predictions)[-top_k:][::-1]
+        # Convert to Python list of native integers (not numpy int32/int64)
+        # sklearn requires native Python int types, not numpy integer types
+        top_indices = [int(i) for i in np.argsort(predictions)[-top_k:][::-1]]
         
         # Build detailed predictions with confidence assessments
         detailed_predictions = []
@@ -469,32 +523,84 @@ class ModelExplainer:
         if not GRADCAM_AVAILABLE or self.target_layer is None:
             raise ValueError("GradCAM not available - ensure pytorch-grad-cam is installed")
         
-        # Get prediction if no target specified
-        if target_class is None:
-            with torch.no_grad():
-                output = self.model(image)
-                predictions = torch.sigmoid(output).cpu().numpy()[0]
-                target_class = int(np.argmax(predictions))
-        
-        # Prepare image for visualization
-        img_np = image.cpu().numpy()[0].transpose(1, 2, 0)
-        img_np = (img_np - img_np.min()) / (img_np.max() - img_np.min())
-        img_np = np.clip(img_np, 0, 1)
-        
         try:
-            # Create GradCAM
+            # Ensure image is on the correct device
+            if not isinstance(image, torch.Tensor):
+                raise TypeError(f"Expected torch.Tensor, got {type(image)}")
+            
+            image = image.to(self.device)
+            
+            # Get prediction if no target specified
+            if target_class is None:
+                with torch.no_grad():
+                    output = self.original_model(image)
+                    # Handle models that return tuples (e.g., aux outputs)
+                    if isinstance(output, tuple):
+                        output = output[0]
+                    # Ensure output is a tensor
+                    if not isinstance(output, torch.Tensor):
+                        raise TypeError(f"Model output must be tensor, got {type(output)}")
+                    predictions = torch.sigmoid(output).cpu().numpy()[0]
+                    target_class = int(np.argmax(predictions))
+            
+            # Prepare image for visualization
+            img_np = image.cpu().numpy()[0].transpose(1, 2, 0)
+            img_np = (img_np - img_np.min()) / (img_np.max() - img_np.min() + 1e-8)
+            img_np = np.clip(img_np, 0, 1).astype(np.float32)
+            
+            # Create a wrapper specifically for GradCAM that ensures single tensor output
+            class GradCAMModelWrapper(torch.nn.Module):
+                def __init__(self, model):
+                    super().__init__()
+                    self.model = model
+                
+                def forward(self, x):
+                    output = self.model(x)
+                    if isinstance(output, tuple):
+                        return output[0]
+                    return output
+            
+            gradcam_model = GradCAMModelWrapper(self.original_model)
+            gradcam_model.to(self.device)
+            gradcam_model.eval()
+            
+            # Create GradCAM with the wrapped model
+            # Note: use_cuda parameter removed in pytorch-grad-cam >= 1.4.0
             cam = GradCAM(
-                model=self.model,
-                target_layers=[self.target_layer],
-                use_cuda=(self.device == 'cuda')
+                model=gradcam_model,
+                target_layers=[self.target_layer]
             )
             
             # Generate CAM
             targets = [ClassifierOutputTarget(target_class)]
-            grayscale_cam = cam(input_tensor=image, targets=targets)[0]
+            cam_output = cam(input_tensor=image, targets=targets)
+            
+            # Validate CAM output
+            if not isinstance(cam_output, np.ndarray):
+                raise TypeError(f"CAM output must be ndarray, got {type(cam_output)}")
+            
+            # Handle different output shapes
+            if cam_output.ndim == 3:
+                grayscale_cam = cam_output[0]
+            elif cam_output.ndim == 2:
+                grayscale_cam = cam_output
+            else:
+                raise ValueError(f"Unexpected CAM shape: {cam_output.shape}")
+            
+            # Ensure grayscale_cam is 2D
+            if grayscale_cam.ndim != 2:
+                raise ValueError(f"Grayscale CAM must be 2D, got shape {grayscale_cam.shape}")
             
             # Overlay on image
             visualization = show_cam_on_image(img_np, grayscale_cam, use_rgb=True)
+            
+            # Validate visualization output
+            if not isinstance(visualization, np.ndarray):
+                raise TypeError(f"Visualization must be ndarray, got {type(visualization)}")
+            
+            # Convert to uint8 if needed
+            if visualization.dtype != np.uint8:
+                visualization = (visualization * 255).astype(np.uint8)
             
             # Convert to PIL Image
             return Image.fromarray(visualization)

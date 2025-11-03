@@ -20,7 +20,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies including Python
+# Install system dependencies including Python and supervisord
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.10 \
     python3-pip \
@@ -34,6 +34,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     wget \
     unzip \
+    supervisor \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -55,6 +56,7 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY src/ ./src/
 COPY models/ ./models/
+COPY deployment/supervisord.conf ./deployment/
 
 # Create necessary directories with proper permissions
 RUN mkdir -p models/checkpoints models/exports logs uploads \
