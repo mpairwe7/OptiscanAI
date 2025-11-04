@@ -42,7 +42,7 @@ models/exports/*.onnx
 models/exports/*.tflite
 
 # Data
-data/
+
 *.csv
 *.h5
 *.hdf5
