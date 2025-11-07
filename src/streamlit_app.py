@@ -7,7 +7,7 @@ import streamlit as st
 import torch
 import numpy as np
 import pandas as pd
-from PIL import Image
+import PIL
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -18,11 +18,13 @@ from pathlib import Path
 import time
 import cv2
 import warnings
+import matplotlib.pyplot as plt
 
 # Fix for sklearn numpy compatibility issues
 # Suppress warnings about numpy data types
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
+warnings.filterwarnings('ignore', category=UserWarning, module='pkg_resources')
 
 # Ensure numpy integer arrays are compatible with sklearn
 # sklearn doesn't support np.int64 in some contexts, prefers int32 for labels
@@ -66,12 +68,8 @@ try:
 except ImportError:
     print("⚠ captum not installed - Integrated Gradients features will be disabled")
 
-try:
-    import shap
-    SHAP_AVAILABLE = True
-    print("✓ shap available (SHAP explanations)")
-except ImportError:
-    print("⚠ shap not installed - SHAP features will be disabled")
+SHAP_AVAILABLE = False
+print("⚠ SHAP disabled to prevent memory issues")
 
 try:
     import lime
@@ -321,7 +319,7 @@ def preprocess_image(image, target_size=(224, 224)):
         image = image.convert('RGB')
     
     # Resize
-    image = image.resize(target_size, Image.Resampling.LANCZOS)
+    image = image.resize(target_size, PIL.Image.Resampling.LANCZOS)
     
     # Convert to tensor
     img_array = np.array(image).astype(np.float32) / 255.0
@@ -714,8 +712,8 @@ def main():
                 
                 if uploaded_file is not None:
                     # Display uploaded image
-                    image = Image.open(uploaded_file)
-                    st.image(image, caption="Uploaded Retinal Image", use_container_width=True)
+                    image = PIL.Image.open(uploaded_file)
+                    st.image(image, caption="Uploaded Retinal Image", width='stretch')
                     
                     # Image info
                     st.info(f"""
@@ -733,8 +731,8 @@ def main():
                 
                 if camera_image is not None:
                     # Display captured image
-                    image = Image.open(camera_image)
-                    st.image(image, caption="Captured Retinal Image", use_container_width=True)
+                    image = PIL.Image.open(camera_image)
+                    st.image(image, caption="Captured Retinal Image", width='stretch')
                     
                     # Image info
                     st.info(f"""
@@ -939,7 +937,7 @@ def main():
                     plot_data = predictions
                 
                 fig = plot_predictions(plot_data)
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
             
             with col2:
                 st.subheader("Primary Detection")
@@ -948,7 +946,7 @@ def main():
                 else:
                     confidence_val = predictions[0]['confidence']
                 fig_gauge = plot_confidence_gauge(confidence_val)
-                st.plotly_chart(fig_gauge, use_container_width=True)
+                st.plotly_chart(fig_gauge, width='stretch')
             
             st.divider()
             
@@ -997,7 +995,7 @@ def main():
                 ]
             
             df = pd.DataFrame(df_data)
-            st.dataframe(df, hide_index=True, use_container_width=True)
+            st.dataframe(df, hide_index=True, width='stretch')
             
             # Explainability section
             if show_explainability and explainer is not None and 'image' in st.session_state:
@@ -1078,10 +1076,9 @@ def main():
                                 # Display heatmap
                                 col1, col2 = st.columns(2)
                                 with col1:
-                                    st.image(st.session_state['image'], caption="Original Image", use_container_width=True)
+                                    st.image(st.session_state['image'], caption="Original Image", width='stretch')
                                 with col2:
-                                    st.image(heatmap, caption=f"GradCAM: {predictions[0].get('disease', predictions[0].get('name', 'Top Prediction'))}", use_container_width=True)
-                                
+                                    st.image(heatmap, caption=f"GradCAM: {predictions[0].get('disease', predictions[0].get('name', 'Top Prediction'))}", width='stretch')
                                 st.info("""
                                 **Heatmap Interpretation Guide:**
                                 
@@ -1148,8 +1145,9 @@ GradCAM Library: {GRADCAM_LIBRARY}
                                     except Exception as e:
                                         st.error(f"Could not generate Integrated Gradients: {str(e)}")
                     
-                    # SHAP Explanations
-                    if SHAP_AVAILABLE:
+                    # SHAP Explanations - DISABLED DUE TO HIGH MEMORY USAGE
+                    # if SHAP_AVAILABLE:
+                    if False:  # SHAP permanently disabled to prevent OOM issues
                         with st.expander("SHAP Explanations", expanded=False):
                             st.info("""
                             **About SHAP (SHapley Additive exPlanations):**
@@ -1160,9 +1158,129 @@ GradCAM Library: {GRADCAM_LIBRARY}
                             **Use Case:** Understanding feature importance and model behavior for individual predictions.
                             """)
                             
+                            if st.button("Generate SHAP Explanation", key="shap_btn"):
+                                with st.spinner("Computing SHAP values... (This may take a moment)"):
+                                    try:
+                                        img_tensor = preprocess_image(st.session_state['image'])
+                                        
+                                        # Get target class
+                                        if use_comprehensive:
+                                            target_class = None
+                                            for idx, code in enumerate(DISEASE_CODES):
+                                                if DISEASE_MAPPING[code] == predictions[0]['disease']:
+                                                    target_class = idx
+                                                    break
+                                        else:
+                                            target_class = DISEASE_CODES.index(predictions[0]['code'])
+                                        
+                                        # Generate SHAP explanation
+                                        shap_results = explainer.explain_shap(
+                                            img_tensor.to(device),
+                                            target_classes=[target_class] if target_class is not None else None,
+                                            max_evals=100  # Reasonable number for interactive use
+                                        )
+                                        
+                                        if 'error' not in shap_results:
+                                            st.success("SHAP explanation generated successfully!")
+                                            
+                                            for disease_name, shap_data in shap_results.items():
+                                                st.subheader(f"SHAP Analysis: {disease_name}")
+                                                
+                                                col1, col2 = st.columns(2)
+                                                
+                                                with col1:
+                                                    st.write("**Feature Importance Metrics:**")
+                                                    importance = shap_data['feature_importance']
+                                                    st.metric("Mean |SHAP|", f"{importance['mean_abs_shap']:.4f}")
+                                                    st.metric("Max |SHAP|", f"{importance['max_abs_shap']:.4f}")
+                                                    st.metric("SHAP Std Dev", f"{importance['std_shap']:.4f}")
+                                                    st.metric("Prediction", f"{shap_data['prediction']:.3f}")
+                                                
+                                                with col2:
+                                                    st.write("**SHAP Magnitude Heatmap:**")
+                                                    # Create a simple visualization of SHAP magnitude
+                                                    shap_magnitude = np.array(shap_data['shap_magnitude'])
+                                                    
+                                                    # Normalize for visualization
+                                                    if shap_magnitude.max() > 0:
+                                                        shap_norm = (shap_magnitude - shap_magnitude.min()) / (shap_magnitude.max() - shap_magnitude.min())
+                                                    else:
+                                                        shap_norm = np.zeros_like(shap_magnitude)
+                                                    
+                                                    # Convert to PIL Image for display
+                                                    shap_img = PIL.Image.fromarray((shap_norm * 255).astype(np.uint8), mode='L')
+                                                    st.image(shap_img.resize((224, 224)), caption="SHAP Magnitude (Pixel Importance)", width='stretch')
+                                                    
+                                                    st.info("""
+                                                    **Interpretation:**
+                                                    - **Brighter regions:** Higher SHAP values (more important for prediction)
+                                                    - **Darker regions:** Lower SHAP values (less important)
+                                                    - Shows which image pixels contributed most to this disease prediction
+                                                    """)
+                                                
+                                                # Show detailed SHAP statistics
+                                                with st.expander(f"Detailed SHAP Statistics for {disease_name}", expanded=False):
+                                                    st.write("**SHAP Value Distribution:**")
+                                                    shap_flat = np.array(shap_data['shap_values']).flatten()
+                                                    st.write(f"- Mean: {shap_flat.mean():.6f}")
+                                                    st.write(f"- Std: {shap_flat.std():.6f}")
+                                                    st.write(f"- Min: {shap_flat.min():.6f}")
+                                                    st.write(f"- Max: {shap_flat.max():.6f}")
+                                                    st.write(f"- Positive contributions: {(shap_flat > 0).sum()}/{len(shap_flat)} pixels")
+                                                    
+                                                    # Simple histogram
+                                                    fig, ax = plt.subplots(figsize=(8, 4))
+                                                    ax.hist(shap_flat, bins=50, alpha=0.7, color='skyblue', edgecolor='black')
+                                                    ax.set_xlabel('SHAP Value')
+                                                    ax.set_ylabel('Frequency')
+                                                    ax.set_title(f'SHAP Value Distribution for {disease_name}')
+                                                    ax.axvline(x=0, color='red', linestyle='--', alpha=0.7, label='Zero')
+                                                    ax.legend()
+                                                    st.pyplot(fig)
+                                                    
+                                        else:
+                                            st.error(f"SHAP explanation failed: {shap_results['error']}")
+                                            
+                                    except Exception as e:
+                                        st.error(f"Could not generate SHAP explanation: {str(e)}")
+                                        with st.expander("SHAP Troubleshooting", expanded=False):
+                                            st.code(f"""
+Error: {str(e)}
+SHAP Library: {'Available' if SHAP_AVAILABLE else 'Not Available'}
+Image Shape: {img_tensor.shape if 'img_tensor' in locals() else 'Not loaded'}
+Target Class: {target_class if 'target_class' in locals() else 'Not set'}
+                                            """, language="text")
+                            
+                            st.info("""
+                            **Note:** SHAP explanations compute feature importance using game theory principles.
+                            For deep learning models, this provides pixel-level attribution showing which
+                            parts of the retinal image most influenced the model's prediction.
+                            """)
+                    else:
+                        with st.expander("SHAP Explanations (Not Available)", expanded=False):
+                            st.info("""
+                            **About SHAP (SHapley Additive exPlanations):**
+                            
+                            SHAP values explain model predictions by computing the contribution of each feature 
+                            based on game theory. It provides consistent and locally accurate explanations.
+                            
+                            **Use Case:** Understanding feature importance and model behavior for individual predictions.
+                            """)
+                            
                             st.warning("""
-                            **Note:** SHAP explanations for deep learning models can be computationally intensive.
-                            Implementation requires model-specific adapters for retinal images.
+                            **SHAP Not Available**
+                            
+                            SHAP requires TensorFlow as a dependency, which is not installed in this deployment
+                            to keep the container lightweight. SHAP provides excellent explanations but significantly
+                            increases deployment size.
+                            
+                            **Alternative:** Use GradCAM or Integrated Gradients for visual explanations,
+                            which are available and provide similar pixel-level attribution.
+                            
+                            **To enable SHAP:**
+                            - Add `tensorflow>=2.10.0` to requirements.txt
+                            - Rebuild the container (increases size by ~500MB)
+                            - SHAP will then be available for advanced game-theory-based explanations
                             """)
                     
                     # LIME Explanations
@@ -1170,16 +1288,133 @@ GradCAM Library: {GRADCAM_LIBRARY}
                         with st.expander("LIME Explanations", expanded=False):
                             st.info("""
                             **About LIME (Local Interpretable Model-agnostic Explanations):**
-                            
+
                             LIME explains predictions by approximating the model locally with an interpretable model.
                             It perturbs the input and observes prediction changes to understand model behavior.
-                            
+
                             **Use Case:** Model-agnostic explanations showing which image regions affect predictions.
                             """)
-                            
+
+                            if st.button("Generate LIME Explanation", key="lime_btn"):
+                                with st.spinner("Computing LIME explanation... (This may take a moment)"):
+                                    try:
+                                        img_tensor = preprocess_image(st.session_state['image'])
+
+                                        # Get target class
+                                        if use_comprehensive:
+                                            target_class = None
+                                            for idx, code in enumerate(DISEASE_CODES):
+                                                if DISEASE_MAPPING[code] == predictions[0]['disease']:
+                                                    target_class = idx
+                                                    break
+                                        else:
+                                            target_class = DISEASE_CODES.index(predictions[0]['code'])
+
+                                        # Generate LIME explanation
+                                        lime_results = explainer.explain_lime(
+                                            img_tensor.to(device),
+                                            target_classes=[target_class] if target_class is not None else None,
+                                            num_samples=1000,  # Reasonable number for interactive use
+                                            num_features=10
+                                        )
+
+                                        if 'error' not in lime_results:
+                                            st.success("LIME explanation generated successfully!")
+
+                                            for disease_name, lime_data in lime_results.items():
+                                                st.subheader(f"LIME Analysis: {disease_name}")
+
+                                                col1, col2 = st.columns(2)
+
+                                                with col1:
+                                                    st.write("**Explanation Summary:**")
+                                                    summary = lime_data['explanation_summary']
+                                                    st.metric("Positive Features", summary['top_positive_features'])
+                                                    st.metric("Negative Features", summary['top_negative_features'])
+                                                    st.metric("Max Weight", f"{summary['max_weight']:.4f}")
+                                                    st.metric("Min Weight", f"{summary['min_weight']:.4f}")
+                                                    st.metric("Prediction", f"{lime_data['prediction']:.3f}")
+
+                                                with col2:
+                                                    st.write("**LIME Superpixel Mask:**")
+                                                    # Convert mask to image for visualization
+                                                    mask = np.array(lime_data['mask'])
+                                                    mask_img = PIL.Image.fromarray((mask * 255).astype(np.uint8), mode='L')
+                                                    st.image(mask_img.resize((224, 224)), caption="LIME Superpixel Mask (Important Regions)", width='stretch')
+
+                                                    st.info("""
+                                                    **Interpretation:**
+                                                    - **White regions:** Superpixels that positively contribute to the prediction
+                                                    - **Black regions:** Superpixels with minimal or negative contribution
+                                                    - Shows which image segments were most important for this disease prediction
+                                                    """)
+
+                                                # Show detailed LIME statistics
+                                                with st.expander(f"Detailed LIME Statistics for {disease_name}", expanded=False):
+                                                    st.write("**Feature Weights (Top 10):**")
+                                                    weights = lime_data['feature_weights']
+                                                    sorted_weights = sorted(weights.items(), key=lambda x: abs(x[1]), reverse=True)[:10]
+
+                                                    weights_df = pd.DataFrame({
+                                                        'Superpixel': [f"Segment {k}" for k, v in sorted_weights],
+                                                        'Weight': [v for k, v in sorted_weights]
+                                                    })
+                                                    st.dataframe(weights_df, hide_index=True, width='stretch')
+
+                                                    st.write(f"**Configuration:** {lime_data['lime_segments']} segments, {lime_data['samples_used']} samples used")
+
+                                                    # Simple bar chart of top weights
+                                                    fig, ax = plt.subplots(figsize=(10, 6))
+                                                    segments = [f"Seg {k}" for k, v in sorted_weights]
+                                                    weights_vals = [v for k, v in sorted_weights]
+                                                    colors = ['green' if w > 0 else 'red' for w in weights_vals]
+                                                    ax.bar(segments, weights_vals, color=colors, alpha=0.7)
+                                                    ax.set_xlabel('Superpixel Segments')
+                                                    ax.set_ylabel('LIME Weight')
+                                                    ax.set_title(f'Top LIME Feature Weights for {disease_name}')
+                                                    ax.axhline(y=0, color='black', linestyle='-', alpha=0.3)
+                                                    plt.xticks(rotation=45)
+                                                    st.pyplot(fig)
+
+                                        else:
+                                            st.error(f"LIME explanation failed: {lime_results['error']}")
+
+                                    except Exception as e:
+                                        st.error(f"Could not generate LIME explanation: {str(e)}")
+                                        with st.expander("LIME Troubleshooting", expanded=False):
+                                            st.code(f"""
+Error: {str(e)}
+LIME Library: {'Available' if LIME_AVAILABLE else 'Not Available'}
+Image Shape: {img_tensor.shape if 'img_tensor' in locals() else 'Not loaded'}
+Target Class: {target_class if 'target_class' in locals() else 'Not set'}
+                                            """, language="text")
+
+                            st.info("""
+                            **Note:** LIME explanations work by segmenting the image into superpixels and testing
+                            how removing different segments affects the model's prediction. This provides
+                            model-agnostic explanations showing which regions of the retinal image are most
+                            important for the diagnosis.
+                            """)
+                    else:
+                        with st.expander("LIME Explanations (Not Available)", expanded=False):
+                            st.info("""
+                            **About LIME (Local Interpretable Model-agnostic Explanations):**
+
+                            LIME explains predictions by approximating the model locally with an interpretable model.
+                            It perturbs the input and observes prediction changes to understand model behavior.
+
+                            **Use Case:** Model-agnostic explanations showing which image regions affect predictions.
+                            """)
+
                             st.warning("""
-                            **Note:** LIME for medical images requires careful segmentation and perturbation strategies.
-                            Implementation requires additional configuration for retinal fundus images.
+                            **LIME Not Available**
+
+                            LIME requires additional dependencies that are not installed in this deployment.
+
+                            **To enable LIME:**
+                            - Ensure `lime>=0.2.0.1` is in requirements.txt
+                            - Install scikit-image for segmentation: `pip install scikit-image`
+                            - LIME will then be available for model-agnostic explanations
                             """)
                     
                     # ELI5 Explanations
@@ -1187,25 +1422,139 @@ GradCAM Library: {GRADCAM_LIBRARY}
                         with st.expander("ELI5 Explanations", expanded=False):
                             st.info("""
                             **About ELI5 (Explain Like I'm 5):**
-                            
+
                             ELI5 provides simple, human-readable explanations of machine learning models.
                             It supports various model types and can generate text and visual explanations.
-                            
+
                             **Use Case:** Simplified explanations for non-technical stakeholders.
                             """)
-                            
+
+                            if st.button("Generate ELI5 Explanation", key="eli5_btn"):
+                                with st.spinner("Generating ELI5 explanation..."):
+                                    try:
+                                        img_tensor = preprocess_image(st.session_state['image'])
+
+                                        # Get target class
+                                        if use_comprehensive:
+                                            target_class = None
+                                            for idx, code in enumerate(DISEASE_CODES):
+                                                if DISEASE_MAPPING[code] == predictions[0]['disease']:
+                                                    target_class = idx
+                                                    break
+                                        else:
+                                            target_class = DISEASE_CODES.index(predictions[0]['code'])
+
+                                        # Generate ELI5 explanation
+                                        eli5_results = explainer.explain_eli5(
+                                            img_tensor.to(device),
+                                            target_classes=[target_class] if target_class is not None else None,
+                                            top_features=10
+                                        )
+
+                                        if 'error' not in eli5_results:
+                                            st.success("ELI5 explanation generated successfully!")
+
+                                            for disease_name, eli5_data in eli5_results.items():
+                                                st.subheader(f"ELI5 Analysis: {disease_name}")
+
+                                                col1, col2 = st.columns(2)
+
+                                                with col1:
+                                                    st.write("**Prediction Summary:**")
+                                                    st.metric("Prediction Score", f"{eli5_data['prediction']:.3f}")
+                                                    st.metric("Confidence Level", eli5_data['confidence_level'])
+
+                                                    # Display top contributing features
+                                                    st.write("**Top Contributing Features:**")
+                                                    top_features = eli5_data['top_contributing_features']
+                                                    for feature_info in top_features:
+                                                        feature_name = feature_info['feature'].replace('_', ' ').title()
+                                                        weight = feature_info['weight']
+                                                        direction = feature_info['direction']
+                                                        color = "🟢" if direction == "positive" else "🔴"
+                                                        st.write(f"{color} **{feature_name}**: {weight:.3f}")
+
+                                                with col2:
+                                                    st.write("**Human-Readable Explanation:**")
+                                                    explanation_text = eli5_data['explanation_text']
+                                                    st.markdown(explanation_text)
+
+                                                    # Show feature importance chart
+                                                    st.write("**Feature Importance Chart:**")
+                                                    features = list(eli5_data['feature_importance'].keys())
+                                                    weights = list(eli5_data['feature_importance'].values())
+
+                                                    fig, ax = plt.subplots(figsize=(8, 6))
+                                                    colors = ['green' if w > 0 else 'red' for w in weights]
+                                                    ax.barh(features, weights, color=colors, alpha=0.7)
+                                                    ax.set_xlabel('Feature Weight')
+                                                    ax.set_title(f'ELI5 Feature Importance for {disease_name}')
+                                                    ax.axvline(x=0, color='black', linestyle='-', alpha=0.3)
+                                                    plt.tight_layout()
+                                                    st.pyplot(fig)
+
+                                                # Show detailed ELI5 statistics
+                                                with st.expander(f"Detailed ELI5 Statistics for {disease_name}", expanded=False):
+                                                    st.write("**All Feature Weights:**")
+                                                    all_features = eli5_data['feature_importance']
+
+                                                    features_df = pd.DataFrame({
+                                                        'Feature': [f.replace('_', ' ').title() for f in all_features.keys()],
+                                                        'Weight': list(all_features.values()),
+                                                        'Direction': ['Positive' if w > 0 else 'Negative' for w in all_features.values()]
+                                                    })
+                                                    st.dataframe(features_df, hide_index=True, width='stretch')
+
+                                                    summary = eli5_data['eli5_summary']
+                                                    st.write("**Explanation Summary:**")
+                                                    st.json(summary)
+
+                                        else:
+                                            st.error(f"ELI5 explanation failed: {eli5_results['error']}")
+
+                                    except Exception as e:
+                                        st.error(f"Could not generate ELI5 explanation: {str(e)}")
+                                        with st.expander("ELI5 Troubleshooting", expanded=False):
+                                            st.code(f"""
+Error: {str(e)}
+ELI5 Library: {'Available' if ELI5_AVAILABLE else 'Not Available'}
+Image Shape: {img_tensor.shape if 'img_tensor' in locals() else 'Not loaded'}
+Target Class: {target_class if 'target_class' in locals() else 'Not set'}
+                                            """, language="text")
+
+                            st.info("""
+                            **Note:** ELI5 provides simplified, human-readable explanations designed for
+                            non-technical stakeholders. For deep learning models like this one, ELI5 creates
+                            approximate explanations based on feature importance patterns.
+                            """)
+                    else:
+                        with st.expander("ELI5 Explanations (Not Available)", expanded=False):
+                            st.info("""
+                            **About ELI5 (Explain Like I'm 5):**
+
+                            ELI5 provides simple, human-readable explanations of machine learning models.
+                            It supports various model types and can generate text and visual explanations.
+
+                            **Use Case:** Simplified explanations for non-technical stakeholders.
+                            """)
+
                             st.warning("""
-                            **Note:** ELI5 is most effective with traditional ML models.
-                            Deep learning support is limited and requires custom adapters.
+                            **ELI5 Not Available**
+
+                            ELI5 requires additional dependencies that are not installed in this deployment.
+
+                            **To enable ELI5:**
+                            - Ensure `eli5>=0.13.0` is in requirements.txt
+                            - ELI5 will then be available for simplified model explanations
                             """)
                     
                     # Framework Comparison Guide
                     with st.expander("Explainability Framework Comparison", expanded=False):
                         comparison_df = pd.DataFrame({
                             'Framework': ['GradCAM', 'Captum (IG)', 'SHAP', 'LIME', 'ELI5'],
-                            'Type': ['Visual', 'Visual + Numerical', 'Numerical', 'Visual + Numerical', 'Numerical'],
+                            'Type': ['Visual', 'Visual + Numerical', 'Numerical', 'Visual + Numerical', 'Text + Numerical'],
                             'Speed': ['Fast', 'Medium', 'Slow', 'Slow', 'Fast'],
-                            'Medical Imaging': ['Excellent', 'Good', 'Good', 'Good', 'Limited'],
+                            'Medical Imaging': ['Excellent', 'Good', 'Good', 'Good', 'Good'],
                             'Best For': [
                                 'Quick visual insights',
                                 'Detailed attribution analysis',
@@ -1215,15 +1564,15 @@ GradCAM Library: {GRADCAM_LIBRARY}
                             ]
                         })
                         
-                        st.dataframe(comparison_df, hide_index=True, use_container_width=True)
+                        st.dataframe(comparison_df, hide_index=True, width='stretch')
                         
                         st.info("""
                         **Recommendation for Retinal Screening:**
                         
                         1. **GradCAM** (Primary) - Best for visualizing which retinal regions influenced diagnosis
-                        2. **Integrated Gradients** (Secondary) - Provides detailed pixel-level attribution
-                        3. **SHAP/LIME** (Advanced) - For deeper model analysis and research purposes
-                        4. **ELI5** (Documentation) - For generating simple reports
+                        2. **Integrated Gradients** (Secondary) - Provides detailed pixel-level attribution  
+                        3. **ELI5** (Simple) - Human-readable explanations for clinical stakeholders
+                        4. **SHAP/LIME** (Advanced) - For deeper model analysis and research purposes
                         """)
         
         else:

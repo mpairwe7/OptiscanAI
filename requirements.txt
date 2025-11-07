@@ -22,7 +22,8 @@ scikit-image>=0.21.0
 # Explainability/Interpretability
 grad-cam>=1.5.2
 captum>=0.6.0
-shap>=0.42.0
+# shap>=0.42.0  # Disabled due to high memory usage causing OOM issues
+tensorflow>=2.10.0
 lime>=0.2.0.1
 eli5>=0.13.0
 
@@ -45,9 +46,9 @@ fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
 python-multipart>=0.0.6
 requests>=2.31.0
-streamlit>=1.28.0
+streamlit>=1.35.0
 streamlit-drawable-canvas>=0.9.3
-streamlit-aggrid>=0.3.4
+
 
 # Development
 jupyter>=1.0.0
