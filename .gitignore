@@ -31,7 +31,7 @@ env/
 *.ipynb_checkpoints
 
 # PyTorch
-*.pth
+#*.pth
 *.pt
 *.ckpt
 
@@ -66,6 +66,7 @@ Thumbs.db
 # Environment variables
 .env
 .env.local
+venv
 
 # Training outputs
 outputs/
