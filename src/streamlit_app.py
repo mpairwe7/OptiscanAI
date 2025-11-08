@@ -712,7 +712,7 @@ def main():
                 if uploaded_file is not None:
                     # Display uploaded image
                     image = PIL.Image.open(uploaded_file)
-                    st.image(image, caption="Uploaded Retinal Image", width='stretch')
+                    st.image(image, caption="Uploaded Retinal Image")
                     
                     # Image info
                     st.info(f"""
@@ -731,7 +731,7 @@ def main():
                 if camera_image is not None:
                     # Display captured image
                     image = PIL.Image.open(camera_image)
-                    st.image(image, caption="Captured Retinal Image", width='stretch')
+                    st.image(image, caption="Captured Retinal Image")
                     
                     # Image info
                     st.info(f"""
@@ -936,7 +936,7 @@ def main():
                     plot_data = predictions
                 
                 fig = plot_predictions(plot_data)
-                st.plotly_chart(fig, width='stretch')
+                st.plotly_chart(fig)
             
             with col2:
                 st.subheader("Primary Detection")
@@ -945,7 +945,7 @@ def main():
                 else:
                     confidence_val = predictions[0]['confidence']
                 fig_gauge = plot_confidence_gauge(confidence_val)
-                st.plotly_chart(fig_gauge, width='stretch')
+                st.plotly_chart(fig_gauge)
             
             st.divider()
             
@@ -994,7 +994,7 @@ def main():
                 ]
             
             df = pd.DataFrame(df_data)
-            st.dataframe(df, hide_index=True, width='stretch')
+            st.dataframe(df, hide_index=True)
             
             # Explainability section
             if show_explainability and explainer is not None and 'image' in st.session_state:
@@ -1075,9 +1075,9 @@ def main():
                                 # Display heatmap
                                 col1, col2 = st.columns(2)
                                 with col1:
-                                    st.image(st.session_state['image'], caption="Original Image", width='stretch')
+                                    st.image(st.session_state['image'], caption="Original Image")
                                 with col2:
-                                    st.image(heatmap, caption=f"GradCAM: {predictions[0].get('disease', predictions[0].get('name', 'Top Prediction'))}", width='stretch')
+                                    st.image(heatmap, caption=f"GradCAM: {predictions[0].get('disease', predictions[0].get('name', 'Top Prediction'))}")
                                 st.info("""
                                 **Heatmap Interpretation Guide:**
                                 
@@ -1208,7 +1208,7 @@ GradCAM Library: {GRADCAM_LIBRARY}
                                                     
                                                     # Convert to PIL Image for display
                                                     shap_img = PIL.Image.fromarray((shap_norm * 255).astype(np.uint8), mode='L')
-                                                    st.image(shap_img.resize((224, 224)), caption="SHAP Magnitude (Pixel Importance)", width='stretch')
+                                                    st.image(shap_img.resize((224, 224)), caption="SHAP Magnitude (Pixel Importance)")
                                                     
                                                     st.info("""
                                                     **Interpretation:**
@@ -1339,7 +1339,7 @@ Target Class: {target_class if 'target_class' in locals() else 'Not set'}
                                                     # Convert mask to image for visualization
                                                     mask = np.array(lime_data['mask'])
                                                     mask_img = PIL.Image.fromarray((mask * 255).astype(np.uint8), mode='L')
-                                                    st.image(mask_img.resize((224, 224)), caption="LIME Superpixel Mask (Important Regions)", width='stretch')
+                                                    st.image(mask_img.resize((224, 224)), caption="LIME Superpixel Mask (Important Regions)")
 
                                                     st.info("""
                                                     **Interpretation:**
@@ -1358,7 +1358,7 @@ Target Class: {target_class if 'target_class' in locals() else 'Not set'}
                                                         'Superpixel': [f"Segment {k}" for k, v in sorted_weights],
                                                         'Weight': [v for k, v in sorted_weights]
                                                     })
-                                                    st.dataframe(weights_df, hide_index=True, width='stretch')
+                                                    st.dataframe(weights_df, hide_index=True)
 
                                                     st.write(f"**Configuration:** {lime_data['lime_segments']} segments, {lime_data['samples_used']} samples used")
 
@@ -1502,7 +1502,7 @@ Target Class: {target_class if 'target_class' in locals() else 'Not set'}
                                                         'Weight': list(all_features.values()),
                                                         'Direction': ['Positive' if w > 0 else 'Negative' for w in all_features.values()]
                                                     })
-                                                    st.dataframe(features_df, hide_index=True, width='stretch')
+                                                    st.dataframe(features_df, hide_index=True)
 
                                                     summary = eli5_data['eli5_summary']
                                                     st.write("**Explanation Summary:**")
@@ -1563,7 +1563,7 @@ Target Class: {target_class if 'target_class' in locals() else 'Not set'}
                             ]
                         })
                         
-                        st.dataframe(comparison_df, hide_index=True, width='stretch')
+                        st.dataframe(comparison_df, hide_index=True)
                         
                         st.info("""
                         **Recommendation for Retinal Screening:**
