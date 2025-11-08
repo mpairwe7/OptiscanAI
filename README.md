@@ -1,6 +1,6 @@
 ---
 title: Retinal Screening
-emoji: �️
+emoji: 👁
 colorFrom: blue
 colorTo: green
 sdk: streamlit
