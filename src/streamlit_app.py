@@ -545,7 +545,6 @@ def main():
         # Display professional retinal screening image
         # Using a reliable medical imaging icon/illustration
         st.image("https://cdn-icons-png.flaticon.com/512/2913/2913133.png", 
-                 use_container_width=True,
                  caption="Retinal Fundus Analysis")
     
     with col_title:
