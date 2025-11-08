@@ -1259,13 +1259,13 @@ GradCAM Library: {GRADCAM_LIBRARY}
                                             
                                     except Exception as e:
                                         st.error(f"Could not generate SHAP explanation: {str(e)}")
-                                        with st.expander("SHAP Troubleshooting", expanded=False):
-                                            st.code(f"""
+                                        st.code(f"""
 Error: {str(e)}
 SHAP Library: {'Available' if SHAP_AVAILABLE else 'Not Available'}
 Image Shape: {img_tensor.shape if 'img_tensor' in locals() else 'Not loaded'}
 Target Class: {target_class if 'target_class' in locals() else 'Not set'}
-                                            """, language="text")
+                                        """, language="text")
+                                        st.info("**Troubleshooting:**\n- Ensure tensorflow is installed: `pip install tensorflow>=2.10.0`\n- Install shap: `pip install shap>=0.42.0`\n- Check that the model is properly loaded\n- Note: SHAP increases deployment size significantly (~500MB)")
                             
                             st.info("""
                             **Note:** SHAP explanations compute feature importance using game theory principles.
@@ -1397,13 +1397,13 @@ Target Class: {target_class if 'target_class' in locals() else 'Not set'}
 
                                     except Exception as e:
                                         st.error(f"Could not generate LIME explanation: {str(e)}")
-                                        with st.expander("LIME Troubleshooting", expanded=False):
-                                            st.code(f"""
+                                        st.code(f"""
 Error: {str(e)}
 LIME Library: {'Available' if LIME_AVAILABLE else 'Not Available'}
 Image Shape: {img_tensor.shape if 'img_tensor' in locals() else 'Not loaded'}
 Target Class: {target_class if 'target_class' in locals() else 'Not set'}
-                                            """, language="text")
+                                        """, language="text")
+                                        st.info("**Troubleshooting:**\n- Ensure lime is installed: `pip install lime>=0.2.0.1`\n- Install scikit-image: `pip install scikit-image`\n- Check that the model is properly loaded\n- Verify image preprocessing is correct")
 
                             st.info("""
                             **Note:** LIME explanations work by segmenting the image into superpixels and testing
@@ -1530,13 +1530,13 @@ Target Class: {target_class if 'target_class' in locals() else 'Not set'}
 
                                     except Exception as e:
                                         st.error(f"Could not generate ELI5 explanation: {str(e)}")
-                                        with st.expander("ELI5 Troubleshooting", expanded=False):
-                                            st.code(f"""
+                                        st.code(f"""
 Error: {str(e)}
 ELI5 Library: {'Available' if ELI5_AVAILABLE else 'Not Available'}
 Image Shape: {img_tensor.shape if 'img_tensor' in locals() else 'Not loaded'}
 Target Class: {target_class if 'target_class' in locals() else 'Not set'}
-                                            """, language="text")
+                                        """, language="text")
+                                        st.info("**Troubleshooting:**\n- Ensure eli5 is installed: `pip install eli5>=0.13.0`\n- Check that the model is properly loaded\n- Verify image preprocessing is correct")
 
                             st.info("""
                             **Note:** ELI5 provides simplified, human-readable explanations designed for
