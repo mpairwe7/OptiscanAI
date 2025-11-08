@@ -26,11 +26,23 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
 warnings.filterwarnings('ignore', category=UserWarning, module='pkg_resources')
 
+# Suppress PyTorch torch.classes warnings that can occur in deployment environments
+warnings.filterwarnings('ignore', category=UserWarning, module='torch')
+
 # Ensure numpy integer arrays are compatible with sklearn
 # sklearn doesn't support np.int64 in some contexts, prefers int32 for labels
 # Note: For model quantization (INT8), this doesn't affect torch.qint8
 np.int = np.int32  # sklearn expects np.int alias
 np.float = np.float64  # sklearn expects np.float alias
+
+# Initialize PyTorch to prevent torch.classes issues in deployment environments
+try:
+    # Force PyTorch initialization and suppress class registration warnings
+    torch.classes.__path__ = []  # Prevent torch.classes path issues
+    torch._C._set_worker_pids([0])  # Initialize worker processes
+    torch._C._set_worker_sharing_strategy('file_system')  # Set sharing strategy
+except:
+    pass  # Ignore if these don't exist in this PyTorch version
 
 # Add src directory to path
 sys.path.append(str(Path(__file__).parent))
@@ -340,7 +352,10 @@ def predict(model, device, image_tensor):
     try:
         with torch.no_grad():
             image_tensor = image_tensor.to(device)
-            outputs = model(image_tensor)
+            # Suppress torch.classes warnings during inference
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore', category=UserWarning, module='torch')
+                outputs = model(image_tensor)
             probabilities = torch.sigmoid(outputs).cpu().numpy()[0]
         
         return probabilities
@@ -358,7 +373,9 @@ def get_comprehensive_analysis(explainer, image_tensor, device, top_k=5):
         image_tensor = image_tensor.to(device)
         
         # Use the explainer's comprehensive analysis method
-        results = explainer.get_lightweight_explanation(image_tensor, top_k=top_k)
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=UserWarning, module='torch')
+            results = explainer.get_lightweight_explanation(image_tensor, top_k=top_k)
         
         return results
     except Exception as e:
