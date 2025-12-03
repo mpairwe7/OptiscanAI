@@ -11,10 +11,12 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-# DockerHub credentials (pre-configured)
+# DockerHub credentials
 DOCKERHUB_USERNAME="landwind"
 DOCKERHUB_PASSWORD="alien123.com"
-IMAGE_NAME="retinal-disease-api"
+IMAGE_NAME="${IMAGE_NAME:-retinal-disease-api}"
+VERSION="${VERSION:-v2.1.0}"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 echo "============================================================================"
 echo "Pushing Container Images to DockerHub"
@@ -33,20 +35,44 @@ else
     exit 1
 fi
 
-# Push CPU image
-echo -e "\n${YELLOW}Pushing CPU image...${NC}"
-podman push ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest
+# Push version tag
+echo -e "\n${YELLOW}Pushing version tag...${NC}"
+podman push ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION} docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}
 
 if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ CPU image pushed: docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest${NC}"
+    echo -e "${GREEN}✓ Version tag pushed: docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}${NC}"
 else
-    echo -e "${RED}✗ Failed to push CPU image${NC}"
+    echo -e "${RED}✗ Failed to push version tag${NC}"
     exit 1
 fi
 
-# Push GPU image
-echo -e "\n${YELLOW}Pushing GPU image...${NC}"
+# Push timestamp tag
+echo -e "\n${YELLOW}Pushing timestamp tag...${NC}"
+podman push ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${TIMESTAMP} docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${TIMESTAMP}
+
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}✓ Timestamp tag pushed: docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${TIMESTAMP}${NC}"
+else
+    echo -e "${RED}✗ Failed to push timestamp tag${NC}"
+    exit 1
+fi
+
+# Push latest-gpu tag
+echo -e "\n${YELLOW}Pushing latest-gpu tag...${NC}"
 podman push ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-gpu docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-gpu
+
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}✓ Latest-gpu tag pushed: docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-gpu${NC}"
+else
+    echo -e "${RED}✗ Failed to push latest-gpu tag${NC}"
+    exit 1
+fi
+
+echo -e "\n${GREEN}✓ All images pushed successfully!${NC}"
+echo -e "Available tags:"
+echo -e "  - docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}"
+echo -e "  - docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${TIMESTAMP}"
+echo -e "  - docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-gpu"
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ GPU image pushed: docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-gpu${NC}"

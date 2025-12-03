@@ -80,8 +80,13 @@ try:
 except ImportError:
     print("⚠ captum not installed - Integrated Gradients features will be disabled")
 
-SHAP_AVAILABLE = False
-print("⚠ SHAP disabled to prevent memory issues")
+try:
+    import shap
+    SHAP_AVAILABLE = True
+    print("✓ shap available (SHapley Additive exPlanations)")
+except ImportError:
+    print("⚠ shap not installed - SHAP features will be disabled")
+    SHAP_AVAILABLE = False
 
 try:
     import lime
@@ -268,7 +273,7 @@ def load_model():
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
         with st.spinner(f'🔄 Loading AI model on {device}...'):
-            model_path = Path(__file__).parent.parent / 'models' / 'best_model_mobile.pth'
+            model_path = Path(__file__).parent.parent / 'models' / 'model_vignn_rank1.pth'
             
             if not model_path.exists():
                 st.error(f"Model not found at {model_path}")
@@ -301,6 +306,47 @@ def load_model():
     except Exception as e:
         st.error(f"Error loading model: {str(e)}")
         return None, None
+
+
+@st.cache_data
+def benchmark_model_latency(_model, _device):
+    """Benchmark model inference latency"""
+    if _model is None:
+        return None
+    
+    try:
+        import statistics
+        dummy_input = torch.randn(1, 3, 224, 224).to(_device)
+        _model.eval()
+        
+        # Warmup
+        with torch.no_grad():
+            for _ in range(10):
+                _ = _model(dummy_input)
+        
+        # Benchmark
+        latencies = []
+        with torch.no_grad():
+            for _ in range(100):
+                if _device.type == 'cuda':
+                    torch.cuda.synchronize()
+                start = time.perf_counter()
+                _ = _model(dummy_input)
+                if _device.type == 'cuda':
+                    torch.cuda.synchronize()
+                end = time.perf_counter()
+                latencies.append((end - start) * 1000)
+        
+        return {
+            'mean_ms': statistics.mean(latencies),
+            'median_ms': statistics.median(latencies),
+            'p95_ms': sorted(latencies)[int(len(latencies) * 0.95)],
+            'p99_ms': sorted(latencies)[int(len(latencies) * 0.99)],
+            'min_ms': min(latencies),
+            'max_ms': max(latencies)
+        }
+    except Exception as e:
+        return {'error': str(e)}
 
 
 @st.cache_resource
@@ -555,6 +601,16 @@ def get_clinical_recommendation(prediction):
 def main():
     """Main Streamlit application"""
     
+    # Load model first
+    model, device = load_model()
+    
+    if model is None:
+        st.error("Cannot proceed without model. Please check configuration.")
+        return
+    
+    # Benchmark latency
+    latency_benchmark = benchmark_model_latency(model, device)
+    
     # Header with retinal image
     col_img, col_title = st.columns([1, 3])
     
@@ -605,6 +661,16 @@ def main():
             perf = metadata.get('performance', {})
             expl = metadata.get('explainability', {})
             
+            latency_text = ""
+            if latency_benchmark and 'error' not in latency_benchmark:
+                latency_text = f"""
+        **Latency (GPU):**
+        - Mean: {latency_benchmark['mean_ms']:.2f}ms
+        - Median: {latency_benchmark['median_ms']:.2f}ms
+        - P95: {latency_benchmark['p95_ms']:.2f}ms
+        - P99: {latency_benchmark['p99_ms']:.2f}ms
+        """
+            
             info_text = f"""
         **Architecture:** {model_info.get('name', 'SceneGraphTransformer')}
         
@@ -618,16 +684,26 @@ def main():
         - Time: {perf.get('inference_time_ms', 0):.1f}ms
         
         **Explainability:** {'✓ Enabled' if expl.get('enabled') else '✗ Disabled'}
+        {latency_text}
         """
         else:
-            info_text = """
+            latency_text = ""
+            if latency_benchmark and 'error' not in latency_benchmark:
+                latency_text = f"""
+        **Latency (GPU):**
+        - Mean: {latency_benchmark['mean_ms']:.2f}ms
+        - Median: {latency_benchmark['median_ms']:.2f}ms
+        """
+            
+            info_text = f"""
         **Architecture:** SceneGraphTransformer
         
         **Diseases:** 45 retinal conditions
         
         **Input:** 224x224 RGB fundus images
         
-        **Optimization:** INT8 Quantized
+        **Optimization:** FP16 Quantized
+        {latency_text}
         """
         
         st.info(info_text)
@@ -687,13 +763,6 @@ def main():
         
         Always consult qualified healthcare professionals.
         """)
-    
-    # Load model
-    model, device = load_model()
-    
-    if model is None:
-        st.error("Cannot proceed without model. Please check configuration.")
-        return
     
     # Load explainer if enabled
     explainer = None
@@ -1161,9 +1230,8 @@ GradCAM Library: {GRADCAM_LIBRARY}
                                     except Exception as e:
                                         st.error(f"Could not generate Integrated Gradients: {str(e)}")
                     
-                    # SHAP Explanations - DISABLED DUE TO HIGH MEMORY USAGE
-                    # if SHAP_AVAILABLE:
-                    if False:  # SHAP permanently disabled to prevent OOM issues
+                    # SHAP Explanations
+                    if SHAP_AVAILABLE:
                         with st.expander("SHAP Explanations", expanded=False):
                             st.info("""
                             **About SHAP (SHapley Additive exPlanations):**

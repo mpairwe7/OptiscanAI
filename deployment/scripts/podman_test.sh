@@ -13,9 +13,9 @@ NC='\033[0m'
 
 # Configuration
 DOCKERHUB_USERNAME="landwind"
-IMAGE_NAME="retinal-disease-api"
-CONTAINER_NAME="test-api"
-PORT=8000
+IMAGE_NAME="${IMAGE_NAME:-retinal-disease-api}"
+CONTAINER_NAME="${CONTAINER_NAME:-test-api}"
+PORT="${PORT:-8000}"
 
 echo "============================================================================"
 echo "Testing Container Image Locally with Podman"

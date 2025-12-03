@@ -10,9 +10,11 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-# DockerHub credentials
+# DockerHub configuration
 DOCKERHUB_USERNAME="landwind"
-IMAGE_NAME="retinal-disease-api"
+IMAGE_NAME="${IMAGE_NAME:-retinal-disease-api}"
+VERSION="${VERSION:-v2.1.0}"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 echo "============================================================================"
 echo "Building Container Image with Podman"
@@ -20,15 +22,13 @@ echo "==========================================================================
 
 cd "$(dirname "$0")/.."
 
-echo -e "\n${YELLOW}Building CPU image...${NC}"
-podman build -f docker/Dockerfile.cpu -t ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest .
-
-echo -e "\n${GREEN}✓ Image built: ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest${NC}"
-
 echo -e "\n${YELLOW}Building GPU image...${NC}"
-podman build -f docker/Dockerfile.gpu -t ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-gpu .
+podman build -f ../Dockerfile -t ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION} -t ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${TIMESTAMP} -t ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-gpu .
 
-echo -e "\n${GREEN}✓ Image built: ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-gpu${NC}"
+echo -e "\n${GREEN}✓ Image built with tags:${NC}"
+echo -e "  - ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}"
+echo -e "  - ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${TIMESTAMP}"
+echo -e "  - ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-gpu"
 
 # Show images
 echo -e "\n${YELLOW}Available images:${NC}"
