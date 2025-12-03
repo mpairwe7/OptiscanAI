@@ -23,7 +23,7 @@ echo "==========================================================================
 cd "$(dirname "$0")/.."
 
 echo -e "\n${YELLOW}Building GPU image...${NC}"
-podman build -f ../Dockerfile -t ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION} -t ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${TIMESTAMP} -t ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-gpu .
+podman build -f ../Dockerfile -t ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION} -t ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${TIMESTAMP} -t ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-gpu ../
 
 echo -e "\n${GREEN}✓ Image built with tags:${NC}"
 echo -e "  - ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}"
