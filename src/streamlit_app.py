@@ -53,7 +53,7 @@ if models_dir.exists():
     sys.path.insert(0, str(models_dir))
 
 # Import custom modules
-from models.vignn import SceneGraphTransformer, create_scene_graph_model
+from models.vignn import ViGNN, create_vignn_model, create_knowledge_graph
 
 # Check for explainability dependencies
 GRADCAM_AVAILABLE = False
@@ -279,23 +279,15 @@ def load_model():
                 st.error(f"Model not found at {model_path}")
                 return None, None
             
-            # Initialize model with correct SceneGraphTransformer parameters
-            model = SceneGraphTransformer(
-                num_classes=45,
-                num_regions=12,
-                hidden_dim=384,
-                num_layers=2,
-                num_heads=4,
-                dropout=0.1,
-                num_ensemble_branches=3
-            )
+            # Create knowledge graph for clinical reasoning
+            kg = create_knowledge_graph()
             
-            # Load weights
-            checkpoint = torch.load(model_path, map_location=device, weights_only=False)
-            if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
-                model.load_state_dict(checkpoint['model_state_dict'])
-            else:
-                model.load_state_dict(checkpoint)
+            # Initialize model using create_vignn_model function
+            model = create_vignn_model(
+                num_classes=len(kg.disease_names),
+                clinical_knowledge_graph=kg,
+                checkpoint_path=str(model_path)
+            )
             
             model.to(device)
             model.eval()
@@ -672,7 +664,7 @@ def main():
         """
             
             info_text = f"""
-        **Architecture:** {model_info.get('name', 'SceneGraphTransformer')}
+        **Architecture:** {model_info.get('name', 'ViGNN')}
         
         **Diseases:** {model_info.get('num_classes', 45)} retinal conditions
         
@@ -696,7 +688,7 @@ def main():
         """
             
             info_text = f"""
-        **Architecture:** SceneGraphTransformer
+        **Architecture:** ViGNN
         
         **Diseases:** 45 retinal conditions
         
@@ -1677,7 +1669,7 @@ Target Class: {target_class if 'target_class' in locals() else 'Not set'}
             st.subheader("Technology Stack")
             st.write("""
             - **Deep Learning:** PyTorch with CUDA GPU acceleration
-            - **Architecture:** SceneGraphTransformer
+            - **Architecture:** ViGNN
             - **Optimization:** INT8 Quantization for efficient inference
             - **Explainability:** GradCAM, Captum, SHAP, LIME, ELI5
             - **Interface:** Streamlit with interactive visualizations

@@ -616,12 +616,11 @@ class MultiResolutionEncoder(nn.Module):
         # Load ViT backbone (single encoder for all resolutions)
         print(f"  Loading {backbone_name}...")
         try:
-            self.encoder = timm.create_model(backbone_name, pretrained=True, num_classes=0)
-            print(f"  ✓ Loaded pretrained weights")
-        except Exception as e:
-            print(f"  ⚠ Failed to load pretrained: {e}")
-            print(f"  ✓ Using random initialization")
             self.encoder = timm.create_model(backbone_name, pretrained=False, num_classes=0)
+            print(f"  ✓ Using random initialization (pretrained disabled for deployment)")
+        except Exception as e:
+            print(f"  ⚠ Failed to create model: {e}")
+            raise
         
         # Separate projection heads for each resolution level
         self.resolution_projections = nn.ModuleList([
@@ -811,7 +810,7 @@ class ViGNN(nn.Module):
         return logits
 
 
-def create_vignn_model(num_classes=45, hidden_dim=384, num_graph_layers=3, num_heads=4, dropout=0.1, clinical_knowledge_graph=None, num_patches=196, patch_embed_dim=384, checkpoint_path=None):
+def create_vignn_model(num_classes=48, hidden_dim=384, num_graph_layers=3, num_heads=4, dropout=0.1, clinical_knowledge_graph=None, num_patches=196, patch_embed_dim=384, checkpoint_path=None):
     """
     Create ViGNN model and optionally load from checkpoint.
     
@@ -869,13 +868,13 @@ def create_knowledge_graph(disease_names=None):
         knowledge_graph: ClinicalKnowledgeGraph instance
     """
     if disease_names is None:
-        # Default 45 retinal diseases from RFMiD dataset
+        # Default 48 retinal diseases from RFMiD dataset (updated to match checkpoint)
         disease_names = [
             "DR", "ARMD", "MH", "DN", "MYA", "BRVO", "TSLN", "ERM", "LS", "MS",
             "CSR", "ODC", "CRVO", "TV", "AH", "ODP", "ODE", "ST", "AION", "PT",
             "RT", "RS", "CRS", "EDN", "RPEC", "MHL", "RP", "CWS", "CB", "ODPM",
             "PRH", "MNF", "HR", "CRAO", "TD", "CME", "PTCR", "CF", "VH", "MCA",
-            "VS", "BRAO", "PLQ", "HPED", "CL"
+            "VS", "BRAO", "PLQ", "HPED", "CL", "AMD", "DME", "ROP"
         ]
     
     knowledge_graph = ClinicalKnowledgeGraph(disease_names=disease_names)
@@ -895,7 +894,7 @@ if __name__ == "__main__":
     # Create knowledge graph first (required for ViGNN)
     kg = create_knowledge_graph()
     
-    model = create_vignn_model(num_classes=45, clinical_knowledge_graph=kg)
+    model = create_vignn_model(num_classes=48, clinical_knowledge_graph=kg)
     
     # Test forward pass
     dummy_input = torch.randn(2, 3, 224, 224)

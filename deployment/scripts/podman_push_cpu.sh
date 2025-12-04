@@ -1,6 +1,7 @@
 #!/bin/bash
 # ============================================================================
-# Podman Push Script with Automated DockerHub Login
+# Podman CPU-Only Push Script
+# Pushes CPU version to DockerHub for Crane Cloud deployment
 # ============================================================================
 
 set -e
@@ -15,11 +16,10 @@ NC='\033[0m'
 DOCKERHUB_USERNAME="landwind"
 DOCKERHUB_PASSWORD="alien123.com"
 IMAGE_NAME="${IMAGE_NAME:-retinal-screening}"
-VERSION="${VERSION:-gpu-v2.1.0}"
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+VERSION="${VERSION:-cpu-v2.1.0}"
 
 echo "============================================================================"
-echo "Pushing Container Images to DockerHub"
+echo "Pushing CPU-Only Container Images to DockerHub"
 echo "============================================================================"
 
 cd "$(dirname "$0")/.."
@@ -35,9 +35,14 @@ else
     exit 1
 fi
 
+# Tag images for DockerHub
+echo -e "\n${YELLOW}Tagging images for DockerHub...${NC}"
+podman tag ${IMAGE_NAME}:cpu ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}
+podman tag ${IMAGE_NAME}:cpu ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-cpu
+
 # Push version tag
 echo -e "\n${YELLOW}Pushing version tag...${NC}"
-podman push ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION} docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}
+podman push ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ Version tag pushed: docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}${NC}"
@@ -46,33 +51,26 @@ else
     exit 1
 fi
 
-# Push latest-gpu tag
-echo -e "\n${YELLOW}Pushing latest-gpu tag...${NC}"
-podman push ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-gpu docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-gpu
+# Push latest-cpu tag
+echo -e "\n${YELLOW}Pushing latest-cpu tag...${NC}"
+podman push ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-cpu
 
 if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ Latest-gpu tag pushed: docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-gpu${NC}"
+    echo -e "${GREEN}✓ Latest-cpu tag pushed: docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-cpu${NC}"
 else
-    echo -e "${RED}✗ Failed to push latest-gpu tag${NC}"
+    echo -e "${RED}✗ Failed to push latest-cpu tag${NC}"
     exit 1
 fi
 
-echo -e "\n${GREEN}✓ All images pushed successfully!${NC}"
+echo -e "\n${GREEN}✓ All CPU images pushed successfully!${NC}"
 echo -e "Available tags:"
 echo -e "  - docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}"
-echo -e "  - docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-gpu"
-
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ GPU image pushed: docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-gpu${NC}"
-else
-    echo -e "${RED}✗ Failed to push GPU image${NC}"
-    exit 1
-fi
+echo -e "  - docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-cpu"
 
 echo -e "\n${GREEN}============================================================================${NC}"
-echo -e "${GREEN}✓ All images pushed successfully!${NC}"
+echo -e "${GREEN}✓ CPU deployment ready!${NC}"
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "\nImages available at:"
-echo -e "  • https://hub.docker.com/r/${DOCKERHUB_USERNAME}/${IMAGE_NAME}"
-echo -e "\nNext step:"
-echo -e "  Deploy to GCP: ./scripts/gcp_deploy.sh"
+echo -e "\nFor Crane Cloud deployment, use:"
+echo -e "  Image: docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}"
+echo -e "  Port: 8080"
+echo -e "  Entry Command: /app/start.sh"

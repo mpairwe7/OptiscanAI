@@ -77,7 +77,7 @@ RUN mkdir -p models/checkpoints models/exports logs uploads \
     && chmod -R 755 /app
 
 # Copy and setup entrypoint script
-COPY deployment/ngrok-entrypoint.sh /app/start.sh
+COPY start_gpu.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 # Set application environment variables
