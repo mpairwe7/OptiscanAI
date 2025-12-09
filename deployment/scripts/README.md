@@ -50,17 +50,27 @@ export DOCKERHUB_PASSWORD=your_password
 ./podman_push_cpu.sh
 ```
 
+## Automatic Versioning
+
+The build scripts automatically generate version tags based on:
+
+1. **Git Tags**: If a git tag exists (e.g., `v2.1.0`), uses `gpu-v2.1.0` or `cpu-v2.1.0`
+2. **Git Commit**: If no tag, uses commit hash: `gpu-v2.1.0-d17afce` or `cpu-v2.1.0-d17afce`
+3. **Fallback**: Static version if git not available: `gpu-v2.1.0` or `cpu-v2.1.0`
+
 ## Image Tags
 
 ### GPU Images
-- `your_username/retinal-screening:gpu-v2.1.0` (versioned)
+- `your_username/retinal-screening:gpu-v2.1.0` (semantic version)
+- `your_username/retinal-screening:gpu-v2.1.0-d17afce` (with commit hash)
 - `your_username/retinal-screening:latest-gpu` (latest GPU)
-- `your_username/retinal-screening:timestamp` (timestamped)
+- `your_username/retinal-screening:20241209_143022` (timestamped)
 
 ### CPU Images
-- `your_username/retinal-screening:cpu-v2.1.0` (versioned)
+- `your_username/retinal-screening:cpu-v2.1.0` (semantic version)
+- `your_username/retinal-screening:cpu-v2.1.0-d17afce` (with commit hash)
 - `your_username/retinal-screening:latest-cpu` (latest CPU)
-- `your_username/retinal-screening:timestamp` (timestamped)
+- `your_username/retinal-screening:20241209_143022` (timestamped)
 
 ## Security Notes
 
