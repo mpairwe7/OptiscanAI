@@ -13,7 +13,24 @@ NC='\033[0m'
 # DockerHub configuration
 DOCKERHUB_USERNAME="${DOCKERHUB_USERNAME:-landwind}"
 IMAGE_NAME="${IMAGE_NAME:-retinal-screening}"
-VERSION="${VERSION:-gpu-v2.1.0}"
+
+# Automatic versioning
+if command -v git >/dev/null 2>&1 && git rev-parse --git-dir >/dev/null 2>&1; then
+    # Get git information
+    GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    GIT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+    GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+
+    # Use git tag if available, otherwise use commit hash
+    if [ -n "$GIT_TAG" ]; then
+        VERSION="${VERSION:-gpu-${GIT_TAG}}"
+    else
+        VERSION="${VERSION:-gpu-v2.1.0-${GIT_COMMIT}}"
+    fi
+else
+    VERSION="${VERSION:-gpu-v2.1.0}"
+fi
+
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 echo "============================================================================"

@@ -15,7 +15,7 @@ NC='\033[0m'
 # Configuration
 DOCKERHUB_USERNAME="${DOCKERHUB_USERNAME:-landwind}"
 IMAGE_NAME="${IMAGE_NAME:-retinal-screening}"
-VERSION="${VERSION:-cpu}"
+VERSION="${VERSION:-cpu-v2.1.0}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 echo "============================================================================"
