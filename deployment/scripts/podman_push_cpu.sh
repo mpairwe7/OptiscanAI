@@ -13,8 +13,8 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 # DockerHub credentials (use environment variables for security)
-DOCKERHUB_USERNAME="${DOCKERHUB_USERNAME:-landwind}"
-DOCKERHUB_PASSWORD="${DOCKERHUB_PASSWORD:-alien123.com}"
+DOCKERHUB_USERNAME="${DOCKERHUB_USERNAME}"
+DOCKERHUB_PASSWORD="${DOCKERHUB_PASSWORD}"
 
 # Check if credentials are set
 if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_PASSWORD" ]; then
@@ -25,11 +25,6 @@ if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_PASSWORD" ]; then
     echo -e "\nOr run with:"
     echo -e "  DOCKERHUB_USERNAME=your_username DOCKERHUB_PASSWORD=your_password $0"
     exit 1
-fi
-
-# Warn about default credentials
-if [ "$DOCKERHUB_USERNAME" = "landwind" ] && [ "$DOCKERHUB_PASSWORD" = "alien123.com" ]; then
-    echo -e "${YELLOW}⚠ Warning: Using default credentials. Consider setting custom environment variables.${NC}"
 fi
 
 IMAGE_NAME="${IMAGE_NAME:-retinal-screening}"
@@ -69,13 +64,12 @@ else
 fi
 
 # Tag images for DockerHub
-echo -e "\n${YELLOW}Tagging images for DockerHub...${NC}"
-podman tag ${IMAGE_NAME}:latest-cpu ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}
-podman tag ${IMAGE_NAME}:latest-cpu ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-cpu
+echo -e "\n${YELLOW}Tagging image for DockerHub...${NC}"
+podman tag ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION} docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}
 
 # Push version tag
 echo -e "\n${YELLOW}Pushing version tag...${NC}"
-podman push ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}
+podman push docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ Version tag pushed: docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}${NC}"
@@ -84,21 +78,9 @@ else
     exit 1
 fi
 
-# Push latest-cpu tag
-echo -e "\n${YELLOW}Pushing latest-cpu tag...${NC}"
-podman push ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-cpu
-
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ Latest-cpu tag pushed: docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-cpu${NC}"
-else
-    echo -e "${RED}✗ Failed to push latest-cpu tag${NC}"
-    exit 1
-fi
-
-echo -e "\n${GREEN}✓ All CPU images pushed successfully!${NC}"
-echo -e "Available tags:"
+echo -e "\n${GREEN}✓ CPU image pushed successfully!${NC}"
+echo -e "Available tag:"
 echo -e "  - docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}"
-echo -e "  - docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-cpu"
 
 echo -e "\n${GREEN}============================================================================${NC}"
 echo -e "${GREEN}✓ CPU deployment ready!${NC}"

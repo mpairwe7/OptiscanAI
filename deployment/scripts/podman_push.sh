@@ -12,8 +12,8 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 # DockerHub credentials (use environment variables for security)
-DOCKERHUB_USERNAME="${DOCKERHUB_USERNAME:-landwind}"
-DOCKERHUB_PASSWORD="${DOCKERHUB_PASSWORD:-alien123.com}"
+DOCKERHUB_USERNAME="${DOCKERHUB_USERNAME}"
+DOCKERHUB_PASSWORD="${DOCKERHUB_PASSWORD}"
 
 # Check if credentials are set
 if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_PASSWORD" ]; then
@@ -24,11 +24,6 @@ if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_PASSWORD" ]; then
     echo -e "\nOr run with:"
     echo -e "  DOCKERHUB_USERNAME=your_username DOCKERHUB_PASSWORD=your_password $0"
     exit 1
-fi
-
-# Warn about default credentials
-if [ "$DOCKERHUB_USERNAME" = "landwind" ] && [ "$DOCKERHUB_PASSWORD" = "alien123.com" ]; then
-    echo -e "${YELLOW}⚠ Warning: Using default credentials. Consider setting custom environment variables.${NC}"
 fi
 
 IMAGE_NAME="${IMAGE_NAME:-retinal-screening}"
@@ -71,7 +66,7 @@ fi
 
 # Push version tag
 echo -e "\n${YELLOW}Pushing version tag...${NC}"
-podman push ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION} docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}
+podman push docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ Version tag pushed: docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}${NC}"
@@ -80,33 +75,14 @@ else
     exit 1
 fi
 
-# Push latest-gpu tag
-echo -e "\n${YELLOW}Pushing latest-gpu tag...${NC}"
-podman push ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-gpu docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-gpu
-
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ Latest-gpu tag pushed: docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-gpu${NC}"
-else
-    echo -e "${RED}✗ Failed to push latest-gpu tag${NC}"
-    exit 1
-fi
-
-echo -e "\n${GREEN}✓ All images pushed successfully!${NC}"
-echo -e "Available tags:"
+echo -e "\n${GREEN}✓ GPU image pushed successfully!${NC}"
+echo -e "Available tag:"
 echo -e "  - docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}"
-echo -e "  - docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-gpu"
-
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ GPU image pushed: docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-gpu${NC}"
-else
-    echo -e "${RED}✗ Failed to push GPU image${NC}"
-    exit 1
-fi
 
 echo -e "\n${GREEN}============================================================================${NC}"
-echo -e "${GREEN}✓ All images pushed successfully!${NC}"
+echo -e "${GREEN}✓ GPU deployment ready!${NC}"
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "\nImages available at:"
+echo -e "\nImage available at:"
 echo -e "  • https://hub.docker.com/r/${DOCKERHUB_USERNAME}/${IMAGE_NAME}"
 echo -e "\nNext step:"
 echo -e "  Deploy to GCP: ./scripts/gcp_deploy.sh"
