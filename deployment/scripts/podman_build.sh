@@ -11,7 +11,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 # DockerHub configuration
-DOCKERHUB_USERNAME="landwind"
+DOCKERHUB_USERNAME="${DOCKERHUB_USERNAME:-landwind}"
 IMAGE_NAME="${IMAGE_NAME:-retinal-screening}"
 VERSION="${VERSION:-gpu-v2.1.0}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)

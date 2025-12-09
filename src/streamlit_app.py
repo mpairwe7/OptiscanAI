@@ -195,7 +195,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Disease name mapping (45 diseases from model metadata)
+# Disease name mapping (48 diseases from model metadata)
 DISEASE_MAPPING = {
     "DR": "Diabetic Retinopathy",
     "ARMD": "Age-Related Macular Degeneration",
@@ -241,7 +241,10 @@ DISEASE_MAPPING = {
     "BRAO": "Branch Retinal Artery Occlusion",
     "PLQ": "Optic Disc Drusen (Peripapillary Lesions)",
     "HPED": "Hemorrhagic Pigment Epithelial Detachment",
-    "CL": "Choroidal Lesion"
+    "CL": "Choroidal Lesion",
+    "AMD": "Age-Related Macular Degeneration",
+    "DME": "Diabetic Macular Edema",
+    "ROP": "Retinopathy of Prematurity"
 }
 
 DISEASE_CODES = list(DISEASE_MAPPING.keys())
@@ -615,7 +618,7 @@ def main():
     with col_title:
         st.markdown('<div class="main-header">Explainable Retinal Disease Screening</div>', unsafe_allow_html=True)
         st.markdown('<div class="sub-header">AI-Powered Medical Image Analysis</div>', unsafe_allow_html=True)
-        st.markdown("**Advanced deep learning model for detecting 45 retinal conditions with explainable AI**")
+        st.markdown("**Advanced deep learning model for detecting 48 retinal conditions with explainable AI**")
     
     st.divider()
     
@@ -666,7 +669,7 @@ def main():
             info_text = f"""
         **Architecture:** {model_info.get('name', 'ViGNN')}
         
-        **Diseases:** {model_info.get('num_classes', 45)} retinal conditions
+        **Diseases:** {model_info.get('num_classes', 48)} retinal conditions
         
         **Input:** 224x224 RGB fundus images
         
@@ -690,7 +693,7 @@ def main():
             info_text = f"""
         **Architecture:** ViGNN
         
-        **Diseases:** 45 retinal conditions
+        **Diseases:** 48 retinal conditions
         
         **Input:** 224x224 RGB fundus images
         
@@ -1685,7 +1688,7 @@ Target Class: {target_class if 'target_class' in locals() else 'Not set'}
         with col2:
             st.subheader("Detectable Conditions")
             st.write("""
-            The model can screen for 45 different retinal diseases including:
+            The model can screen for 48 different retinal diseases including:
             
             **Major Conditions:**
             - Diabetic Retinopathy
@@ -1702,7 +1705,7 @@ Target Class: {target_class if 'target_class' in locals() else 'Not set'}
             - **Inference Time:** ~200ms on GPU
             - **Model Size:** 119 MB (quantized)
             - **Input:** 224x224 RGB images
-            - **Output:** 45 disease probabilities
+            - **Output:** 48 disease probabilities
             """)
         
         st.divider()

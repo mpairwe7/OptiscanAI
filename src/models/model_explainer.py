@@ -90,7 +90,10 @@ DISEASE_NAME_MAPPING = {
     'BRAO': 'Branch Retinal Artery Occlusion',
     'PLQ': 'Peripapillary Lesions/Drusen',
     'HPED': 'Hemorrhagic Pigment Epithelial Detachment',
-    'CL': 'Choroidal Lesion'
+    'CL': 'Choroidal Lesion',
+    'AMD': 'Age-Related Macular Degeneration',
+    'DME': 'Diabetic Macular Edema',
+    'ROP': 'Retinopathy of Prematurity'
 }
 
 def get_full_disease_name(short_name):
