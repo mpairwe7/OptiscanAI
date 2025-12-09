@@ -31,8 +31,6 @@ else
     VERSION="${VERSION:-gpu-v2.1.0}"
 fi
 
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-
 echo "============================================================================"
 echo "Building Container Image with Podman"
 echo "============================================================================"
@@ -42,14 +40,14 @@ cd "$(dirname "$0")/../.."
 echo -e "\n${YELLOW}Building GPU image...${NC}"
 podman build -f Dockerfile -t ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION} .
 
-echo -e "\n${GREEN}✓ Image built with tag:${NC}"
+echo -e "\n${GREEN} Image built with tag:${NC}"
 echo -e "  - ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}"
 
 # Show images
 echo -e "\n${YELLOW}Available images:${NC}"
 podman images | grep ${IMAGE_NAME}
 
-echo -e "\n${GREEN}✓ Build complete!${NC}"
+echo -e "\n${GREEN} Build complete!${NC}"
 echo "Next steps:"
 echo "  1. Test locally: ./scripts/podman_test.sh"
 echo "  2. Push to DockerHub: ./scripts/podman_push.sh"

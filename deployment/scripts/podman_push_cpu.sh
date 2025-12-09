@@ -57,9 +57,9 @@ echo -e "\n${YELLOW}Logging in to DockerHub...${NC}"
 echo "$DOCKERHUB_PASSWORD" | podman login docker.io -u "$DOCKERHUB_USERNAME" --password-stdin
 
 if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ DockerHub login successful${NC}"
+    echo -e "${GREEN} DockerHub login successful${NC}"
 else
-    echo -e "${RED}✗ DockerHub login failed${NC}"
+    echo -e "${RED}  DockerHub login failed${NC}"
     exit 1
 fi
 
@@ -72,18 +72,18 @@ echo -e "\n${YELLOW}Pushing version tag...${NC}"
 podman push docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}
 
 if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ Version tag pushed: docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}${NC}"
+    echo -e "${GREEN} Version tag pushed: docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}${NC}"
 else
-    echo -e "${RED}✗ Failed to push version tag${NC}"
+    echo -e "${RED}  Failed to push version tag${NC}"
     exit 1
 fi
 
-echo -e "\n${GREEN}✓ CPU image pushed successfully!${NC}"
+echo -e "\n${GREEN} CPU image pushed successfully!${NC}"
 echo -e "Available tag:"
 echo -e "  - docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}"
 
 echo -e "\n${GREEN}============================================================================${NC}"
-echo -e "${GREEN}✓ CPU deployment ready!${NC}"
+echo -e "${GREEN} CPU deployment ready!${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo -e "\nFor Crane Cloud deployment, use:"
 echo -e "  Image: docker.io/${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}"

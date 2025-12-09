@@ -33,8 +33,6 @@ else
     VERSION="${VERSION:-cpu-v2.1.0}"
 fi
 
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-
 echo "============================================================================"
 echo "Building CPU-Only Container Image"
 echo "============================================================================"
@@ -52,14 +50,14 @@ podman build \
     .
 
 if [ $? -eq 0 ]; then
-    echo -e "\n${GREEN}✓ CPU image built successfully${NC}"
+    echo -e "\n${GREEN} CPU image built successfully${NC}"
     echo -e "Image: ${DOCKERHUB_USERNAME}/${IMAGE_NAME}"
     echo -e "Tag: ${VERSION}"
     echo -e "Size: $(podman images ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION} --format '{{.Size}}')"
 else
-    echo -e "\n${RED}✗ Failed to build CPU image${NC}"
+    echo -e "\n${RED} Failed to build CPU image${NC}"
     exit 1
 fi
 
-echo -e "\n${GREEN}✓ Build complete!${NC}"
+echo -e "\n${GREEN} Build complete!${NC}"
 echo -e "Next step: Run ./deployment/scripts/podman_push_cpu.sh to push to DockerHub"
