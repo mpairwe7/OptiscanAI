@@ -39,26 +39,22 @@ echo "==========================================================================
 echo "Building CPU-Only Container Image"
 echo "============================================================================"
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 # Build the image with multiple tags
-echo -e "\n${YELLOW}Building CPU image with tags:${NC}"
+echo -e "\n${YELLOW}Building CPU image with tag:${NC}"
 echo -e "  - ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION}"
-echo -e "  - ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${TIMESTAMP}"
-echo -e "  - ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-cpu"
 
 podman build \
     --file Dockerfile.cpu \
     --tag ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION} \
-    --tag ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${TIMESTAMP} \
-    --tag ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest-cpu \
     --build-arg BUILDKIT_INLINE_CACHE=1 \
     .
 
 if [ $? -eq 0 ]; then
     echo -e "\n${GREEN}✓ CPU image built successfully${NC}"
     echo -e "Image: ${DOCKERHUB_USERNAME}/${IMAGE_NAME}"
-    echo -e "Tags: ${VERSION}, ${TIMESTAMP}, latest-cpu"
+    echo -e "Tag: ${VERSION}"
     echo -e "Size: $(podman images ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${VERSION} --format '{{.Size}}')"
 else
     echo -e "\n${RED}✗ Failed to build CPU image${NC}"
