@@ -1,0 +1,228 @@
+# Production Kubernetes deployment for RetinalAI backend.
+# Features: mTLS annotations, SBOM labels, resource limits, HPA, PDB.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retinalai-backend
+  namespace: retinalai
+  labels:
+    app: retinalai
+    component: backend
+    version: "3.0.0"
+  annotations:
+    sbom.io/format: "spdx-json"
+    sbom.io/path: "/sbom/sbom.spdx.json"
+    chaos.litmus.io/enabled: "true"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: retinalai
+      component: backend
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: retinalai
+        component: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/health"
+    spec:
+      serviceAccountName: retinalai-backend
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: backend
+          image: retinalai/backend:3.0.0
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          env:
+            # Core
+            - name: ENVIRONMENT
+              value: "production"
+            - name: API_HOST
+              value: "0.0.0.0"
+            - name: API_PORT
+              value: "8080"
+            - name: AUTH_ENABLED
+              value: "true"
+            # Phase 1: Observability
+            - name: TELEMETRY__ENABLED
+              value: "true"
+            - name: TELEMETRY__OTLP_ENDPOINT
+              value: "http://otel-collector.observability:4317"
+            # Phase 1: MLflow
+            - name: MLFLOW__ENABLED
+              value: "true"
+            - name: MLFLOW__TRACKING_URI
+              value: "http://mlflow.mlops:5000"
+            # Phase 1: Active Learning
+            - name: ACTIVE_LEARNING_LOOP__ENABLED
+              value: "true"
+            # Phase 1: Drift
+            - name: DRIFT__ENABLED
+              value: "true"
+            # Phase 2: Ray Serve
+            - name: RAY__ENABLED
+              value: "true"
+            - name: RAY__SERVE_URL
+              value: "http://ray-serve.serving:8000"
+            # Phase 2: Kafka
+            - name: KAFKA__ENABLED
+              value: "true"
+            - name: KAFKA__BOOTSTRAP_SERVERS
+              value: "kafka.data:9092"
+            # Phase 2: mTLS
+            - name: MTLS__ENABLED
+              value: "true"
+            - name: MTLS__CA_CERT_PATH
+              value: "/certs/ca.pem"
+            - name: MTLS__CLIENT_CERT_PATH
+              value: "/certs/client.pem"
+            - name: MTLS__CLIENT_KEY_PATH
+              value: "/certs/client.key"
+            # Phase 3
+            - name: FAIRNESS__ENABLED
+              value: "true"
+            - name: MODEL_CARD__AUTO_GENERATE
+              value: "true"
+            - name: EDGE__ONNX_ENABLED
+              value: "true"
+            # Phase 4
+            - name: RESILIENCE__ENABLED
+              value: "true"
+            # Secrets from K8s secrets
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: retinalai-secrets
+                  key: jwt-secret
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: retinalai-secrets
+                  key: anthropic-api-key
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+              nvidia.com/gpu: "1"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 30
+          volumeMounts:
+            - name: model-weights
+              mountPath: /app/models
+              readOnly: true
+            - name: tls-certs
+              mountPath: /certs
+              readOnly: true
+            - name: prediction-logs
+              mountPath: /app/logs
+            - name: active-learning
+              mountPath: /app/data/active_learning
+      volumes:
+        - name: model-weights
+          persistentVolumeClaim:
+            claimName: retinalai-models
+        - name: tls-certs
+          secret:
+            secretName: retinalai-tls
+        - name: prediction-logs
+          emptyDir: {}
+        - name: active-learning
+          persistentVolumeClaim:
+            claimName: retinalai-active-learning
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: retinalai-backend-hpa
+  namespace: retinalai
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: retinalai-backend
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Pods
+      pods:
+        metric:
+          name: retinalai_inference_duration_ms
+        target:
+          type: AverageValue
+          averageValue: "100"
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: retinalai-backend-pdb
+  namespace: retinalai
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: retinalai
+      component: backend
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: retinalai-backend
+  namespace: retinalai
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: retinalai-backend
+  namespace: retinalai
+spec:
+  selector:
+    app: retinalai
+    component: backend
+  ports:
+    - port: 8080
+      targetPort: http
+      protocol: TCP
+      name: http
+  type: ClusterIP

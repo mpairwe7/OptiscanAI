@@ -1,0 +1,139 @@
+# LitmusChaos experiments for RetinalAI resilience testing.
+# Prerequisites: LitmusChaos operator installed in the cluster.
+
+# Experiment 1: Model Server Pod Failure
+# Validates: Circuit breaker opens, requests route to fallback backend
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: retinalai-pod-delete
+  namespace: retinalai
+  labels:
+    app: retinalai
+    chaos-type: pod-failure
+spec:
+  appinfo:
+    appns: retinalai
+    applabel: "app=retinalai,component=backend"
+    appkind: deployment
+  engineState: active
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: pod-delete
+      spec:
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: "60"
+            - name: CHAOS_INTERVAL
+              value: "10"
+            - name: FORCE
+              value: "false"
+            - name: PODS_AFFECTED_PERC
+              value: "50"
+        probe:
+          - name: health-check
+            type: httpProbe
+            httpProbe/inputs:
+              url: http://retinalai-backend.retinalai:8080/health
+              method:
+                get:
+                  criteria: ==
+                  responseCode: "200"
+            mode: Continuous
+            runProperties:
+              probeTimeout: 5s
+              retry: 3
+              interval: 10s
+---
+# Experiment 2: Network Partition
+# Validates: Kafka fallback to JSONL, Ray Serve fallback to local inference
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: retinalai-network-loss
+  namespace: retinalai
+  labels:
+    app: retinalai
+    chaos-type: network-partition
+spec:
+  appinfo:
+    appns: retinalai
+    applabel: "app=retinalai,component=backend"
+    appkind: deployment
+  engineState: active
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: pod-network-loss
+      spec:
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: "30"
+            - name: NETWORK_INTERFACE
+              value: "eth0"
+            - name: NETWORK_PACKET_LOSS_PERCENTAGE
+              value: "100"
+            - name: DESTINATION_IPS
+              value: "kafka.data,ray-serve.serving,mlflow.mlops"
+        probe:
+          - name: degradation-check
+            type: httpProbe
+            httpProbe/inputs:
+              url: http://retinalai-backend.retinalai:8080/health
+              method:
+                get:
+                  criteria: ==
+                  responseCode: "200"
+            mode: Continuous
+            runProperties:
+              probeTimeout: 10s
+              retry: 5
+              interval: 5s
+---
+# Experiment 3: High Latency Injection
+# Validates: Request timeouts handled gracefully, SLA monitoring triggers alerts
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: retinalai-network-latency
+  namespace: retinalai
+  labels:
+    app: retinalai
+    chaos-type: high-latency
+spec:
+  appinfo:
+    appns: retinalai
+    applabel: "app=retinalai,component=backend"
+    appkind: deployment
+  engineState: active
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: pod-network-latency
+      spec:
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: "60"
+            - name: NETWORK_INTERFACE
+              value: "eth0"
+            - name: NETWORK_LATENCY
+              value: "2000"  # 2 seconds added latency
+            - name: JITTER
+              value: "500"
+            - name: DESTINATION_IPS
+              value: "ray-serve.serving"
+        probe:
+          - name: latency-check
+            type: httpProbe
+            httpProbe/inputs:
+              url: http://retinalai-backend.retinalai:8080/api/v1/predict
+              method:
+                post:
+                  criteria: <=
+                  responseCode: "500"
+            mode: EOT
+            runProperties:
+              probeTimeout: 30s
+              retry: 1
+              interval: 60s

@@ -842,50 +842,53 @@ class ModelExplainer:
                 try:
                     # Define prediction function for LIME
                     def predict_fn(images):
-                        """Prediction function that LIME will call"""
-                        # Convert images back to tensor format
+                        """Prediction function that LIME will call.
+                        Must return 2D array [batch, num_classes] for LIME."""
                         batch_images = []
                         for img in images:
-                            # LIME returns images in [H, W, C] format
                             img_tensor = torch.from_numpy(img.transpose(2, 0, 1)).float().unsqueeze(0)
                             img_tensor = img_tensor.to(self.device)
                             batch_images.append(img_tensor)
-                        
+
                         batch_tensor = torch.cat(batch_images, dim=0)
-                        
+
                         with torch.no_grad():
                             outputs = self.model(batch_tensor)
                             if isinstance(outputs, tuple):
                                 outputs = outputs[0]
-                            # Return probabilities for the target class
-                            probs = torch.sigmoid(outputs).cpu().numpy()[:, class_idx]
-                        
+                            # Return full probability matrix [batch, num_classes]
+                            probs = torch.sigmoid(outputs).cpu().numpy()
+
                         return probs
                     
                     # Generate LIME explanation
+                    # Pre-compute segmentation to avoid lambda issues
+                    segments = slic(img_np, n_segments=num_features, compactness=10, sigma=1)
+
                     explanation = explainer.explain_instance(
                         img_np,
                         predict_fn,
-                        top_labels=1,
+                        labels=(int(class_idx),),
                         hide_color=0,
                         num_samples=num_samples,
-                        segmentation_fn=lambda x: slic(x, n_segments=num_features, compactness=10, sigma=1)
+                        segmentation_fn=lambda x: segments
                     )
-                    
+
                     # Get the explanation for this class
+                    label_key = class_idx if class_idx in explanation.local_exp else list(explanation.local_exp.keys())[0]
                     temp, mask = explanation.get_image_and_mask(
-                        class_idx,
+                        label_key,
                         positive_only=True,
                         num_features=num_features,
                         hide_rest=True
                     )
-                    
+
                     # Create explanation image
                     explained_image = np.zeros_like(img_np)
                     explained_image[mask == 1] = img_np[mask == 1]
-                    
+
                     # Get feature importance weights
-                    feature_weights = dict(explanation.local_exp[class_idx])
+                    feature_weights = dict(explanation.local_exp[label_key])
                     
                     results[self.disease_names[class_idx]] = {
                         'explained_image': explained_image.tolist(),
@@ -1054,6 +1057,426 @@ class ModelExplainer:
         with open(save_path, 'w') as f:
             json.dump(results, f, indent=2)
         return results
+
+
+# ============================================================================
+# ADVANCED EXPLAINABILITY — 2026 Extensions
+# ============================================================================
+
+class ConceptActivationVectors:
+    """Concept Activation Vectors (CAVs) for clinical concept testing.
+
+    Tests whether a model's internal representations encode specific clinical
+    concepts (microaneurysms, hard exudates, optic disc cupping, etc.)
+    following Kim et al., "Interpretability Beyond Feature Attribution" (ICML 2018).
+
+    Usage:
+        cavs = ConceptActivationVectors(model, layer_name='encoder.blocks.22')
+        cavs.train_cav('microaneurysms', positive_images, negative_images)
+        sensitivity = cavs.tcav_score('microaneurysms', test_images, target_class=0)
+    """
+
+    # Clinical concepts relevant to retinal disease detection
+    RETINAL_CONCEPTS = [
+        "microaneurysms", "hard_exudates", "cotton_wool_spots",
+        "hemorrhages", "neovascularization", "drusen",
+        "optic_disc_cupping", "macular_edema", "vascular_tortuosity",
+        "retinal_detachment", "pigmentary_changes", "optic_disc_pallor",
+    ]
+
+    def __init__(self, model, layer_name=None, device='cpu'):
+        self.model = model
+        self.device = device
+        self.layer_name = layer_name
+        self.cavs = {}
+        self._hooks = []
+        self._activations = {}
+        self._hooked_layers = set()
+        self._detach_activations = True  # Set False before tcav_score gradient computation
+
+    def _register_hook(self, layer_name):
+        """Register forward hook to capture intermediate activations."""
+        if layer_name in self._hooked_layers:
+            return  # Already hooked, avoid duplicates
+
+        def hook_fn(module, input, output):
+            if isinstance(output, tuple):
+                output = output[0]
+            if self._detach_activations:
+                self._activations[layer_name] = output.detach()
+            else:
+                self._activations[layer_name] = output
+
+        for name, module in self.model.named_modules():
+            if name == layer_name:
+                handle = module.register_forward_hook(hook_fn)
+                self._hooks.append(handle)
+                self._hooked_layers.add(layer_name)
+                return
+        raise ValueError(f"Layer {layer_name} not found in model")
+
+    def _get_activations(self, images):
+        """Get intermediate activations for a batch of images."""
+        if not self._hooks:
+            self._register_hook(self.layer_name)
+
+        self.model.eval()
+        with torch.no_grad():
+            self.model(images.to(self.device))
+
+        act = self._activations.get(self.layer_name)
+        if act is None:
+            raise RuntimeError(f"No activations captured for {self.layer_name}")
+        # Flatten spatial dims: [B, N, D] -> [B, D] via mean pooling
+        if act.dim() == 3:
+            act = act.mean(dim=1)
+        return act.cpu().numpy()
+
+    def train_cav(self, concept_name, positive_images, negative_images):
+        """Train a linear CAV for a clinical concept.
+
+        Parameters
+        ----------
+        concept_name : str
+            Name of the clinical concept.
+        positive_images : torch.Tensor
+            Images containing the concept [N, 3, H, W].
+        negative_images : torch.Tensor
+            Images without the concept [N, 3, H, W].
+        """
+        from sklearn.linear_model import SGDClassifier
+
+        pos_acts = self._get_activations(positive_images)
+        neg_acts = self._get_activations(negative_images)
+
+        X = np.concatenate([pos_acts, neg_acts], axis=0)
+        y = np.concatenate([np.ones(len(pos_acts)), np.zeros(len(neg_acts))])
+
+        clf = SGDClassifier(loss='hinge', max_iter=1000, random_state=42)
+        clf.fit(X, y)
+
+        # The CAV is the weight vector of the linear classifier
+        cav_vector = clf.coef_[0]
+        cav_vector = cav_vector / (np.linalg.norm(cav_vector) + 1e-10)
+
+        self.cavs[concept_name] = {
+            'vector': cav_vector,
+            'accuracy': clf.score(X, y),
+            'classifier': clf,
+        }
+        return self.cavs[concept_name]['accuracy']
+
+    def tcav_score(self, concept_name, test_images, target_class):
+        """Compute TCAV score: fraction of inputs where concept positively
+        influences the target class prediction.
+
+        Parameters
+        ----------
+        concept_name : str
+            Previously trained concept.
+        test_images : torch.Tensor
+            Test images [N, 3, H, W].
+        target_class : int
+            Target class index.
+
+        Returns
+        -------
+        float
+            TCAV score in [0, 1]. >0.5 means concept positively influences prediction.
+        """
+        if concept_name not in self.cavs:
+            raise ValueError(f"CAV for '{concept_name}' not trained. Call train_cav first.")
+
+        cav = torch.tensor(self.cavs[concept_name]['vector'],
+                           dtype=torch.float32, device=self.device)
+
+        test_images = test_images.to(self.device)
+
+        # Register hook with gradients enabled (no detach)
+        self._detach_activations = False
+        if not self._hooks:
+            self._register_hook(self.layer_name)
+
+        self.model.eval()
+        output = self.model(test_images)
+        if isinstance(output, (tuple, dict)):
+            output = output[0] if isinstance(output, tuple) else output.get('logits', list(output.values())[0])
+
+        # Get the layer activations captured by hook (with grad_fn intact)
+        layer_act = self._activations.get(self.layer_name)
+        if layer_act is None:
+            self._detach_activations = True
+            raise RuntimeError(f"No activations captured for {self.layer_name}")
+
+        # Pool spatial dims if needed: [B, N, D] -> [B, D]
+        if layer_act.dim() == 3:
+            layer_act_pooled = layer_act.mean(dim=1)
+        else:
+            layer_act_pooled = layer_act
+        layer_act_pooled.retain_grad()
+
+        # Compute gradient of target class w.r.t. layer activations
+        target_logits = output[:, target_class]
+        target_logits.sum().backward(retain_graph=False)
+
+        grads = layer_act_pooled.grad  # [B, D]
+        self._detach_activations = True  # Restore default
+
+        if grads is None:
+            return 0.5  # No gradient info, return neutral score
+
+        # Project gradient onto CAV direction
+        # Truncate/pad to match CAV size
+        d = min(grads.size(1), cav.size(0))
+        projections = (grads[:, :d] * cav[:d].unsqueeze(0)).sum(dim=1)
+
+        score = (projections > 0).float().mean().item()
+        return score
+
+    def cleanup(self):
+        """Remove hooks."""
+        for h in self._hooks:
+            h.remove()
+        self._hooks.clear()
+        self._hooked_layers.clear()
+
+    def __del__(self):
+        self.cleanup()
+
+
+class CounterfactualExplainer:
+    """Counterfactual explanations via adversarial perturbation.
+
+    Answers: "What minimal change to this image would change the prediction?"
+
+    Uses gradient-based optimization to find the smallest perturbation that
+    flips the model's prediction for a target class.
+    """
+
+    def __init__(self, model, device='cpu'):
+        self.model = model
+        self.device = device
+
+    def generate_counterfactual(
+        self,
+        image,
+        target_class,
+        max_iterations=200,
+        learning_rate=0.01,
+        lambda_l2=0.5,
+        confidence_threshold=0.6,
+    ):
+        """Generate a counterfactual explanation.
+
+        Parameters
+        ----------
+        image : torch.Tensor
+            Input image [1, 3, H, W].
+        target_class : int
+            Target class to achieve in counterfactual.
+        max_iterations : int
+            Optimization steps.
+        learning_rate : float
+            Step size.
+        lambda_l2 : float
+            L2 regularization weight (encourages minimal changes).
+        confidence_threshold : float
+            Stop when target class confidence exceeds this.
+
+        Returns
+        -------
+        dict
+            counterfactual_image, perturbation, original_pred, counterfactual_pred,
+            l2_distance, iterations
+        """
+        self.model.eval()
+        image = image.to(self.device)
+
+        def _extract_logits(out):
+            """Extract logits tensor from model output (tensor, tuple, or dict)."""
+            if isinstance(out, dict):
+                return out.get('logits', list(out.values())[0])
+            if isinstance(out, tuple):
+                return out[0]
+            return out
+
+        # Original prediction
+        with torch.no_grad():
+            orig_output = _extract_logits(self.model(image))
+            orig_pred = torch.sigmoid(orig_output).cpu().numpy()[0]
+
+        # Optimize perturbation
+        perturbation = torch.zeros_like(image, requires_grad=True)
+        optimizer = torch.optim.Adam([perturbation], lr=learning_rate)
+
+        current_pred = 0.0
+        last_step = 0
+        for step in range(max_iterations):
+            last_step = step
+            optimizer.zero_grad()
+            perturbed = torch.clamp(image + perturbation, 0, 1)
+
+            output = _extract_logits(self.model(perturbed))
+
+            # Loss: maximize target class + minimize perturbation
+            target_loss = -output[0, target_class]
+            l2_loss = lambda_l2 * perturbation.pow(2).sum()
+            loss = target_loss + l2_loss
+
+            loss.backward()
+            optimizer.step()
+
+            # Check convergence
+            with torch.no_grad():
+                current_pred = torch.sigmoid(output[0, target_class]).item()
+                if current_pred >= confidence_threshold:
+                    break
+
+        with torch.no_grad():
+            final_image = torch.clamp(image + perturbation, 0, 1)
+            final_output = _extract_logits(self.model(final_image))
+            final_pred = torch.sigmoid(final_output).cpu().numpy()[0]
+
+        l2_dist = perturbation.detach().pow(2).sum().sqrt().item()
+
+        return {
+            'counterfactual_image': final_image.cpu(),
+            'perturbation': perturbation.detach().cpu(),
+            'original_predictions': orig_pred.tolist(),
+            'counterfactual_predictions': final_pred.tolist(),
+            'target_class': target_class,
+            'l2_distance': l2_dist,
+            'iterations': last_step + 1,
+            'converged': current_pred >= confidence_threshold,
+        }
+
+
+class InteractiveExplainer:
+    """Unified explainability API returning JSON for real-time frontend rendering.
+
+    Combines all available explanation methods into a single JSON-serializable
+    response suitable for the Next.js frontend dashboard.
+    """
+
+    def __init__(self, model, device='cpu', disease_names=None):
+        self.model_explainer = ModelExplainer(
+            model, device=device, disease_names=disease_names
+        )
+        self.counterfactual = CounterfactualExplainer(model, device=device)
+        self.device = device
+        self.disease_names = disease_names or []
+
+    def explain(
+        self,
+        image,
+        top_k=5,
+        methods=None,
+        target_classes=None,
+    ):
+        """Generate comprehensive explanations for frontend rendering.
+
+        Parameters
+        ----------
+        image : torch.Tensor
+            Input image [1, 3, H, W].
+        top_k : int
+            Number of top predictions to explain.
+        methods : list[str] | None
+            Which methods to run. Default: all available.
+            Options: 'gradcam', 'integrated_gradients', 'shap', 'lime',
+                     'eli5', 'counterfactual'.
+        target_classes : list[int] | None
+            Specific classes to explain. Default: top-k predictions.
+
+        Returns
+        -------
+        dict
+            JSON-serializable explanation payload for frontend.
+        """
+        if methods is None:
+            methods = ['gradcam', 'integrated_gradients', 'eli5']
+
+        # Base predictions + clinical insights
+        result = self.model_explainer.get_lightweight_explanation(image, top_k=top_k)
+
+        if target_classes is None:
+            target_classes = [
+                p.get('rank', i) for i, p in enumerate(result.get('predictions', []))
+            ]
+            # Use indices from predictions
+            with torch.no_grad():
+                output = self.model_explainer.model(image)
+                if isinstance(output, tuple):
+                    output = output[0]
+                preds = torch.sigmoid(output).cpu().numpy()[0]
+                target_classes = [int(i) for i in np.argsort(preds)[-top_k:][::-1]]
+
+        # Counterfactual for top prediction
+        if 'counterfactual' in methods and len(target_classes) > 0:
+            try:
+                # Generate counterfactual for the top prediction
+                cf = self.counterfactual.generate_counterfactual(
+                    image, target_class=target_classes[0],
+                    max_iterations=100, confidence_threshold=0.6,
+                )
+                result['explainability']['counterfactual'] = {
+                    'target_class': cf['target_class'],
+                    'l2_distance': cf['l2_distance'],
+                    'converged': cf['converged'],
+                    'iterations': cf['iterations'],
+                    'interpretation': (
+                        f"A change of magnitude {cf['l2_distance']:.4f} "
+                        f"would {'confirm' if cf['converged'] else 'not confirm'} "
+                        f"the prediction."
+                    ),
+                }
+            except Exception as e:
+                result['explainability']['counterfactual'] = {'error': str(e)}
+
+        # Natural language explanation
+        result['explainability']['natural_language'] = self._generate_nlg_explanation(result)
+
+        # Mark as interactive
+        result['metadata']['interactive'] = True
+        result['metadata']['explanation_version'] = '2.0'
+
+        return result
+
+    def _generate_nlg_explanation(self, result):
+        """Generate natural language 'Why this prediction?' explanation."""
+        predictions = result.get('predictions', [])
+        if not predictions:
+            return "No significant findings detected."
+
+        top = predictions[0]
+        disease = top.get('disease', 'Unknown')
+        confidence = top.get('confidence_score', 0)
+        level = top.get('confidence_level', 'Unknown')
+
+        parts = []
+        parts.append(
+            f"The model identified {disease} with {level.lower()} confidence "
+            f"({confidence:.1%})."
+        )
+
+        # Add clinical context if available
+        insights = result.get('clinical_insights', {})
+        recommendations = insights.get('recommendations', [])
+        if recommendations:
+            rec = recommendations[0]
+            parts.append(f"Clinical recommendation: {rec.get('recommendation', '')}")
+
+        interactions = insights.get('multi_disease_interactions')
+        if interactions:
+            parts.append(
+                f"Note: {interactions[0].get('note', 'Multiple conditions detected.')}"
+            )
+
+        uncertainty = insights.get('uncertainty_metrics', {})
+        reliability = uncertainty.get('interpretation', {}).get('reliability', 'Unknown')
+        parts.append(f"Overall reliability: {reliability}.")
+
+        return " ".join(parts)
 
 
 def load_model_with_explainability(model_path, model_class, device='cpu'):

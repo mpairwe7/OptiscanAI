@@ -1,0 +1,140 @@
+# =============================================================================
+# RetinalFoundationHybridV2 — Precision Rescue Configuration
+# Addresses the P=0.025 crisis from RFMiD experiments
+# =============================================================================
+
+# --- Data ---
+data:
+  dataset_name: "mpairwelauben/multi-disease-retinal-eye-disease-dataset"
+  data_dir: null
+  img_size: 224
+  batch_size: 16
+  num_workers: 0
+  pin_memory: true
+  train_split: 0.7
+  val_split: 0.2
+  test_split: 0.1
+  prefetch_factor: 2
+
+# --- Class Filtering (Strategy #2) ---
+class_filtering:
+  min_samples: 10                        # Drop classes with <10 training samples
+                                         # Reduces from 45 -> ~25-28 classes
+
+# --- Model ---
+model:
+  name: "hybrid_v2"
+  num_classes: 28                        # Will be auto-adjusted after filtering
+  hidden_dim: 512
+  backbone: "vit_large_patch16_224"      # RETFound ViT-Large
+
+  # LoRA (Strategy #10)
+  use_lora: true
+  lora_rank: 16
+  lora_alpha: 32.0                       # 2x rank for more expressiveness
+  lora_dropout: 0.05
+
+  # Bottleneck head (Strategy #5)
+  head_dropout1: 0.5                     # Heavy dropout after first linear
+  head_dropout2: 0.3                     # Moderate dropout after second linear
+
+# --- Training ---
+training:
+  max_epochs: 25
+  seed: 42
+
+  # Optimizer
+  head_lr: 5.0e-4                        # Head LR (LoRA + classifier)
+  backbone_lr: 1.0e-6                    # Backbone LR (after unfreezing)
+  weight_decay: 0.01
+
+  # Staged unfreezing (Strategy #6)
+  unfreeze_epoch: 10                     # Freeze backbone for first 10 epochs
+  unfreeze_blocks: 4                     # Unfreeze last 4 transformer blocks
+
+  # ASL Loss (Strategy #1)
+  loss: "asymmetric_v2"
+  gamma_pos: 0.0                         # Never down-weight positive examples
+  gamma_neg: 4.0                         # Aggressively suppress false positives
+  asl_clip: 0.05                         # Zero out very confident negatives
+
+  # Label smoothing (Strategy #4)
+  label_smoothing: 0.05
+
+  # Scheduler
+  scheduler: "cosine"
+
+  # Early stopping on PRECISION (not F1!)
+  patience: 7
+  early_stopping_metric: "precision_macro"
+
+  # Mixed precision
+  precision: "bf16-mixed"
+
+  # Gradient
+  gradient_clip_val: 1.0
+
+# --- Threshold Optimization (Strategy #3) ---
+threshold_optimization:
+  min_precision: 0.10                    # Precision floor per class
+  fallback_threshold: 0.95               # Threshold for classes that can't meet floor
+  search_step: 0.02                      # Threshold search granularity
+
+# --- TTA (Strategy #7) ---
+tta:
+  enabled: true
+  n_augments: 6                          # Original + hflip + vflip + 3 rotations
+
+# --- Augmentation (Strategy #7) ---
+augmentation:
+  train:
+    random_horizontal_flip: 0.5
+    random_vertical_flip: 0.5
+    random_rotation: 15
+    color_jitter:
+      brightness: 0.2
+      contrast: 0.2
+      saturation: 0.1
+      hue: 0.05
+    random_resized_crop:
+      scale: [0.8, 1.0]
+      ratio: [0.9, 1.1]
+    random_erasing: 0.1
+    normalize:
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
+  val:
+    normalize:
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
+
+# --- Checkpointing ---
+checkpointing:
+  dirpath: "outputs/checkpoints/v2"
+  monitor: "precision_macro"
+  mode: "max"
+  save_top_k: 3
+  save_last: true
+
+# --- Export ---
+export:
+  onnx:
+    enabled: true
+    opset_version: 18
+  torchscript:
+    enabled: true
+  quantization:
+    dynamic_int8: true
+
+# --- Logging ---
+logging:
+  project_name: "retinal-precision-rescue"
+  experiment_name: "hybrid-v2-asl-bottleneck"
+  save_dir: "outputs"
+
+# --- DDP ---
+distributed:
+  strategy: "ddp"
+  gpus: [0]
+  sync_batchnorm: false
+  find_unused_parameters: true

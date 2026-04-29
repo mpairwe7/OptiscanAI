@@ -1,0 +1,190 @@
+# =============================================================================
+# RetinalFoundationHybrid 2026 Training Configuration
+# RETFound ViT-Large + LoRA + Graph Reasoning + MoE + Uncertainty
+# =============================================================================
+
+# --- Data ---
+data:
+  dataset_name: "mpairwelauben/multi-disease-retinal-eye-disease-dataset"
+  data_dir: null
+  img_size: 224
+  batch_size: 16                                       # Per-GPU (LoRA uses less memory)
+  num_workers: 4
+  pin_memory: true
+  train_split: 0.7
+  val_split: 0.2
+  test_split: 0.1
+  prefetch_factor: 2
+
+# --- Model ---
+model:
+  name: "hybrid"                         # RetinalFoundationHybrid
+  num_classes: 45                        # Auto-adjusted from data
+  hidden_dim: 512                        # Graph head dimension
+  num_graph_layers: 2                    # Lightweight graph reasoning
+  num_heads: 8
+  dropout: 0.1
+
+  # Backbone
+  backbone: "vit_large_patch16_224"      # RETFound ViT-Large
+  freeze_backbone: true                  # Only train LoRA + head
+  img_size: 224
+
+  # LoRA
+  use_lora: true
+  lora_rank: 16                          # Rank 16 for retinal tasks
+  lora_alpha: 16.0                       # Typically equal to rank
+  lora_dropout: 0.05
+  lora_targets:                          # Layers to adapt
+    - "qkv"
+
+  # Mixture of Experts
+  enable_moe: true
+  moe_top_k: 2                          # Top-2 expert routing
+
+  # Uncertainty
+  num_ensemble_heads: 3
+  mc_dropout: 0.15
+
+# --- Training ---
+training:
+  max_epochs: 20                         # Fewer epochs needed with RETFound
+  learning_rate: 5.0e-4                  # Higher LR for LoRA (only adapters train)
+  weight_decay: 0.01
+  warmup_epochs: 2
+  scheduler: "cosine"
+  label_smoothing: 0.05
+  gradient_clip_val: 1.0
+  gradient_accumulation_steps: 2         # Effective batch = 16*8*2 = 256
+
+  # Loss
+  loss: "asymmetric"
+  focal_alpha: 0.75
+  focal_gamma: 2.0
+
+  # MoE auxiliary loss weight
+  moe_aux_loss_weight: 0.01
+
+  # Early stopping
+  early_stopping_patience: 5
+  early_stopping_metric: "val/auc_roc"
+  early_stopping_mode: "max"
+
+  # Mixed precision
+  precision: "bf16-mixed"                # BF16 for A100/A6000 (better for ViT-L)
+
+  # Reproducibility
+  seed: 42
+
+  # EMA
+  ema:
+    enabled: true
+    decay: 0.9999
+
+# --- DDP / Multi-GPU ---
+distributed:
+  strategy: "ddp"
+  gpus: [0, 1, 2, 3, 4, 5, 6, 7]
+  sync_batchnorm: true
+  find_unused_parameters: true           # Required for LoRA + MoE
+
+# --- Logging ---
+logging:
+  project_name: "retinal-foundation-hybrid"
+  experiment_name: "hybrid-retfound-lora16-moe"
+  log_every_n_steps: 10
+  logger: "wandb"
+  save_dir: "outputs"
+
+# --- Checkpointing ---
+checkpointing:
+  dirpath: "outputs/checkpoints/hybrid"
+  filename: "{epoch:02d}-{val/auc_roc:.4f}"
+  monitor: "val/auc_roc"
+  mode: "max"
+  save_top_k: 3
+  save_last: true
+
+# --- Augmentation ---
+augmentation:
+  train:
+    random_horizontal_flip: 0.5
+    random_vertical_flip: 0.5
+    random_rotation: 15
+    color_jitter:
+      brightness: 0.2
+      contrast: 0.2
+      saturation: 0.1
+      hue: 0.05
+    random_resized_crop:
+      scale: [0.8, 1.0]
+      ratio: [0.9, 1.1]
+    random_erasing: 0.1
+    mixup_alpha: 0.2
+    cutmix_alpha: 1.0
+    mixup_cutmix_prob: 0.5
+    normalize:
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
+  val:
+    normalize:
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
+
+# --- Evaluation ---
+evaluation:
+  threshold: 0.5
+  optimal_threshold_search: true
+  metrics:
+    - f1_macro
+    - f1_micro
+    - auc_roc
+    - mAP
+    - hamming_loss
+    - precision_macro
+    - recall_macro
+
+# --- Export ---
+export:
+  onnx:
+    enabled: true
+    opset_version: 18
+    output_path: "outputs/export/hybrid_model.onnx"
+  torchscript:
+    enabled: true
+    output_path: "outputs/export/hybrid_model.pt"
+  quantization:
+    dynamic_int8: true
+    static_int8: false
+    fp16: true
+
+# --- Active Learning ---
+active_learning:
+  enabled: true
+  confidence_threshold: 0.65
+  uncertainty_threshold: 0.3
+  retrain_threshold: 200
+  queue_dir: "data/active_learning"
+
+# --- Governance ---
+governance:
+  bias_audit:
+    enabled: true
+    protected_attributes: ["age_group", "sex", "camera_device"]
+    dp_threshold: 0.1
+    eo_threshold: 0.1
+  audit_logging:
+    enabled: true
+    log_dir: "logs/audit"
+    kafka_enabled: false
+
+# --- Monitoring ---
+monitoring:
+  enabled: true
+  data_drift:
+    psi_threshold: 0.2
+    ks_p_value_threshold: 0.05
+    check_interval: 100
+  model_drift:
+    confidence_drop_threshold: 0.1
+    window_size: 200

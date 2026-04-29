@@ -1,0 +1,53 @@
+stages:
+  validate_data:
+    cmd: PYTHONPATH=. python scripts/validate_data.py --config configs/train.yaml
+    deps:
+      - configs/train.yaml
+      - src/data/validation.py
+      - scripts/validate_data.py
+    outs:
+      - outputs/validation/data_report.json:
+          cache: false
+
+  train:
+    cmd: PYTHONPATH=. python train.py --config configs/train.yaml
+    deps:
+      - configs/train.yaml
+      - src/models/
+      - src/training/
+      - src/data/
+      - train.py
+    params:
+      - configs/train.yaml:
+          - model
+          - training
+          - data
+    outs:
+      - outputs/checkpoints/:
+          persist: true
+    metrics:
+      - outputs/training_metrics.json:
+          cache: false
+
+  evaluate:
+    cmd: PYTHONPATH=. python scripts/evaluate_model.py --config configs/train.yaml --checkpoint outputs/checkpoints/best.pt
+    deps:
+      - configs/train.yaml
+      - outputs/checkpoints/
+      - src/evaluation/
+      - scripts/evaluate_model.py
+    metrics:
+      - outputs/evaluation_metrics.json:
+          cache: false
+    plots:
+      - outputs/plots/:
+          cache: false
+
+  export:
+    cmd: PYTHONPATH=. python scripts/export_model.py --config configs/train.yaml --checkpoint outputs/checkpoints/best.pt
+    deps:
+      - outputs/checkpoints/
+      - scripts/export_model.py
+    outs:
+      - outputs/export/:
+          persist: true

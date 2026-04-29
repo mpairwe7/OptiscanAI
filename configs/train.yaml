@@ -1,0 +1,199 @@
+# =============================================================================
+# MLOps 2026 Training Configuration - Retinal Disease Classification
+# 8x NVIDIA RTX A6000 (49 GB each) | RFMiD Multi-Label | ViGNN
+# =============================================================================
+
+# --- Data ---
+data:
+  dataset_name: "mpairwelauben/multi-disease-retinal-eye-disease-dataset"
+  data_dir: null                                       # Auto-resolved from kagglehub cache
+  img_size: 224
+  batch_size: 32                                       # Per-GPU batch size (eff = 32*8 = 256)
+  num_workers: 0                                       # Per-GPU workers (set 4 if multiprocessing available)
+  pin_memory: true
+  train_split: 0.7
+  val_split: 0.2
+  test_split: 0.1
+  prefetch_factor: 2
+
+# --- Model ---
+model:
+  name: "vignn"                      # vignn | graphclip | visual_language_gnn | scene_graph_transformer | vit | efficientnet
+  num_classes: 45                    # Auto-adjusted from data at runtime
+  hidden_dim: 384
+  num_graph_layers: 3
+  num_heads: 4
+  dropout: 0.1
+  num_patches: 196
+  patch_embed_dim: 384
+  pretrained_backbone: true
+
+# --- Training ---
+training:
+  max_epochs: 30
+  learning_rate: 3.0e-4              # Higher LR for multi-GPU (scaled)
+  weight_decay: 1.0e-4
+  warmup_epochs: 3                   # Longer warmup for large batch
+  scheduler: "cosine"                # cosine | step | onecycle
+  label_smoothing: 0.05
+  gradient_clip_val: 1.0
+  gradient_accumulation_steps: 1
+
+  # Loss - Asymmetric Loss recommended for extreme imbalance (2026 SOTA)
+  loss: "asymmetric"                 # focal | bce | asymmetric
+  focal_alpha: 0.75
+  focal_gamma: 2.0
+
+  # Early stopping
+  early_stopping_patience: 7
+  early_stopping_metric: "val/f1_macro"
+  early_stopping_mode: "max"
+
+  # Mixed precision - FP16 for A6000 (Ampere), BF16 also supported
+  precision: "16-mixed"              # 16-mixed | bf16-mixed | 32
+
+  # Reproducibility
+  seed: 42
+
+  # EMA (Exponential Moving Average) - typically +1-2% improvement
+  ema:
+    enabled: true
+    decay: 0.9999
+
+  # SWA (Stochastic Weight Averaging) - post-training phase
+  swa:
+    enabled: false
+    start_epoch: 20
+    lr: 1.0e-4
+
+  # LR Finder - run before training to auto-set learning rate
+  lr_finder:
+    enabled: false
+    min_lr: 1.0e-7
+    max_lr: 10.0
+    num_steps: 100
+
+# --- DDP / Multi-GPU ---
+distributed:
+  strategy: "ddp"                    # ddp | fsdp | deepspeed
+  gpus: [0, 1, 2, 3, 4, 5, 6, 7]    # All 8 RTX A6000s
+  sync_batchnorm: true
+  find_unused_parameters: false
+
+# --- Logging ---
+logging:
+  project_name: "retinal-disease-mlops"
+  experiment_name: "vignn-8gpu-asl-v2"
+  log_every_n_steps: 10
+  logger: "wandb"                    # wandb | tensorboard | csv
+  save_dir: "outputs"
+
+# --- Checkpointing ---
+checkpointing:
+  dirpath: "outputs/checkpoints"
+  filename: "{epoch:02d}-{val/f1_macro:.4f}"
+  monitor: "val/f1_macro"
+  mode: "max"
+  save_top_k: 3
+  save_last: true
+
+# --- Augmentation (Medical imaging best practices 2026) ---
+augmentation:
+  train:
+    random_horizontal_flip: 0.5
+    random_vertical_flip: 0.5
+    random_rotation: 15
+    color_jitter:
+      brightness: 0.25
+      contrast: 0.25
+      saturation: 0.15
+      hue: 0.05
+    random_resized_crop:
+      scale: [0.75, 1.0]
+      ratio: [0.9, 1.1]
+    random_erasing: 0.15
+    # MixUp/CutMix (batch-level, applied after standard transforms)
+    mixup_alpha: 0.2                   # 0 to disable
+    cutmix_alpha: 1.0                  # 0 to disable
+    mixup_cutmix_prob: 0.5
+    normalize:
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
+  val:
+    normalize:
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
+
+# --- Evaluation ---
+evaluation:
+  threshold: 0.5
+  optimal_threshold_search: true     # Search for best threshold per-class
+  metrics:
+    - f1_macro
+    - f1_micro
+    - f1_samples
+    - auc_roc
+    - mAP
+    - hamming_loss
+    - precision_macro
+    - recall_macro
+
+# --- Visualization (IEEE Access 2026 Standards) ---
+visualization:
+  output_dir: "outputs/plots"
+  dpi: 300
+  formats: ["pdf", "png"]
+  stages:
+    - eda
+    - training
+    - evaluation
+    - comparison
+    - explainability
+  ieee:
+    column_width: 3.5                # inches (single column)
+    page_width: 7.0                  # inches (double column)
+    font_size: 9
+    title_size: 10
+
+# --- Data Validation ---
+data_validation:
+  validate_images: false              # Scan for corrupt images at startup
+  generate_profile: true              # Generate data quality report
+  check_label_leakage: true
+
+# --- Calibration ---
+calibration:
+  temperature_scaling: true
+  ece_bins: 15
+  bootstrap_ci:
+    enabled: true
+    n_bootstrap: 1000
+    confidence: 0.95
+
+# --- Export ---
+export:
+  onnx:
+    enabled: true
+    opset_version: 17
+    output_path: "outputs/export/model.onnx"
+  torchscript:
+    enabled: true
+    output_path: "outputs/export/model.pt"
+  quantization:
+    benchmark_fp16: true
+    benchmark_int8: true
+
+# --- Monitoring ---
+monitoring:
+  enabled: true
+  data_drift:
+    psi_threshold: 0.2
+    ks_p_value_threshold: 0.05
+    check_interval: 100               # Check every N requests
+  model_drift:
+    confidence_drop_threshold: 0.1
+    window_size: 200
+  sla:
+    max_latency_p99_ms: 100
+    max_error_rate: 0.05
+    title_size: 10

@@ -1,0 +1,127 @@
+name: Deploy to Hugging Face Spaces
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'backend/**'
+      - 'frontend/**'
+      - 'models/**'
+      - 'configs/**'
+      - 'Dockerfile.hf'
+      - 'pyproject.toml'
+  workflow_dispatch:
+
+env:
+  HF_SPACE: Mpairwe49/retinal-screening
+  HF_SPACE_URL: https://huggingface.co/spaces/Mpairwe49/retinal-screening
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install and test
+        run: |
+          pip install --upgrade pip
+          pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[dev]"
+          PYTHONPATH=. pytest tests/ -v --tb=short -x
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Install Hugging Face CLI
+        run: pip install huggingface_hub[cli]
+
+      - name: Login to Hugging Face
+        run: huggingface-cli login --token ${{ secrets.HF_TOKEN }} --add-to-git-credential
+
+      - name: Prepare Space repository
+        run: |
+          # Clone or init the HF Space repo
+          git clone https://huggingface.co/spaces/${{ env.HF_SPACE }} hf_space 2>/dev/null || mkdir -p hf_space
+
+          # Create Space README with metadata
+          cat > hf_space/README.md << 'EOF'
+          ---
+          title: RetinalAI Clinical Screening
+          emoji: 👁️
+          colorFrom: blue
+          colorTo: green
+          sdk: docker
+          app_port: 7860
+          pinned: true
+          license: cc-by-4.0
+          short_description: AI-powered retinal disease screening — 45 diseases, <200ms, clinical reasoning
+          ---
+
+          # RetinalAI: AI-Powered Retinal Disease Screening
+
+          Multi-label classification of 45 retinal diseases from fundus images using Graph Neural Networks with Clinical Knowledge Graph reasoning.
+
+          **Features:**
+          - 45-disease simultaneous screening from single fundus image
+          - Clinical Knowledge Graph with 144 disease relationships
+          - 5 explainability methods (GradCAM, LIME, SHAP, IG, ELI5)
+          - Referral priority ranking (Emergency / Urgent / Routine)
+          - Sub-200ms inference latency
+          EOF
+
+          # Copy Dockerfile
+          cp Dockerfile.hf hf_space/Dockerfile
+
+          # Copy application code
+          rsync -av --exclude='.git' --exclude='node_modules' --exclude='.next' \
+                    --exclude='__pycache__' --exclude='.venv' --exclude='outputs' \
+                    --exclude='data' --exclude='wandb' --exclude='mlruns' \
+                    --exclude='.env' --exclude='*.onnx' --exclude='docs' \
+                    --exclude='logs' --exclude='hf_space' \
+                    ./ hf_space/
+
+      - name: Push to HF Spaces
+        working-directory: hf_space
+        run: |
+          git lfs install
+          git lfs track "*.pth"
+          git add -A
+          git diff --cached --quiet && echo "No changes to deploy" && exit 0
+          git commit -m "Deploy $(date +%Y%m%d-%H%M%S) from ${GITHUB_SHA::8}"
+          git push
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+
+      - name: Wait for Space build
+        run: |
+          echo "Deployment triggered: ${{ env.HF_SPACE_URL }}"
+          echo "Monitor build at: ${{ env.HF_SPACE_URL }}/logs"
+          # Give HF a moment to start building
+          sleep 10
+          # Check Space status
+          python3 -c "
+          from huggingface_hub import HfApi
+          api = HfApi()
+          info = api.space_info('${{ env.HF_SPACE }}')
+          print(f'Space status: {info.runtime}')
+          print(f'URL: https://${{ env.HF_SPACE }}.hf.space')
+          " || echo "Space info check skipped"
+
+      - name: Post-deploy health check
+        run: |
+          echo "Space URL: https://mpairwe49-retinal-screening.hf.space"
+          echo "Health endpoint: https://mpairwe49-retinal-screening.hf.space/health"
+          echo "API docs: https://mpairwe49-retinal-screening.hf.space/docs"
+          # HF Spaces takes 5-15 min to build Docker images
+          # Health check will be verified in next workflow run

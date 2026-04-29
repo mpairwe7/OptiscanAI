@@ -1,0 +1,74 @@
+# ============================================================================
+# Hugging Face Spaces Docker Deployment
+# GPU-enabled, port 7860, combined frontend + backend
+# ============================================================================
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+
+LABEL maintainer="retinal-screening-team"
+LABEL description="RetinalAI Clinical Screening Platform — HF Spaces"
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/opt/venv/bin:${PATH}" \
+    HF_HOME=/tmp/hf_cache
+
+# System dependencies
+RUN apt-get update && apt-get install -y \
+    python3 python3-venv python3-pip \
+    build-essential git curl ca-certificates \
+    libgl1-mesa-glx libglib2.0-0 \
+    nginx supervisor \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && npm install -g bun \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN ln -sf /usr/bin/python3 /usr/bin/python
+
+WORKDIR /app
+
+# ── Python backend ──
+# Install PyTorch FIRST (torch-geometric and other deps need it at install time)
+RUN python3 -m venv /opt/venv \
+    && /opt/venv/bin/pip install --upgrade pip \
+    && /opt/venv/bin/pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+COPY pyproject.toml /app/pyproject.toml
+RUN /opt/venv/bin/pip install --no-cache-dir ".[deploy]"
+
+COPY src/ ./src/
+COPY backend/ ./backend/
+COPY configs/ ./configs/
+
+# ── Frontend build ──
+COPY frontend/package.json frontend/bun.lock* ./frontend/
+RUN cd frontend && bun install --frozen-lockfile 2>/dev/null || cd frontend && bun install
+
+COPY frontend/ ./frontend/
+
+# Build frontend and prepare static assets for nginx
+RUN cd frontend && NEXT_PUBLIC_API_URL="" bun run build \
+    && mkdir -p /srv/nextjs/_next/static \
+    && cp -r .next/static/* /srv/nextjs/_next/static/ \
+    && cp -r public/* /srv/nextjs/ \
+    && mkdir -p .next/standalone/.next \
+    && cp -r .next/static .next/standalone/.next/static \
+    && cp -r public .next/standalone/public \
+    && echo "=== nginx static dir ===" && ls /srv/nextjs/_next/static/ | head -5 \
+    && echo "=== public files ===" && ls /srv/nextjs/ | head -10
+
+# ── Model weights ──
+RUN mkdir -p models/checkpoints logs uploads && chmod -R 755 /app
+COPY models/model_vignn_rank1.pth ./models/model_vignn_rank1.pth
+
+# ── Nginx + Supervisor configs ──
+COPY nginx.conf /etc/nginx/sites-available/default
+COPY supervisord.conf /etc/supervisor/conf.d/retinalai.conf
+
+EXPOSE 7860
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:7860/health || exit 1
+
+CMD ["supervisord", "-c", "/etc/supervisor/conf.d/retinalai.conf"]

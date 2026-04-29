@@ -1,0 +1,258 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --sidebar-bg: #0f172a;
+  --sidebar-text: #cbd5e1;
+  --sidebar-active: #38bdf8;
+  --card-bg: #ffffff;
+  --card-border: #e2e8f0;
+  --accent: #0d9488;
+  --accent-light: #ccfbf1;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --success: #10b981;
+  --focus-ring: 0 0 0 2px #ffffff, 0 0 0 4px #0d9488;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ── Smooth transitions (exclude transforms to avoid layout thrash) ── */
+* {
+  transition-property: background-color, border-color, color, opacity, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: ease;
+}
+
+/* ── Skip to main content (a11y) ── */
+.skip-to-main {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 9999;
+  padding: 0.75rem 1.5rem;
+  background: var(--accent);
+  color: white;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border-radius: 0 0 8px 0;
+}
+.skip-to-main:focus {
+  left: 0;
+}
+
+/* ── Focus ring for keyboard accessibility ── */
+*:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: 8px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input[type="range"]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ── Touch targets: ensure minimum 44px for mobile ── */
+@media (pointer: coarse) {
+  button,
+  [role="button"],
+  a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  input[type="range"] {
+    height: 44px;
+  }
+
+  /* Increase tap target for table rows */
+  td, th {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+}
+
+/* ── Animations ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+.animate-slide-in {
+  animation: slide-in 0.25s ease-out;
+}
+.animate-slide-up {
+  animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.animate-slide-down {
+  animation: slide-down 0.2s ease-out;
+}
+.animate-overlay-in {
+  animation: overlay-in 0.2s ease-out;
+}
+
+/* ── Skeleton loading shimmer ── */
+.skeleton {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* ── Mobile overlay backdrop ── */
+.mobile-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 40;
+  animation: overlay-in 0.2s ease-out;
+}
+
+/* ── Medical-grade card styling ── */
+.card-medical {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* ── Safe area for notch devices ── */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-bottom {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
+  }
+}
+
+/* ── Body scroll lock for mobile overlays ── */
+body.menu-open {
+  overflow: hidden;
+  touch-action: none;
+}
+
+/* ── PWA standalone mode: hide browser UI hints ── */
+@media (display-mode: standalone) {
+  body { overscroll-behavior: none; }
+  .pwa-hide { display: none; }
+}
+
+/* ── Dynamic viewport height (2026: svh/dvh over vh) ── */
+.h-screen-dynamic { height: 100dvh; }
+@supports not (height: 100dvh) {
+  .h-screen-dynamic { height: 100vh; }
+}
+
+/* ── Container queries (2026 standard for component-level responsive) ── */
+.cq-container { container-type: inline-size; }
+
+@container (max-width: 400px) {
+  .cq-stack { flex-direction: column !important; }
+  .cq-hide { display: none !important; }
+  .cq-full { width: 100% !important; }
+}
+
+/* ── Responsive text clamp ── */
+.text-balance { text-wrap: balance; }
+.text-pretty { text-wrap: pretty; }
+
+/* ── Pull-to-refresh indicator for PWA ── */
+.pull-indicator {
+  position: fixed; top: 0; left: 50%; transform: translateX(-50%) translateY(-100%);
+  z-index: 100; padding: 8px 16px; border-radius: 0 0 12px 12px;
+  background: var(--accent); color: white; font-size: 12px; font-weight: 600;
+  transition: transform 0.2s ease;
+}
+.pull-indicator.active { transform: translateX(-50%) translateY(0); }
+
+/* ── Landscape mobile: reduce vertical spacing ── */
+@media (max-height: 500px) and (orientation: landscape) {
+  .compact-landscape { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+  .compact-landscape h1 { font-size: 1.25rem; }
+}
+
+/* ── High contrast mode (a11y) ── */
+@media (prefers-contrast: high) {
+  :root {
+    --card-border: #000000;
+    --accent: #006b5e;
+  }
+  .card-medical { border-width: 2px; }
+}
+
+/* ── Reduced motion (a11y) ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Print styles for clinical reports ── */
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
+  * { box-shadow: none !important; }
+}

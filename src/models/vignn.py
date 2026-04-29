@@ -3,6 +3,7 @@ SceneGraphTransformer (Scene Graph Transformer) Model Definition
 Transformer-based architecture with graph reasoning for retinal disease classification
 Extracted from notebook for production deployment
 """
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -304,6 +305,32 @@ class ClinicalKnowledgeGraph:
             if resolved_code:
                 self.literature_sources[resolved_code] = sources
 
+        # ENHANCEMENT: Explicit age-adjusted risk factors
+        self.age_risk_factors = {}
+        raw_age_risk = {
+            'DR': 0.95, 'ARMD': 0.98, 'CRVO': 0.80, 'HR': 0.85,
+            'ODC': 0.76, 'BRVO': 0.75, 'CRAO': 0.82, 'MCA': 0.60,
+        }
+        for code, val in raw_age_risk.items():
+            if resolve(code):
+                self.age_risk_factors[resolve(code)] = val
+
+        # ENHANCEMENT: Comorbidity boosters (systemic conditions)
+        raw_comorbidity = {
+            'DR': {'diabetes': 0.15, 'hypertension': 0.08},
+            'HR': {'hypertension': 0.20, 'diabetes': 0.10},
+            'ARMD': {'smoking': 0.25, 'family_history': 0.15},
+            'CRVO': {'glaucoma': 0.12, 'diabetes': 0.08},
+            'BRVO': {'hypertension': 0.18, 'hyperlipidemia': 0.10},
+            'CRAO': {'cardiovascular_disease': 0.21, 'giant_cell_arteritis': 0.07},
+            'CWS': {'advanced_hiv': 0.35, 'cd4_below_200': 0.18},
+            'MCA': {'cerebral_malaria': 0.42},
+        }
+        self.comorbidity_boosters = {}
+        for code, links in raw_comorbidity.items():
+            if resolve(code):
+                self.comorbidity_boosters[resolve(code)] = links
+
         self.adjacency = self._build_adjacency_matrix()
 
     # ------------------------------------------------------------------
@@ -413,22 +440,16 @@ class ClinicalKnowledgeGraph:
             prevalence_weight = prevalence * 0.2
 
             age_weight = 0.0
-            if age and disease in {'DR', 'ARMD', 'ODC', 'HR'}:
+            if age and disease in self.age_risk_factors:
                 age_factor = min(age / 80.0, 1.0)
-                age_modifiers = {
-                    'DR': 0.95,
-                    'ARMD': 0.98,
-                    'ODC': 0.76,
-                    'HR': 0.82
-                }
-                base = age_modifiers.get(disease, 0.5)
+                base = self.age_risk_factors[disease]
                 age_weight = base * age_factor * 0.2
 
             comorbidity_weight = 0.0
-            if comorbidities and disease in self.systemic_links:
-                for comorbidity, boost in self.systemic_links[disease].items():
+            if comorbidities and disease in self.comorbidity_boosters:
+                for comorbidity, boost_val in self.comorbidity_boosters[disease].items():
                     if comorbidities.get(comorbidity, False):
-                        comorbidity_weight += boost
+                        comorbidity_weight += boost_val
                 comorbidity_weight = min(comorbidity_weight * 0.3, 0.3)
 
             disease_weighted_risk = disease_risk * (0.3 + severity_weight + prevalence_weight + age_weight + comorbidity_weight)
@@ -606,74 +627,112 @@ class SparseTopKAttention(nn.Module):
 
 class MultiResolutionEncoder(nn.Module):
     """
-    Multi-resolution feature extractor using Vision Transformer with pyramid processing.
-    Processes image at multiple resolutions (224, 160, 128) to capture both fine details and global context.
+    Multi-resolution feature extractor using Vision Transformer.
+
+    Supports backbones:
+      - vit_small_patch16_224  (22M, ImageNet)
+      - vit_large_patch16_224  (304M, RETFound retinal foundation model)
+
+    Pretrained weight loading priority:
+      1. Local file (pretrained_weights/)
+      2. HuggingFace Hub via timm (auto-download)
+      3. Random initialization (fallback)
     """
-    def __init__(self, backbone_name='vit_small_patch16_224', output_dim=384):
+    # Weight paths per backbone family
+    _WEIGHT_PATHS = {
+        'large': [
+            'pretrained_weights/RETFound_cfp.pth',
+            'pretrained_weights/vit_large_patch16_224.pth',
+        ],
+        'small': [
+            'pretrained_weights/vit_small_patch16_224.safetensors',
+            'pretrained_weights/vit_small_patch16_224.pth',
+            'pretrained_weights/vit_small_patch16_224-15ec54c9.pth',
+            '/kaggle/working/pretrained_weights/vit_small_patch16_224.pth',
+            'outputs/models/vit_small_patch16_224.pth',
+        ],
+    }
+
+    def __init__(self, backbone_name='vit_small_patch16_224', output_dim=384, img_size=224):
         super().__init__()
-        self.resolutions = [224, 160, 128]
-        
-        # Load ViT backbone (single encoder for all resolutions)
-        print(f"  Loading {backbone_name}...")
-        try:
-            self.encoder = timm.create_model(backbone_name, pretrained=False, num_classes=0)
-            print(f"  ✓ Using random initialization (pretrained disabled for deployment)")
-        except Exception as e:
-            print(f"  ⚠ Failed to create model: {e}")
-            raise
-        
-        # Separate projection heads for each resolution level
+        self.fast_mode = os.environ.get("FAST_SINGLE_RESOLUTION", "1") == "1"
+        self.resolutions = [img_size] if self.fast_mode else [img_size, int(img_size * 0.71), int(img_size * 0.57)]
+        n_res = len(self.resolutions)
+
+        use_pretrained = os.environ.get("USE_PRETRAINED", "1") == "1"
+        mode_str = 'fast single-res' if self.fast_mode else '3-resolution'
+        print(f"  Loading {backbone_name} ({mode_str})...")
+
+        # Select weight paths based on backbone family
+        family = 'large' if 'large' in backbone_name else 'small'
+        local_paths = self._WEIGHT_PATHS.get(family, self._WEIGHT_PATHS['small'])
+        timm_kwargs = dict(pretrained=False, num_classes=0, dynamic_img_size=True)
+
+        loaded_local = False
+        if use_pretrained:
+            for lp in local_paths:
+                if os.path.exists(lp):
+                    try:
+                        self.encoder = timm.create_model(backbone_name, **timm_kwargs)
+                        if lp.endswith('.safetensors'):
+                            from safetensors.torch import load_file
+                            state = load_file(lp)
+                        else:
+                            state = torch.load(lp, map_location='cpu', weights_only=False)
+                            if 'model' in state:
+                                state = state['model']
+                        # Filter out MAE decoder / mask_token keys
+                        state = {k: v for k, v in state.items()
+                                 if not k.startswith('decoder') and 'mask_token' not in k}
+                        self.encoder.load_state_dict(state, strict=False)
+                        print(f"  Loaded pretrained weights from local: {lp}")
+                        loaded_local = True
+                        break
+                    except Exception as e:
+                        print(f"  Local weight load failed ({lp}): {e}")
+
+        # Priority 2: HuggingFace Hub via timm
+        if not loaded_local and use_pretrained:
+            try:
+                self.encoder = timm.create_model(backbone_name, pretrained=True, num_classes=0, dynamic_img_size=True)
+                print(f"  Loaded pretrained weights from HuggingFace Hub")
+            except Exception as e:
+                print(f"  HuggingFace download failed: {e}")
+                self.encoder = timm.create_model(backbone_name, **timm_kwargs)
+                print(f"  Using random initialization (fallback)")
+
+        # Priority 3: Random init
+        if not use_pretrained:
+            self.encoder = timm.create_model(backbone_name, **timm_kwargs)
+            print(f"  Using random initialization (USE_PRETRAINED=0)")
+
+        # Backbone output dim (384 for ViT-S, 1024 for ViT-L/RETFound)
+        self.backbone_dim = self.encoder.num_features
+
         self.resolution_projections = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(output_dim, output_dim),
-                nn.LayerNorm(output_dim),
-                nn.GELU()
-            )
-            for _ in self.resolutions
+            nn.Sequential(nn.Linear(self.backbone_dim, output_dim), nn.LayerNorm(output_dim), nn.GELU())
+            for _ in range(n_res)
         ])
-        
-        # Feature fusion across resolutions
         self.fusion = nn.Sequential(
-            nn.Linear(output_dim * len(self.resolutions), output_dim),
-            nn.LayerNorm(output_dim),
-            nn.GELU()
+            nn.Linear(output_dim * n_res, output_dim), nn.LayerNorm(output_dim), nn.GELU()
         )
-    
+
     def forward(self, x):
-        """
-        Extract multi-resolution features from image.
-        
-        Args:
-            x: Input image tensor [batch, 3, H, W]
-            
-        Returns:
-            features: Fused multi-resolution features [batch, output_dim]
-        """
         import torch.nn.functional as F
-        
         features = []
-        
+        primary_size = self.resolutions[0]
         for resolution, proj in zip(self.resolutions, self.resolution_projections):
-            # Resize to target resolution for multi-scale processing
             if x.size(-1) != resolution:
-                x_resized = F.interpolate(x, size=(resolution, resolution), mode='bilinear', align_corners=False)
+                x_r = F.interpolate(x, size=(resolution, resolution), mode='bilinear', align_corners=False)
             else:
-                x_resized = x
-            
-            # Resize back to 224 for ViT (ViT requires 224x224 input)
-            if resolution != 224:
-                x_resized = F.interpolate(x_resized, size=(224, 224), mode='bilinear', align_corners=False)
-            
-            # Extract features using shared encoder
-            feat = self.encoder(x_resized)
-            
-            # Apply resolution-specific projection
-            feat = proj(feat)
-            features.append(feat)
-        
-        # Fuse multi-resolution features
-        fused = torch.cat(features, dim=-1)
-        return self.fusion(fused)
+                x_r = x
+            # Resize non-primary resolutions to primary for uniform patch count
+            if resolution != primary_size:
+                x_r = F.interpolate(x_r, size=(primary_size, primary_size), mode='bilinear', align_corners=False)
+            tokens = self.encoder.forward_features(x_r)  # [B, N+1, D]
+            patch_tokens = tokens[:, 1:, :]  # [B, N, D] - drop CLS token
+            features.append(proj(patch_tokens))
+        return self.fusion(torch.cat(features, dim=-1))
 
 
 class ViGNN(nn.Module):
@@ -685,10 +744,11 @@ class ViGNN(nn.Module):
     Optimized for: ~50M parameters, graph-based reasoning, mobile deployment
     REQUIRES: knowledge_graph (ClinicalKnowledgeGraph instance)
     """
-    def __init__(self, num_classes=45, hidden_dim=384, num_graph_layers=3, num_heads=4, dropout=0.1, 
-                 clinical_knowledge_graph=None, num_patches=196, patch_embed_dim=384):
+    def __init__(self, num_classes=45, hidden_dim=384, num_graph_layers=3, num_heads=4, dropout=0.1,
+                 clinical_knowledge_graph=None, num_patches=196, patch_embed_dim=384,
+                 backbone='vit_small_patch16_224', img_size=224):
         super(ViGNN, self).__init__()
-        
+
         # MANDATORY clinical knowledge graph
         if clinical_knowledge_graph is None:
             raise ValueError("ViGNN requires clinical_knowledge_graph parameter (ClinicalKnowledgeGraph instance)")
@@ -696,9 +756,9 @@ class ViGNN(nn.Module):
         self.num_patches = num_patches
         self.num_classes = num_classes
         self.hidden_dim = hidden_dim
-        
+
         # Multi-resolution visual encoder
-        self.visual_encoder = MultiResolutionEncoder('vit_small_patch16_224', patch_embed_dim)
+        self.visual_encoder = MultiResolutionEncoder(backbone, patch_embed_dim, img_size=img_size)
         
         # Patch projection
         self.patch_proj = nn.Sequential(
@@ -757,13 +817,10 @@ class ViGNN(nn.Module):
     
     def forward(self, x):
         batch_size = x.size(0)
-        
-        # Extract multi-resolution visual features
-        visual_feat = self.visual_encoder(x)
-        
-        # Create patch-level representations by expanding the visual feature
-        patch_features = visual_feat.unsqueeze(1).expand(-1, self.num_patches, -1)
-        
+
+        # Extract multi-resolution patch features (actual spatial tokens)
+        patch_features = self.visual_encoder(x)  # [B, N, D]
+
         # Project patches to hidden dimension
         patch_embeds = self.patch_proj(patch_features)
         
@@ -810,10 +867,10 @@ class ViGNN(nn.Module):
         return logits
 
 
-def create_vignn_model(num_classes=48, hidden_dim=384, num_graph_layers=3, num_heads=4, dropout=0.1, clinical_knowledge_graph=None, num_patches=196, patch_embed_dim=384, checkpoint_path=None):
+def create_vignn_model(num_classes=48, hidden_dim=384, num_graph_layers=3, num_heads=4, dropout=0.1, clinical_knowledge_graph=None, num_patches=196, patch_embed_dim=384, checkpoint_path=None, backbone='vit_small_patch16_224', img_size=224):
     """
     Create ViGNN model and optionally load from checkpoint.
-    
+
     Args:
         num_classes: Number of disease classes (default: 45)
         hidden_dim: Hidden dimension size (default: 384)
@@ -824,7 +881,8 @@ def create_vignn_model(num_classes=48, hidden_dim=384, num_graph_layers=3, num_h
         num_patches: Number of patches (default: 196)
         patch_embed_dim: Patch embedding dimension (default: 384)
         checkpoint_path: Path to checkpoint file (optional)
-        
+        img_size: Input image size (default: 224)
+
     Returns:
         model: ViGNN model instance
     """
@@ -836,7 +894,9 @@ def create_vignn_model(num_classes=48, hidden_dim=384, num_graph_layers=3, num_h
         dropout=dropout,
         clinical_knowledge_graph=clinical_knowledge_graph,
         num_patches=num_patches,
-        patch_embed_dim=patch_embed_dim
+        patch_embed_dim=patch_embed_dim,
+        backbone=backbone,
+        img_size=img_size,
     )
     
     if checkpoint_path is not None:

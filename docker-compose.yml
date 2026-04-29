@@ -1,23 +1,23 @@
-version: '3.8'
-
 services:
-  retinal-api-gpu:
-    image: landwind/retinal-screening-gpu:latest
-    container_name: retinal-screening-gpu
+  # GPU API backend
+  api:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: retinal-api
     ports:
       - "8080:8080"
     environment:
-      - MODEL_PATH=/app/models/exports/best_model.pth
+      - MODEL_PATH=models/model_vignn_rank1.pth
       - API_HOST=0.0.0.0
       - API_PORT=8080
-      - LOG_LEVEL=INFO
       - CUDA_VISIBLE_DEVICES=0
+      - FUNDUS_GATE__ENABLED=true
+      - FUNDUS_GATE__MODEL_PATH=weights/fundus_gate.pth
     volumes:
       - ./models:/app/models
-      - ./logs:/app/logs
+      - ./weights:/app/weights
+      - ./outputs:/app/outputs
     deploy:
       resources:
         reservations:
@@ -32,52 +32,56 @@ services:
       retries: 3
       start_period: 40s
     restart: unless-stopped
-    networks:
-      - retinal-network
 
-  # CPU-only version for testing without GPU
-  retinal-api-cpu:
-    image: landwind/retinal-screening-gpu:latest
-    container_name: retinal-screening-cpu
-    profiles:
-      - cpu
+  # CPU-only variant
+  api-cpu:
+    build:
+      context: .
+      dockerfile: Dockerfile.cpu
+    container_name: retinal-api-cpu
+    profiles: [cpu]
     ports:
       - "8081:8080"
     environment:
-      - MODEL_PATH=/app/models/exports/best_model.pth
-      - API_HOST=0.0.0.0
-      - API_PORT=8080
-      - LOG_LEVEL=INFO
+      - MODEL_PATH=models/model_vignn_rank1.pth
       - CUDA_VISIBLE_DEVICES=-1
     volumes:
       - ./models:/app/models
-      - ./logs:/app/logs
+    restart: unless-stopped
+
+  # Hugging Face Spaces build (local test before pushing)
+  hf:
+    build:
+      context: .
+      dockerfile: Dockerfile.hf
+    container_name: retinal-hf
+    profiles: [hf]
+    ports:
+      - "7860:7860"
+    environment:
+      - MODEL_PATH=models/model_vignn_rank1.pth
+      - CUDA_VISIBLE_DEVICES=0
+      - DEVICE=cuda
+    volumes:
+      - ./models:/app/models
+      - ./weights:/app/weights
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0"]
+              capabilities: [gpu]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:7860/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
     restart: unless-stopped
-    networks:
-      - retinal-network
-
-networks:
-  retinal-network:
-    driver: bridge
 
 # Usage:
-# GPU mode (default):
-#   docker-compose up -d
-#
-# CPU mode:
-#   docker-compose --profile cpu up -d
-#
-# View logs:
-#   docker-compose logs -f
-#
-# Stop:
-#   docker-compose down
-#
-# Rebuild:
-#   docker-compose up --build -d
+#   docker compose up -d                 # GPU backend
+#   docker compose --profile cpu up      # CPU backend
+#   docker compose --profile hf up       # HF Spaces (full stack on 7860)
+#   docker compose logs -f

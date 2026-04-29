@@ -1,0 +1,40 @@
+# MLflow Model Registry for RetinalAI.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.mlflow.yml up -d
+#
+# Provides: MLflow Tracking Server with SQLite backend and local artifact store.
+# Set MLFLOW__ENABLED=true and MLFLOW__TRACKING_URI=http://mlflow:5000 in .env.
+
+services:
+  api:
+    environment:
+      - MLFLOW__ENABLED=true
+      - MLFLOW__TRACKING_URI=http://mlflow:5000
+      - MLFLOW__MODEL_NAME=retinalai-vignn
+      - MLFLOW__EXPERIMENT_NAME=retinalai-production
+    depends_on:
+      mlflow:
+        condition: service_healthy
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.22.0
+    container_name: retinal-mlflow
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:///mlflow/mlflow.db
+      --default-artifact-root /mlflow/artifacts
+    volumes:
+      - mlflow-data:/mlflow
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  mlflow-data:

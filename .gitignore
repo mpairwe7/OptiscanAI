@@ -1,80 +1,46 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual Environment
+dist/
+build/
 .venv/
-venv/
-ENV/
-env/
-myenv/
 
-# Jupyter Notebook
-.ipynb_checkpoints/
-*.ipynb_checkpoints
-
-# PyTorch
-#*.pth
-*.pt
-*.ckpt
-
-# Models
-models/checkpoints/*.pth
-models/checkpoints/*.pt
-models/exports/*.onnx
-models/exports/*.tflite
-
-# Data
-
-*.csv
-*.h5
-*.hdf5
-
-# Logs
-logs/
-*.log
+# ML Artifacts
+outputs/
+data/
+!src/data/
+*.pth
+!models/*.pth
+*.onnx
 wandb/
+mlruns/
+
+# UV
+uv.lock
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local
 
 # IDE
 .vscode/
 .idea/
 *.swp
-*.swo
-*~
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Environment variables
+# Environment
 .env
 .env.local
-venv
 
-# Training outputs
-outputs/
-runs/
-mlruns/
+# Runtime
+logs/
 
-# Temporary files
-*.tmp
-*.bak
-*.cache
+# Misc
+.sixth/
+.claude/
+.codex
