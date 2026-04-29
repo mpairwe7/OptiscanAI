@@ -2,7 +2,7 @@
 # Hugging Face Spaces Docker Deployment
 # GPU-enabled, port 7860, combined frontend + backend
 # ============================================================================
-FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+FROM python:3.11-slim-bookworm
 
 LABEL maintainer="retinal-screening-team"
 LABEL description="RetinalAI Clinical Screening Platform — HF Spaces"
@@ -11,11 +11,12 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PATH="/opt/venv/bin:${PATH}" \
-    HF_HOME=/tmp/hf_cache
+    HF_HOME=/tmp/hf_cache \
+    CUDA_VISIBLE_DEVICES=-1 \
+    DEVICE=cpu
 
 # System dependencies
-RUN apt-get update && apt-get install -y \
-    python3 python3-venv python3-pip \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential git curl ca-certificates \
     libgl1-mesa-glx libglib2.0-0 \
     nginx supervisor \
@@ -24,15 +25,13 @@ RUN apt-get update && apt-get install -y \
     && npm install -g bun \
     && rm -rf /var/lib/apt/lists/*
 
-RUN ln -sf /usr/bin/python3 /usr/bin/python
-
 WORKDIR /app
 
 # ── Python backend ──
 # Install PyTorch FIRST (torch-geometric and other deps need it at install time)
 RUN python3 -m venv /opt/venv \
     && /opt/venv/bin/pip install --upgrade pip \
-    && /opt/venv/bin/pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cu121
+    && /opt/venv/bin/pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
 COPY pyproject.toml /app/pyproject.toml
 RUN /opt/venv/bin/pip install --no-cache-dir ".[deploy]"
