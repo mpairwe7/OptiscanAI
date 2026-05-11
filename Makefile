@@ -193,8 +193,16 @@ docker-login:
 docker-build:
 	docker build -t landwind/optiscan-ai:latest -f Dockerfile .
 
+docker-build-cpu:
+	docker build -t landwind/optiscan-ai:cpu -f Dockerfile.cpu .
+
 docker-push: docker-build
 	docker push landwind/optiscan-ai:latest
+
+docker-push-cpu: docker-build-cpu
+	docker push landwind/optiscan-ai:cpu
+
+docker-push-all: docker-push docker-push-cpu
 
 # --- Clean ---
 clean:

@@ -112,6 +112,10 @@ COPY src/ ./src/
 COPY backend/ ./backend/
 COPY configs/ ./configs/
 
+# Bake model weights (required for Crane Cloud — no volume mounts)
+COPY models/model_vignn_rank1.pth ./models/model_vignn_rank1.pth
+COPY weights/fundus_gate.pth ./weights/fundus_gate.pth
+
 # Non-root user + directories in single layer (no extra chmod layer)
 RUN groupadd -r optiscan && useradd -r -g optiscan -d /app -s /sbin/nologin optiscan \
     && mkdir -p models/checkpoints logs uploads \
