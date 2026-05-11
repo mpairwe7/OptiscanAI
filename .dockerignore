@@ -11,8 +11,9 @@ __pycache__
 .pytest_cache
 .tmp_pytest
 
-# Node / Frontend
-frontend
+# Node / Frontend (keep frontend/ for full-stack build)
+frontend/node_modules
+frontend/.next
 node_modules
 .next
 
@@ -50,8 +51,7 @@ train.py
 dvc.yaml
 dvc.lock
 docker-compose*.yml
-supervisord.conf
-nginx.conf
+# supervisord.conf and nginx.conf needed for full-stack build
 Makefile
 Dockerfile*
 .env*
