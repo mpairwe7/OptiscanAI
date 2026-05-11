@@ -1,4 +1,4 @@
-name: Docker Build & Push
+name: CI/CD — Build, Push & Deploy
 
 on:
   push:
@@ -9,17 +9,28 @@ on:
       - 'pyproject.toml'
       - 'src/**'
       - 'backend/**'
+      - 'frontend/**'
       - 'configs/**'
+      - 'models/**'
+      - 'weights/**'
       - '.github/workflows/docker-publish.yml'
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      deploy_only:
+        description: 'Skip build, only redeploy Crane Cloud'
+        type: boolean
+        default: false
 
 env:
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  CRANE_CLOUD_API: https://api.cranecloud.io
 
 jobs:
+  # ─── Stage 1: Lint + Test ───
   test:
+    if: ${{ !inputs.deploy_only }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,7 +56,9 @@ jobs:
         env:
           CUDA_VISIBLE_DEVICES: ""
 
+  # ─── Stage 2: Build & Push Docker Images ───
   build-and-push:
+    if: ${{ !inputs.deploy_only }}
     needs: test
     runs-on: ubuntu-latest
     strategy:
@@ -54,8 +67,15 @@ jobs:
           - variant: gpu
             dockerfile: Dockerfile
             image: optiscan-ai
+            tag: latest
+          - variant: cpu
+            dockerfile: Dockerfile.cpu
+            image: optiscan-ai
+            tag: cpu
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -66,13 +86,14 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels)
+      - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}
           tags: |
-            type=raw,value=latest
+            type=raw,value=${{ matrix.tag }}
+            type=sha,prefix=${{ matrix.tag }}-,format=short
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -82,8 +103,69 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.variant }}
+          cache-to: type=gha,scope=${{ matrix.variant }},mode=max
 
       - name: Verify image
-        run: docker pull ${{ secrets.DOCKERHUB_USERNAME }}/optiscan-ai:latest
+        run: docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:${{ matrix.tag }}
+
+  # ─── Stage 3: Deploy to Crane Cloud (RENU) ───
+  deploy-crane-cloud:
+    needs: build-and-push
+    if: always() && (needs.build-and-push.result == 'success' || inputs.deploy_only)
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy CPU app to Crane Cloud
+        env:
+          CRANE_EMAIL: ${{ secrets.CRANE_CLOUD_EMAIL }}
+          CRANE_PASSWORD: ${{ secrets.CRANE_CLOUD_PASSWORD }}
+          CRANE_CPU_APP_ID: ${{ secrets.CRANE_CLOUD_CPU_APP_ID }}
+          CRANE_GPU_APP_ID: ${{ secrets.CRANE_CLOUD_GPU_APP_ID }}
+        run: |
+          set -euo pipefail
+
+          # Login to Crane Cloud API
+          TOKEN=$(curl -sf -X POST "$CRANE_CLOUD_API/users/login" \
+            -H "Content-Type: application/json" \
+            -d "{\"email\": \"$CRANE_EMAIL\", \"password\": \"$CRANE_PASSWORD\"}" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
+
+          echo "Logged in to Crane Cloud"
+
+          # Redeploy CPU app (triggers new image pull)
+          if [ -n "$CRANE_CPU_APP_ID" ]; then
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" -X PATCH \
+              "$CRANE_CLOUD_API/apps/$CRANE_CPU_APP_ID" \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "Content-Type: application/json" \
+              -d '{"image": "landwind/optiscan-ai:cpu"}')
+            echo "CPU deploy: HTTP $STATUS"
+          fi
+
+          # Redeploy GPU app
+          if [ -n "$CRANE_GPU_APP_ID" ]; then
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" -X PATCH \
+              "$CRANE_CLOUD_API/apps/$CRANE_GPU_APP_ID" \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "Content-Type: application/json" \
+              -d '{"image": "landwind/optiscan-ai:latest"}')
+            echo "GPU deploy: HTTP $STATUS"
+          fi
+
+      - name: Health check (CPU)
+        env:
+          CRANE_CPU_URL: ${{ secrets.CRANE_CLOUD_CPU_URL }}
+        run: |
+          echo "Waiting for deployment..."
+          for i in $(seq 1 20); do
+            HTTP=$(curl -sf -o /dev/null -w "%{http_code}" "$CRANE_CPU_URL/health" 2>/dev/null || echo "000")
+            echo "  [$i] health=$HTTP"
+            if [ "$HTTP" = "200" ]; then
+              echo "Deployment healthy!"
+              curl -sf "$CRANE_CPU_URL/health" | python3 -m json.tool
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::warning::Health check did not pass within 5 minutes"

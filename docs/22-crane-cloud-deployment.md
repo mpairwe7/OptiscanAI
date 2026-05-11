@@ -388,20 +388,50 @@ make docker-push-all      # Both
 
 ## CI/CD Pipeline
 
-GitHub Actions workflow `.github/workflows/docker-publish.yml`:
+GitHub Actions workflow `.github/workflows/docker-publish.yml` — full MLOps pipeline:
 
-1. **Trigger:** Push to `main` (Dockerfile/src/backend/configs changes), version tags (`v*`), manual dispatch
-2. **Test gate:** Lint (ruff + black) + pytest
-3. **Build & push:** Matrix strategy for GPU and CPU images
+```
+push to main → test (lint + pytest) → build & push (GPU + CPU) → deploy to Crane Cloud
+```
 
-### Docker Hub Secrets (GitHub)
+### Pipeline Stages
+
+| Stage | Job | What it does |
+|-------|-----|-------------|
+| 1. Test | `test` | Ruff lint, Black format check, pytest (CPU) |
+| 2. Build | `build-and-push` | Matrix: GPU (`Dockerfile` → `:latest`) + CPU (`Dockerfile.cpu` → `:cpu`) |
+| 3. Deploy | `deploy-crane-cloud` | Login to Crane Cloud API, PATCH both apps to trigger image pull |
+| 4. Verify | Health check | Poll CPU app `/health` for up to 5 minutes |
+
+### Triggers
+
+| Trigger | Behavior |
+|---------|----------|
+| Push to `main` (Dockerfile, src/, backend/, frontend/, configs/) | Full pipeline: test → build → deploy |
+| Git tag `v*` | Full pipeline with version tag |
+| Manual dispatch | Full pipeline or deploy-only (skip build) |
+
+### Deploy-Only Mode
+
+To redeploy without rebuilding (e.g., env var change):
+
+1. Go to **Actions** → **CI/CD — Build, Push & Deploy** → **Run workflow**
+2. Check **"Skip build, only redeploy Crane Cloud"**
+3. Click **Run workflow**
+
+### GitHub Secrets Required
 
 Set at `github.com/mpairwe7/MLOPS_V1/settings/secrets/actions`:
 
-| Secret | Description |
-|--------|-------------|
-| `DOCKERHUB_USERNAME` | Docker Hub username |
-| `DOCKERHUB_TOKEN` | Docker Hub access token (`dckr_pat_...`) |
+| Secret | Description | Example |
+|--------|-------------|---------|
+| `DOCKERHUB_USERNAME` | Docker Hub username | `landwind` |
+| `DOCKERHUB_TOKEN` | Docker Hub access token | `dckr_pat_...` |
+| `CRANE_CLOUD_EMAIL` | Crane Cloud login email (lowercase) | `mpairwelauben75@gmail.com` |
+| `CRANE_CLOUD_PASSWORD` | Crane Cloud login password | |
+| `CRANE_CLOUD_CPU_APP_ID` | CPU app ID on RENU | `f58201b7-5ba1-48b1-a635-02ee29965352` |
+| `CRANE_CLOUD_GPU_APP_ID` | GPU app ID on RENU | `5ae2a83a-d5fe-43df-ae40-91555e298912` |
+| `CRANE_CLOUD_CPU_URL` | CPU app URL for health check | `https://optiscan-ai-4fe6e1aa.renu-01.cranecloud.io` |
 
 ---
 
