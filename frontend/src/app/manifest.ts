@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "RetinalAI - Clinical Screening Platform",
-    short_name: "RetinalAI",
+    name: "OptiscanAI - Clinical Screening Platform",
+    short_name: "OptiscanAI",
     description:
       "AI-powered multi-disease retinal screening with clinical knowledge graph reasoning. 45 diseases. Explainable AI.",
     start_url: "/",

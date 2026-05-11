@@ -15,14 +15,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RetinalAI - Clinical Screening Platform",
+  title: "OptiscanAI - Clinical Screening Platform",
   description:
     "AI-powered multi-disease retinal screening with clinical knowledge graph reasoning. 45 diseases. Explainable AI. Production-grade MLOps.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "RetinalAI",
+    title: "OptiscanAI",
   },
   icons: {
     icon: [

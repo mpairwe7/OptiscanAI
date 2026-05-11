@@ -12,7 +12,7 @@ export function SettingsSidebar() {
   const content = (
     <div className="space-y-6">
       <div>
-        <h2 className="font-bold text-lg text-teal-700">Retinal AI</h2>
+        <h2 className="font-bold text-lg text-teal-700">OptiscanAI</h2>
         <p className="text-xs text-gray-500 mt-0.5">Multi-disease screening v3.0</p>
       </div>
 

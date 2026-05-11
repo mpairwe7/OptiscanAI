@@ -1,5 +1,5 @@
-// RetinalAI Service Worker - Offline support + caching
-const CACHE_NAME = "retinalai-v1";
+// OptiscanAI Service Worker - Offline support + caching
+const CACHE_NAME = "optiscanai-v1";
 const PRECACHE = ["/", "/icon-192.png", "/icon-512.png", "/logo.png"];
 
 self.addEventListener("install", (e) => {
