@@ -2,16 +2,39 @@
 
 Production deployment of OptiscanAI on [Crane Cloud](https://cranecloud.io) — Uganda's Kubernetes-as-a-Service platform.
 
+> **Last verified:** 2026-05-12  
+> **Live CPU URL:** https://optiscan-ai-4fe6e1aa.renu-01.cranecloud.io  
+> **Live GPU URL:** https://optiscan-gpu-00ed3a8b.renu-01.cranecloud.io  
+> **Docker Hub:** https://hub.docker.com/r/landwind/optiscan-ai
+
+---
+
 ## Docker Images
 
-Two images are published to Docker Hub for different deployment targets:
+Two images are published to Docker Hub under `landwind/optiscan-ai`:
 
-| Tag | Base | Size | Use Case |
-|-----|------|------|----------|
-| `landwind/optiscan-ai:latest` | `nvidia/cuda:12.1.1-cudnn8-runtime` | ~9.8 GB | GPU servers with NVIDIA drivers |
-| `landwind/optiscan-ai:cpu` | `python:3.11-slim-bookworm` | ~2.4 GB | Crane Cloud, CPU-only hosts |
+| Tag | Base Image | Size | PyTorch | Model Weights | Use Case |
+|-----|-----------|------|---------|---------------|----------|
+| `cpu` | `python:3.11-slim-bookworm` | **2.4 GB** | CPU-only (`whl/cpu`) | Baked in (137 MB) | Crane Cloud (RENU), any CPU host |
+| `latest` | `nvidia/cuda:12.1.1-cudnn8-runtime` | **9.8 GB** | CUDA 12.4 (`cu124`) | Baked in (137 MB) | GPU servers, Crane Cloud (AHUMAIN) |
 
-Both images are full-stack: **nginx (port 8080) + FastAPI backend (8081) + Next.js frontend (3000)**, managed by supervisord.
+Both images are **full-stack**: nginx (port 8080) + FastAPI backend (8081) + Next.js frontend (3000), orchestrated by supervisord.
+
+### Docker Hub Credentials
+
+| Field | Value |
+|-------|-------|
+| Registry | `hub.docker.com` |
+| Username | `landwind` |
+| Access Token | Stored as GitHub Secret `DOCKERHUB_TOKEN` |
+
+Pull commands:
+```bash
+docker pull landwind/optiscan-ai:cpu      # Crane Cloud / CPU
+docker pull landwind/optiscan-ai:latest   # GPU servers
+```
+
+---
 
 ## Architecture (Single Container)
 
@@ -26,79 +49,125 @@ Port 8080 (nginx reverse proxy)
   └── /_next/static/ → Static assets (nginx-cached, 365d)
 ```
 
-## CPU Image (Crane Cloud)
-
-### Why CPU?
-
-- Crane Cloud's RENU cluster has no NVIDIA GPUs
-- The AHUMAIN ML cluster (`supports_ml: true`) had scheduling issues during testing
-- The CPU image is 2.4 GB vs 9.8 GB — pulls in under 60 seconds
-- PyTorch CPU inference works for all 45 disease classes
-
-### Model Weights Baked In
-
-Crane Cloud has **no volume mount support**. Model weights must be inside the image:
-
-```dockerfile
-# In Dockerfile.cpu — weights baked in at build time
-COPY models/model_vignn_rank1.pth ./models/model_vignn_rank1.pth   # 131 MB
-COPY weights/fundus_gate.pth ./weights/fundus_gate.pth             # 6 MB
+Internal process management (supervisord):
+```
+supervisord (PID 1)
+  ├── [program:backend]   uvicorn backend.app.main:app --host 127.0.0.1 --port 8081
+  ├── [program:frontend]  node server.js  (Next.js standalone, port 3000)
+  └── [program:nginx]     nginx -g "daemon off;"  (port 8080)
 ```
 
-> **Important:** Do NOT rely on volume mounts (`-v`) or runtime model downloads on Crane Cloud.
-> The platform's health checks will terminate the container before downloads complete.
+Each process has `autorestart=true`, `stopsignal=TERM` (QUIT for nginx), and `stopwaitsecs` for graceful shutdown.
 
-### Deploying to Crane Cloud
+---
 
-#### Via Crane Cloud Web UI
+## Crane Cloud Platform Reference
 
-1. Go to [cranecloud.io](https://cranecloud.io) and log in
-2. Create a project (select **RENU** cluster — recommended)
-3. Create an app with:
-   - **Image:** `landwind/optiscan-ai:cpu`
-   - **Port:** `8080`
-   - **Replicas:** `1`
-4. Set environment variables:
+### Available Clusters (as of 2026-05-12)
 
-| Key | Value |
-|-----|-------|
-| `MODEL_PATH` | `models/model_vignn_rank1.pth` |
-| `CUDA_VISIBLE_DEVICES` | `-1` |
-| `DEVICE` | `cpu` |
-| `FUNDUS_GATE__ENABLED` | `true` |
+| Cluster | ID | Subdomain | Status | GPU Support | Notes |
+|---------|-----|-----------|--------|-------------|-------|
+| **RENU** | `9e81a70e-8460-4e5d-b0a8-17abcac30f68` | `renu-01.cranecloud.io` | Active | No | Recommended — stable, fast pod scheduling |
+| **AHUMAIN ML** | `df2eeac2-b36d-4bbd-a734-eb03754cd175` | `ahumain.cranecloud.io` | Active | `supports_ml: true` | Pod scheduling issues observed (pods stuck in "unknown") |
+| **Makerere-1** | `f3068db2-a981-4308-8c57-64112a792365` | `cranecloud.io` | Disabled | No | Legacy cluster, not available |
 
-> **Warning:** Do not add leading/trailing spaces in env var keys or values.
-> Crane Cloud passes them as-is, and the backend won't recognize ` DEVICE ` (with spaces).
+### Crane Cloud API Reference
 
-#### Via Crane Cloud CLI
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/users/login` | POST | Login (returns `access_token`) |
+| `/projects` | GET | List projects |
+| `/projects` | POST | Create project (requires `cluster_id`, `owner_id`) |
+| `/projects/{id}/apps` | GET | List apps in project |
+| `/projects/{id}/apps` | POST | Deploy app |
+| `/apps/{id}` | GET | App details (status, pods, env vars) |
+| `/apps/{id}` | PATCH | Update app (env vars, image, replicas) |
+| `/apps/{id}` | DELETE | Delete app |
+| `/clusters` | GET | List clusters |
+
+> **Note:** Email is case-sensitive for login. Use lowercase (e.g., `mpairwelauben75@gmail.com`).
+
+### Crane Cloud CLI Keyring Issue
+
+On headless servers (no D-Bus secret storage), the `cranecloud` CLI crashes with `keyring.errors.InitError`. Workaround:
 
 ```bash
-pip install cranecloud
-
-# Login (use lowercase email)
-cranecloud auth login
-
-# If keyring errors occur on headless servers, use the API directly:
 export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
+cranecloud auth login
 ```
 
-#### Via Crane Cloud API
+Or bypass the CLI and use the API directly (see deployment scripts below).
+
+---
+
+## CPU Deployment (RENU Cluster)
+
+### Why CPU for Crane Cloud?
+
+1. **RENU has no NVIDIA GPUs** — CUDA initialization fails, model won't load
+2. **AHUMAIN ML has scheduling issues** — pods stuck in "unknown" status for hours
+3. **Image size matters** — 2.4 GB pulls in ~60s vs 9.8 GB taking 4+ minutes
+4. **CPU inference is sufficient** — all 45 disease classes work, ~100-200ms per prediction
+5. **Crane Cloud golden rule** — model weights must be baked in (no volume mounts)
+
+### Model Weights (Baked In)
+
+Crane Cloud has **no volume mount support**. Both images bake weights at build time:
+
+```dockerfile
+COPY models/model_vignn_rank1.pth ./models/model_vignn_rank1.pth   # 131 MB (ViGNN classifier)
+COPY weights/fundus_gate.pth ./weights/fundus_gate.pth             # 6 MB   (MobileNetV3 gate)
+```
+
+> **Critical:** Do NOT rely on volume mounts (`-v`) or runtime model downloads.
+> Crane Cloud's health checks terminate the container before downloads complete.
+
+### Deployment Steps
+
+#### Option A: Crane Cloud Web UI
+
+1. Log in at [cranecloud.io](https://cranecloud.io)
+2. Create project → select **RENU** cluster
+3. Create app:
+   - **Image URI:** `landwind/optiscan-ai:cpu`
+   - **Port:** `8080`
+   - **Replicas:** `1`
+   - **Entry Command:** *(leave empty)*
+4. Add environment variables (no spaces in keys or values):
+
+| Key | Value | Purpose |
+|-----|-------|---------|
+| `MODEL_PATH` | `models/model_vignn_rank1.pth` | ViGNN model checkpoint |
+| `CUDA_VISIBLE_DEVICES` | `-1` | Disable GPU |
+| `DEVICE` | `cpu` | Force CPU inference |
+| `FUNDUS_GATE__ENABLED` | `true` | Enable image quality gate |
+
+#### Option B: Crane Cloud API
 
 ```python
-import requests
+import requests, json
 
 API = "https://api.cranecloud.io"
+
+# Step 1: Login
+resp = requests.post(f"{API}/users/login", json={
+    "email": "mpairwelauben75@gmail.com",   # must be lowercase
+    "password": "your-password"
+})
+token = resp.json()["data"]["access_token"]
+user_id = resp.json()["data"]["id"]
 headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
-# Create project on RENU cluster
-requests.post(f"{API}/projects", headers=headers, json={
+# Step 2: Create project on RENU cluster
+resp = requests.post(f"{API}/projects", headers=headers, json={
     "name": "OptiscanAI",
     "cluster_id": "9e81a70e-8460-4e5d-b0a8-17abcac30f68",  # RENU
     "owner_id": user_id
 })
+project_id = resp.json()["data"]["project"]["id"]
 
-# Deploy app
-requests.post(f"{API}/projects/{project_id}/apps", headers=headers, json={
+# Step 3: Deploy CPU app
+resp = requests.post(f"{API}/projects/{project_id}/apps", headers=headers, json={
     "name": "optiscan-ai",
     "image": "landwind/optiscan-ai:cpu",
     "port": 8080,
@@ -110,55 +179,104 @@ requests.post(f"{API}/projects/{project_id}/apps", headers=headers, json={
         "FUNDUS_GATE__ENABLED": "true"
     }
 })
+app = resp.json()["data"]["app"]
+print(f"URL: {app['url']}")
+
+# Step 4: Monitor status
+import time
+for i in range(20):
+    r = requests.get(f"{API}/apps/{app['id']}", headers=headers)
+    status = r.json()["data"]["apps"]["app_running_status"]
+    pods = r.json()["data"]["apps"].get("pod_statuses", [])
+    print(f"[{i}] {status} | pods: {pods}")
+    if status == "running":
+        print(f"LIVE: {app['url']}")
+        break
+    time.sleep(15)
 ```
 
-### Crane Cloud Clusters
+### Verified CPU Deployment (2026-05-12)
 
-| Cluster | ID | Status | GPU | Recommendation |
-|---------|-----|--------|-----|----------------|
-| RENU | `9e81a70e-...` | Active | No | Use this for CPU deployments |
-| AHUMAIN ML | `df2eeac2-...` | Active | `supports_ml: true` | Pod scheduling issues observed |
-| Makerere-1 | `f3068db2-...` | Disabled | No | Not available |
+| Field | Value |
+|-------|-------|
+| Cluster | RENU |
+| App name | optiscan-ai |
+| App ID | `f58201b7-5ba1-48b1-a635-02ee29965352` |
+| URL | https://optiscan-ai-4fe6e1aa.renu-01.cranecloud.io |
+| Image | `landwind/optiscan-ai:cpu` |
+| Status | Running |
+| Pod startup | `waiting` → `running` → healthy in ~90 seconds |
 
-### Verified Production URL
+Endpoints verified:
 
-```
-https://optiscan-ai-4fe6e1aa.renu-01.cranecloud.io
-```
+| Endpoint | Status | Response |
+|----------|--------|----------|
+| `/health` | 200 | `{"status": "healthy", "model_loaded": true, "device": "cpu", "diseases_count": 45}` |
+| `/` | 200 | Next.js frontend UI |
+| `/docs` | 200 | Swagger API documentation |
+| `/api/v1/gate/status` | 200 | Gate v2 enabled, learned model loaded |
+| `/api/v1/predict` | 422 | Correctly rejects non-fundus images |
+| `/api/v1/system/info` | 200 | Platform info, PyTorch version |
+| `/api/v1/diseases` | 200 | Disease list |
 
-Endpoints tested and confirmed working:
-- `/health` — `{"status": "healthy", "model_loaded": true, "device": "cpu", "diseases_count": 45}`
-- `/` — Frontend UI (HTTP 200)
-- `/docs` — Swagger API docs (HTTP 200)
-- `/api/v1/gate/status` — Fundus Gate v2 enabled
-- `/api/v1/predict` — 422 on non-fundus images (gate working)
+---
 
-## GPU Image (NVIDIA Servers / Crane Cloud AHUMAIN)
+## GPU / CUDA Deployment
 
-For GPU-enabled deployment (dedicated servers, cloud VMs with NVIDIA drivers, or Crane Cloud AHUMAIN ML cluster):
+### When to Use GPU Image
 
-```bash
-docker pull landwind/optiscan-ai:latest
-```
+- Dedicated NVIDIA GPU server (e.g., RTX A6000, T4, A100)
+- Cloud VMs with NVIDIA drivers (AWS p3/g4, GCP A2, Azure NC)
+- Crane Cloud AHUMAIN ML cluster (when scheduling stabilizes)
 
-### Running Locally with GPU
+### GPU Image Specifications
+
+| Component | Version |
+|-----------|---------|
+| Base | `nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04` |
+| PyTorch | `2.6.0+cu124` |
+| CUDA | 12.4 (via pip wheels, not base image CUDA) |
+| cuDNN | 9.1.0.70 |
+| Triton | 3.2.0 |
+| Python | 3.10 (from Ubuntu 22.04) |
+
+### Running on Local GPU Server
 
 ```bash
 docker run -d \
+  --name optiscan-gpu \
   --gpus '"device=0"' \
   -p 8080:8080 \
-  -v ./models:/app/models \
-  -v ./weights:/app/weights \
   landwind/optiscan-ai:latest
+
+# Verify CUDA inference
+curl http://localhost:8080/health
+# {"status": "healthy", "model_loaded": true, "device": "cuda", "diseases_count": 45}
 ```
 
-### Crane Cloud AHUMAIN (GPU)
+### Running with docker-compose
 
-Deploy via API with GPU configuration:
+```bash
+docker compose up -d          # GPU backend (default)
+docker compose --profile cpu up  # CPU backend
+docker compose --profile hf up   # HF Spaces (port 7860)
+```
+
+### Crane Cloud GPU Deployment (AHUMAIN ML Cluster)
+
+The AHUMAIN cluster advertises `supports_ml: true`. When operational:
 
 ```python
+# Create project on AHUMAIN
+requests.post(f"{API}/projects", headers=headers, json={
+    "name": "OptiscanAI-GPU",
+    "cluster_id": "df2eeac2-b36d-4bbd-a734-eb03754cd175",  # AHUMAIN ML
+    "owner_id": user_id
+})
+
+# Deploy GPU app
 requests.post(f"{API}/projects/{project_id}/apps", headers=headers, json={
-    "name": "optiscan-ai-gpu",
+    "name": "optiscan-gpu",
     "image": "landwind/optiscan-ai:latest",
     "port": 8080,
     "replicas": 1,
@@ -171,8 +289,69 @@ requests.post(f"{API}/projects/{project_id}/apps", headers=headers, json={
 })
 ```
 
-> **Note:** The GPU image does NOT bake model weights — it expects volume mounts.
-> If AHUMAIN supports persistent volumes, mount them. Otherwise, use the CPU image.
+#### GPU on RENU (CPU Fallback)
+
+RENU has no NVIDIA drivers. The GPU image (`latest`) will deploy but **cannot load the model on CUDA**. Set env vars to force CPU fallback:
+
+| Key | Value |
+|-----|-------|
+| `CUDA_VISIBLE_DEVICES` | `-1` |
+| `DEVICE` | `cpu` |
+
+> The GPU image on a CPU-only cluster wastes ~7 GB of CUDA libraries. Use the `:cpu` tag instead.
+
+### Verified GPU Deployment (2026-05-12)
+
+| Field | Value |
+|-------|-------|
+| Cluster | RENU (no GPU — deployed for testing only) |
+| App ID | `5ae2a83a-d5fe-43df-ae40-91555e298912` |
+| URL | https://optiscan-gpu-00ed3a8b.renu-01.cranecloud.io |
+| Image | `landwind/optiscan-ai:latest` |
+| Status | Running (frontend + API up, model needs CPU fallback or GPU node) |
+| Pod startup | `ContainerCreating` (4 min image pull) → `running` |
+
+### AHUMAIN Cluster Issues (2026-05-12)
+
+Multiple deployment attempts on AHUMAIN failed with:
+- Pod status: `unknown` (not `pending`, `waiting`, or `running`)
+- 2 pods created despite `replicas: 1`
+- Deployment message: "Deployment does not have minimum availability"
+- No pod logs accessible via API
+
+**Root cause:** Cluster-level scheduling issue, not image or config. Recommendation: use RENU until AHUMAIN stabilizes. Contact Crane Cloud support if GPU inference is required.
+
+---
+
+## CUDA Configuration Reference
+
+### Environment Variables
+
+| Variable | CPU Value | GPU Value | Description |
+|----------|-----------|-----------|-------------|
+| `CUDA_VISIBLE_DEVICES` | `-1` | `0` | GPU device index (-1 disables CUDA) |
+| `DEVICE` | `cpu` | `cuda` | PyTorch device selection |
+| `MODEL_PATH` | `models/model_vignn_rank1.pth` | Same | Path to ViGNN checkpoint |
+| `FUNDUS_GATE__ENABLED` | `true` | `true` | Enable MobileNetV3 image quality gate |
+| `FUNDUS_GATE__MODEL_PATH` | `weights/fundus_gate.pth` | Same | Gate model weights |
+
+### PyTorch Device Fallback Logic
+
+The backend (`backend/app/main.py`) handles device selection:
+
+```python
+# Simplified device selection logic
+if os.environ.get("DEVICE") == "cpu" or os.environ.get("CUDA_VISIBLE_DEVICES") == "-1":
+    device = torch.device("cpu")
+elif torch.cuda.is_available():
+    device = torch.device("cuda")
+else:
+    device = torch.device("cpu")  # auto-fallback
+```
+
+If CUDA is requested but unavailable (no driver/GPU), the model fails to load (`model_loaded: false` in `/health`). Always set `DEVICE=cpu` on CPU-only hosts.
+
+---
 
 ## Building Images
 
@@ -185,77 +364,172 @@ make docker-build-cpu
 make docker-build
 # or: docker build -t landwind/optiscan-ai:latest -f Dockerfile .
 
-# Push to Docker Hub
-docker push landwind/optiscan-ai:cpu
-docker push landwind/optiscan-ai:latest
+# Push individual
+make docker-push          # GPU only
+make docker-push-cpu      # CPU only
+make docker-push-all      # Both
 ```
+
+### Build Comparison
+
+| Metric | CPU Image | GPU Image |
+|--------|-----------|-----------|
+| Base image | 150 MB | 3.6 GB |
+| PyTorch | ~300 MB (CPU wheels) | ~5.2 GB (CUDA wheels) |
+| App + frontend + nginx | ~350 MB | ~350 MB |
+| Model weights | 137 MB | 137 MB |
+| **Total** | **~2.4 GB** | **~9.8 GB** |
+| Build time (cached) | ~2 min | ~5 min |
+| Build time (clean) | ~5 min | ~12 min |
+| Docker Hub push | ~1 min | ~5 min |
+| Crane Cloud pull | ~60s | ~4 min |
+
+---
 
 ## CI/CD Pipeline
 
-The GitHub Actions workflow `.github/workflows/docker-publish.yml` automates:
+GitHub Actions workflow `.github/workflows/docker-publish.yml`:
 
 1. **Trigger:** Push to `main` (Dockerfile/src/backend/configs changes), version tags (`v*`), manual dispatch
 2. **Test gate:** Lint (ruff + black) + pytest
-3. **Build & push:** GPU image to `landwind/optiscan-ai:latest`
+3. **Build & push:** Matrix strategy for GPU and CPU images
 
-To add the CPU image to CI, extend the matrix:
+### Docker Hub Secrets (GitHub)
 
-```yaml
-strategy:
-  matrix:
-    include:
-      - variant: gpu
-        dockerfile: Dockerfile
-        image: optiscan-ai
-      - variant: cpu
-        dockerfile: Dockerfile.cpu
-        image: optiscan-ai
-        tag: cpu
-```
+Set at `github.com/mpairwe7/MLOPS_V1/settings/secrets/actions`:
+
+| Secret | Description |
+|--------|-------------|
+| `DOCKERHUB_USERNAME` | Docker Hub username |
+| `DOCKERHUB_TOKEN` | Docker Hub access token (`dckr_pat_...`) |
+
+---
 
 ## Docker Best Practices Applied (26/26)
 
-Both Dockerfiles follow all industry standards:
+Both Dockerfiles pass all industry standards:
 
-- 3-stage multi-stage build (Python builder, frontend builder, slim runtime)
-- `SHELL ["/bin/bash", "-euo", "pipefail", "-c"]` for error handling
-- OCI image-spec labels (`org.opencontainers.image.*`)
-- Non-root user (`optiscan`)
-- `STOPSIGNAL SIGTERM` with graceful shutdown per process
-- Secure Node.js install via GPG key (no `curl | bash`)
-- `--no-install-recommends` on all apt-get
-- `PIP_NO_CACHE_DIR=1` and `--no-cache-dir`
-- Pinned dependency versions
-- `.dockerignore` (build context ~20 KB)
-- `HEALTHCHECK` with 60s start-period
-- Stripped streamlit, pyarrow, opencv-python (headless only)
-- Cleaned `__pycache__`, `.dist-info`, test dirs from venv
+| # | Practice | Implementation |
+|---|----------|----------------|
+| 1 | Multi-stage build | 3 stages: Python builder, frontend builder, slim runtime |
+| 2 | `.dockerignore` | Comprehensive — build context ~20 KB |
+| 3 | `--no-install-recommends` | On all `apt-get install` |
+| 4 | Clean apt cache | `rm -rf /var/lib/apt/lists/*` |
+| 5 | `PIP_NO_CACHE_DIR=1` | ENV + `--no-cache-dir` on all pip install |
+| 6 | Pinned versions | `torch==2.6.0+cu124`, exact versions |
+| 7 | `HEALTHCHECK` | 30s interval, 60s start-period, 3 retries |
+| 8 | `EXPOSE` | 8080 |
+| 9 | OCI labels | `org.opencontainers.image.{title,version,source,vendor,licenses}` |
+| 10 | Non-root user | `optiscan` user with minimal permissions |
+| 11 | Minimal base image | CUDA runtime (not devel) / python-slim |
+| 12 | Layer cache ordering | Dependencies before application code |
+| 13 | Single-layer user+dirs | No extra chmod layer |
+| 14 | Consolidated ENV | Merged into single directive |
+| 15 | Specific COPY paths | No `COPY . .` |
+| 16 | `STOPSIGNAL SIGTERM` | Graceful shutdown |
+| 17 | `SHELL [bash, -euo, pipefail]` | Fail-fast error handling |
+| 18 | Frontend layer caching | `package.json` copied before source |
+| 19 | Merged RUN commands | Chained apt + cleanup |
+| 20 | Minimized layer bloat | Stripped `.dist-info`, `__pycache__`, test dirs |
+| 21 | Security scanning | Trivy in CI (`security-scan.yml`) |
+| 22 | OCI image labels | Full metadata set |
+| 23 | Secure Node.js install | GPG key verification (no `curl \| bash`) |
+| 24 | No duplicate deps | PyTorch CUDA installed first, skip re-download |
+| 25 | Stripped unused packages | Removed streamlit, pyarrow, altair, pydeck, opencv-python |
+| 26 | Graceful shutdown | `stopsignal` + `stopwaitsecs` per supervisord process |
+
+---
 
 ## Troubleshooting
 
 ### Pod status "unknown" on Crane Cloud
 
-This indicates a cluster scheduling issue, not an image problem. Steps:
+**Symptom:** Pod shows `status: unknown`, `failureReason: unknown` for extended periods.
 
-1. Delete the app and recreate it
-2. Try a different cluster (RENU vs AHUMAIN)
-3. Check that env var keys have no leading/trailing spaces
+**Cause:** Cluster-level scheduling issue (observed on AHUMAIN 2026-05-12).
 
-### Container exits immediately
+**Fix:**
+1. Delete the app: `DELETE /apps/{app_id}`
+2. Recreate on RENU cluster instead of AHUMAIN
+3. If persistent, contact Crane Cloud support
 
-The model weights are likely missing. Ensure:
-- CPU image: weights are baked in (check `docker run --rm landwind/optiscan-ai:cpu ls /app/models/`)
-- GPU image: volumes are mounted (`-v ./models:/app/models`)
+### `model_loaded: false` in health check
 
-### Health check timeout
+**Symptom:** `/health` returns `{"model_loaded": false, "device": "cuda"}`.
 
-The app takes ~30-40s to start on CPU (model loading + Next.js boot). The HEALTHCHECK has a 60s `start-period` to account for this. If Crane Cloud terminates earlier, the app needs a longer grace period.
+**Cause:** GPU image deployed on CPU-only cluster. CUDA requested but no NVIDIA driver.
 
-### Env vars with spaces
+**Fix:** Set environment variables:
+```
+CUDA_VISIBLE_DEVICES=-1
+DEVICE=cpu
+```
 
-Crane Cloud passes env vars exactly as entered. ` DEVICE ` (with spaces) is NOT the same as `DEVICE`. Always verify via the API:
+Or use the `:cpu` image tag instead.
 
+### Container exits immediately / CrashLoopBackOff
+
+**Symptom:** Pod restarts repeatedly.
+
+**Cause:** Model weights missing (old image without baked weights).
+
+**Fix:** Verify weights exist in image:
+```bash
+docker run --rm landwind/optiscan-ai:cpu ls -lh /app/models/ /app/weights/
+```
+Expected output:
+```
+/app/models/model_vignn_rank1.pth   131M
+/app/weights/fundus_gate.pth        6.0M
+```
+
+### Health check timeout / container killed before ready
+
+**Symptom:** Container starts loading but gets killed by Crane Cloud before `/health` returns 200.
+
+**Cause:** Model loading takes 30-40s on CPU. Crane Cloud's default readiness timeout may be shorter.
+
+**Fix:** The Dockerfile has `start-period=60s`. If still failing, reduce model load time by using a smaller checkpoint or pre-warming in a startup script.
+
+### Environment variable keys have spaces
+
+**Symptom:** App ignores env vars even though they appear set.
+
+**Cause:** Leading/trailing spaces in key names (e.g., ` DEVICE ` instead of `DEVICE`). Crane Cloud passes them as-is.
+
+**Fix:** Delete app and recreate, or verify via API:
 ```python
 resp = requests.get(f"{API}/apps/{app_id}", headers=headers)
-print(resp.json()["data"]["apps"]["env_vars"])
+env = resp.json()["data"]["apps"]["env_vars"]
+for k, v in env.items():
+    if k != k.strip() or v != v.strip():
+        print(f"BAD: key='{k}' value='{v}'")
 ```
+
+### Image pull too slow / timeout
+
+**Symptom:** Pod stuck in `ContainerCreating` for over 5 minutes.
+
+**Cause:** GPU image is 9.8 GB. Crane Cloud nodes may have bandwidth limits.
+
+**Fix:** Use `:cpu` tag (2.4 GB) — pulls in ~60 seconds on RENU.
+
+---
+
+## Deployment History
+
+| Date | Cluster | Image | Status | URL | Notes |
+|------|---------|-------|--------|-----|-------|
+| 2026-05-12 | AHUMAIN | `latest` (9.8 GB, no weights) | Failed | `optiscanai-988735ef.ahumain.cranecloud.io` | Pod unknown, env var spaces |
+| 2026-05-12 | AHUMAIN | `cpu` (2.1 GB, no weights) | Failed | `optiscanai-5124a665.ahumain.cranecloud.io` | Pod unknown, cluster issue |
+| 2026-05-12 | AHUMAIN | `cpu` (2.4 GB, baked weights) | Failed | `optiscanai-17ba7046.ahumain.cranecloud.io` | Pod unknown, cluster issue |
+| 2026-05-12 | RENU | `cpu` (2.4 GB, baked weights) | **Running** | `optiscan-ai-4fe6e1aa.renu-01.cranecloud.io` | All endpoints verified |
+| 2026-05-12 | RENU | `latest` (9.8 GB, baked weights) | Running | `optiscan-gpu-00ed3a8b.renu-01.cranecloud.io` | No GPU — needs CPU fallback env vars |
+
+**Lessons learned:**
+1. Always bake model weights — Crane Cloud has no volume mounts
+2. Always use lowercase email for API login
+3. Never put spaces in env var keys/values on Crane Cloud
+4. Prefer RENU cluster over AHUMAIN for reliability
+5. Use `:cpu` tag for Crane Cloud — 4x smaller, faster pulls, no CUDA dependency
+6. PATCH `/apps/{id}` merges env vars — delete and recreate to replace them entirely
