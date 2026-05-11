@@ -17,13 +17,12 @@ frontend/.next
 node_modules
 .next
 
-# Data & outputs (mounted at runtime)
+# Data & outputs (mounted at runtime for GPU, baked in for CPU)
 data
 outputs
-models
-weights
 logs
 uploads
+# models/ and weights/ NOT ignored — needed for CPU image baking
 
 # Docs & media
 docs
