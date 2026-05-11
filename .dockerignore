@@ -1,0 +1,57 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+.venv
+.mypy_cache
+.pytest_cache
+.tmp_pytest
+
+# Node / Frontend
+frontend
+node_modules
+.next
+
+# Data & outputs (mounted at runtime)
+data
+outputs
+models
+weights
+logs
+uploads
+
+# Docs & media
+docs
+*.md
+*.pdf
+*.docx
+*.pptx
+*.png
+*.zip
+*.tar.gz
+
+# IDE
+.vscode
+.idea
+*.swp
+
+# CI/CD & config not needed in image
+.github
+.claude
+k8s
+mobile
+OptiscanAI
+tests
+train.py
+dvc.yaml
+dvc.lock
+docker-compose*.yml
+supervisord.conf
+nginx.conf
+Makefile
+Dockerfile*
+.env*
