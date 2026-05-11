@@ -100,6 +100,17 @@ FUNDUS_GATE__MODEL_PATH=weights/fundus_gate.pth
 FUNDUS_GATE__VISUAL_EVIDENCE=false  # Base64 heatmaps on rejection
 ```
 
+### Deployment-Specific Configuration
+
+| Deployment | Device | Gate Behavior |
+|-----------|--------|--------------|
+| GPU (Dockerfile) | `CUDA_VISIBLE_DEVICES=0` | Full fusion: statistical + learned (GPU inference) |
+| CPU (Dockerfile.cpu) | `CUDA_VISIBLE_DEVICES=-1` | Full fusion: statistical + learned (CPU inference) |
+| HF Spaces (Dockerfile.hf) | `DEVICE=cpu` hardcoded in supervisord.conf | Full fusion on CPU; env vars hardcoded (no supervisor `%(ENV_*)s` expansion) |
+| Docker Compose | Set via `environment:` section | `FUNDUS_GATE__ENABLED=true`, `FUNDUS_GATE__MODEL_PATH=weights/fundus_gate.pth` |
+
+**Important**: On HF Spaces, supervisor `%(ENV_X)s` syntax requires the variable to exist in the container environment. Variables like `CUDA_VISIBLE_DEVICES` are not injected by HF Spaces, so they must be hardcoded in `supervisord.conf` or set as `ENV` in the Dockerfile.
+
 ---
 
 ## 6. Phased Rollout Plan

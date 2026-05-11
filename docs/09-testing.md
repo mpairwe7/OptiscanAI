@@ -105,14 +105,15 @@ Shared fixtures are in `tests/conftest.py`:
 | `train_config` | Minimal training config dict |
 | `sample_labels_df` | 20-row DataFrame with ID + 45 disease columns |
 | `sample_img_dir` | Temp directory with synthetic PNG images |
+| `tmp_model_dir` | Temporary directory for model artifacts |
 | `_safe_tmpdir` | Temporary directory (ownership-safe) |
 
 ## Key Files
 
 | File | Purpose |
 |---|---|
-| `tests/conftest.py` | Shared fixtures |
-| `tests/test_*.py` | Test modules (9 files) |
+| `tests/conftest.py` | Shared fixtures (8 fixtures) |
+| `tests/test_*.py` | Test modules (16 files) |
 | `src/data/validation.py` | DataValidator with 7 checks |
 | `scripts/validate_data.py` | CLI script for data validation |
 | `.github/workflows/ml-pipeline.yml` | CI pipeline with test + validation gates |

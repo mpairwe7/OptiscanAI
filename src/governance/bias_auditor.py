@@ -358,3 +358,154 @@ class BiasAuditor:
 
         logger.info(f"Bias report saved to {output_path}")
         return output_path
+
+
+# ---------------------------------------------------------------------------
+# Uganda-Specific Bias Auditor (Phase 4)
+# ---------------------------------------------------------------------------
+
+class UgandaBiasAuditor(BiasAuditor):
+    """Uganda-specific bias auditor with device, lighting, geographic subgroups.
+
+    Extends BiasAuditor with:
+      - Device-specific analysis (Tecno, Infinix, Samsung — common in Uganda)
+      - Lighting condition subgroups (clinic fluorescent, outdoor, dim)
+      - Geographic region analysis (Kampala, Central, Eastern, Western, Northern)
+      - F1 disparity enforcement (< 0.08 for MoH compliance)
+      - Device degradation simulation for robustness testing
+    """
+
+    def __init__(
+        self,
+        f1_disparity_threshold: float = 0.08,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.f1_disparity_threshold = f1_disparity_threshold
+
+        from src.governance.uganda_bias_config import (
+            UGANDA_DEVICES,
+            LIGHTING_CONDITIONS,
+            GEOGRAPHIC_REGIONS,
+        )
+
+        self.uganda_devices = UGANDA_DEVICES
+        self.lighting_conditions = LIGHTING_CONDITIONS
+        self.geographic_regions = GEOGRAPHIC_REGIONS
+        self.protected_attributes = [
+            "device_type",
+            "lighting_condition",
+            "age_group",
+            "sex",
+            "geographic_region",
+        ]
+
+    def compute_f1_disparity(self, group_metrics: Dict[str, SubgroupMetrics]) -> float:
+        """Compute max F1 difference across all subgroups.
+
+        This is the primary enforcement metric for Uganda MoH compliance.
+        Must be < 0.08 to pass the bias audit gate.
+        """
+        f1_scores = [gm.f1 for gm in group_metrics.values() if gm.sample_count >= 5]
+        if len(f1_scores) < 2:
+            return 0.0
+        return float(max(f1_scores) - min(f1_scores))
+
+    def generate_uganda_report(
+        self,
+        predictions: np.ndarray,
+        labels: np.ndarray,
+        metadata: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """Generate Uganda-specific bias audit report.
+
+        Analyses bias across device types, lighting conditions, age/sex,
+        and geographic regions with F1 disparity enforcement.
+        """
+        report = {
+            "audit_type": "uganda_specific",
+            "f1_disparity_threshold": self.f1_disparity_threshold,
+            "analyses": {},
+        }
+
+        for attr in self.protected_attributes:
+            attr_values = [m.get(attr, "unknown") for m in metadata]
+            unique_groups = set(attr_values)
+
+            if len(unique_groups) < 2:
+                continue
+
+            group_metrics = {}
+            for group_val in unique_groups:
+                mask = np.array([v == group_val for v in attr_values])
+                if mask.sum() < 5:
+                    continue
+
+                group_preds = predictions[mask]
+                group_labels = labels[mask]
+
+                tp = ((group_preds == 1) & (group_labels == 1)).sum()
+                fp = ((group_preds == 1) & (group_labels == 0)).sum()
+                fn = ((group_preds == 0) & (group_labels == 1)).sum()
+
+                precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+                recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+                f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+
+                group_metrics[group_val] = SubgroupMetrics(
+                    group_name=attr,
+                    group_value=group_val,
+                    sample_count=int(mask.sum()),
+                    f1=float(f1),
+                    sensitivity=float(recall),
+                    specificity=0.0,
+                    auc=0.0,
+                    mean_confidence=float(precision),
+                )
+
+            f1_disparity = self.compute_f1_disparity(group_metrics)
+
+            report["analyses"][attr] = {
+                "groups": {k: {"f1": v.f1, "sensitivity": v.sensitivity, "samples": v.sample_count}
+                           for k, v in group_metrics.items()},
+                "f1_disparity": f1_disparity,
+                "passed": f1_disparity < self.f1_disparity_threshold,
+            }
+
+        # Overall pass/fail
+        max_disparity = max(
+            (a["f1_disparity"] for a in report["analyses"].values()),
+            default=0.0,
+        )
+        report["max_f1_disparity"] = max_disparity
+        report["moh_compliance"] = max_disparity < self.f1_disparity_threshold
+
+        return report
+
+    def simulate_device_degradation(
+        self, image: np.ndarray, device: str
+    ) -> np.ndarray:
+        """Apply realistic image degradation for a specific Ugandan device.
+
+        Used in testing to verify model robustness across common CHW devices.
+        """
+        from src.governance.uganda_bias_config import DEVICE_PROFILES
+
+        profile = DEVICE_PROFILES.get(device)
+        if profile is None:
+            return image
+
+        degraded = image.copy().astype(np.float32)
+
+        # Color shift
+        if degraded.ndim == 3 and degraded.shape[2] >= 3:
+            degraded[:, :, 0] += profile.color_shift_r * 255
+            degraded[:, :, 1] += profile.color_shift_g * 255
+            degraded[:, :, 2] += profile.color_shift_b * 255
+
+        # Gaussian noise
+        if profile.noise_std > 0:
+            noise = np.random.normal(0, profile.noise_std * 255, degraded.shape)
+            degraded += noise
+
+        return np.clip(degraded, 0, 255).astype(np.uint8)

@@ -272,7 +272,7 @@ make up-phase1    # Phase 1 infrastructure (OTEL + Jaeger + Prometheus + MLflow)
 make up-phase2    # Phase 1 + 2 infrastructure (+ Ray Serve + Kafka)
 make up-full      # Full 2026 stack (all phases)
 make down-full    # Teardown full stack
-make test         # Run 188 tests
+make test         # Run 198 tests
 make sbom         # Generate SBOM (Syft + Grype)
 make export-all   # Export model to all formats
 ```

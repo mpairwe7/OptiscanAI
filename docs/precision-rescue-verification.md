@@ -15,7 +15,7 @@ false positives hard enough, and ultra-rare classes inject noise into the gradie
 
 ## Verification of 7 Strategies
 
-### 1. Asymmetric Loss (ASL) with gamma_pos=0, gamma_neg=4 -- CONFIRMED CORRECT
+### 1. Asymmetric Loss (ASL) with gamma_pos=0, gamma_neg=4 - CONFIRMED CORRECT
 
 The existing `AsymmetricLoss` in `src/training/losses.py` already has the correct
 implementation (lines 52-86). However, the current config passes `gamma_pos=1.0` and
@@ -23,15 +23,15 @@ implementation (lines 52-86). However, the current config passes `gamma_pos=1.0`
 easy positive examples (there are so few that every one matters), while `gamma_neg=4`
 aggressively suppresses easy negatives (the false positives killing precision).
 
-The ASL `clip=0.05` parameter is also correct -- it completely zeros out the loss
+The ASL `clip=0.05` parameter is also correct - it completely zeros out the loss
 contribution of very confident negatives, acting as a hard negative pruner.
 
 **Risk**: None. This is the single highest-impact change.
 
-### 2. Drop ultra-rare classes (<10 training samples) -- CONFIRMED CORRECT
+### 2. Drop ultra-rare classes (<10 training samples) - CONFIRMED CORRECT
 
 With 1920 training images and 45 classes, many classes have <5 samples. The model
-cannot learn a decision boundary from 2-3 examples -- it just learns to predict positive
+cannot learn a decision boundary from 2-3 examples - it just learns to predict positive
 everywhere to minimize recall loss on those samples.
 
 Dropping to ~25-28 learnable classes concentrates the gradient signal on classes where
@@ -41,10 +41,10 @@ reference retained classes (it already handles dynamic disease lists via `resolv
 **Risk**: Clinical coverage loss. Mitigate by keeping dropped classes in the knowledge
 graph for reference but excluding them from the classification head.
 
-### 3. Per-class precision-floor threshold optimization -- CONFIRMED CORRECT
+### 3. Per-class precision-floor threshold optimization - CONFIRMED CORRECT
 
 The existing `find_optimal_thresholds()` in `src/training/metrics.py` maximizes F1.
-This is wrong for our problem -- F1 optimization drives thresholds down to capture
+This is wrong for our problem - F1 optimization drives thresholds down to capture
 more positives, which tanks precision further.
 
 A precision-floor approach says: "For each class, find the lowest threshold where
@@ -54,7 +54,7 @@ of the current 0.15-0.25 range.
 **Risk**: Some classes may have no threshold that achieves precision >= 0.10.
 For those, set threshold = 0.95 (effectively disable that class).
 
-### 4. Label smoothing 0.05 + class-balanced sampling -- CONFIRMED CORRECT
+### 4. Label smoothing 0.05 + class-balanced sampling - CONFIRMED CORRECT
 
 Label smoothing pushes predictions away from extreme 0/1, which reduces overconfident
 false positives. The `WeightedRandomSampler` ensures the model sees rare-class examples
@@ -62,7 +62,7 @@ proportionally more often, instead of being dominated by normal/DR images.
 
 **Risk**: Over-smoothing can hurt rare-class recall. 0.05 is conservative and safe.
 
-### 5. Bottleneck head with strong dropout -- CONFIRMED CORRECT
+### 5. Bottleneck head with strong dropout - CONFIRMED CORRECT
 
 The current v1 head goes `hidden_dim*2 -> 256 -> num_classes` inside UncertaintyHead
 with only 0.15 dropout. This is insufficient regularization for 1920 samples.
@@ -74,9 +74,9 @@ Changing to `1024 -> 512 (dropout 0.5) -> 128 (dropout 0.3) -> num_classes` prov
 
 **Risk**: None for this dataset size. 0.5 dropout is standard for small medical datasets.
 
-### 6. Staged backbone unfreezing -- CONFIRMED CORRECT
+### 6. Staged backbone unfreezing - CONFIRMED CORRECT
 
-Full RETFound unfreezing on 1920 samples causes catastrophic forgetting -- the retinal
+Full RETFound unfreezing on 1920 samples causes catastrophic forgetting - the retinal
 features learned from 1.6M images get destroyed. The staged approach:
 - Epochs 0-10: only head trains (learn the classification mapping)
 - Epochs 11-25: last 4 ViT blocks unfreeze at 1e-6 LR (gentle adaptation)
@@ -87,7 +87,7 @@ layers to specialize for the RFMiD class distribution.
 **Risk**: 1e-6 may be too aggressive for 1920 samples. Monitor validation loss
 carefully during the unfreeze phase.
 
-### 7. Retinal augmentation + TTA -- CONFIRMED CORRECT
+### 7. Retinal augmentation + TTA - CONFIRMED CORRECT
 
 Standard ImageNet augmentations (random crop, color jitter) are suboptimal for
 retinal images. Retinal-specific augmentations include:
@@ -99,7 +99,7 @@ TTA at inference (average 6 augmented views) provides a 2-4% F1 boost for free.
 
 **Risk**: Elastic deformation can distort small lesions. Keep magnitude low (alpha=50).
 
-## Additional Fixes (8-10) -- CONFIRMED
+## Additional Fixes (8-10) - CONFIRMED
 
 8. **Quantization dtype fix**: The existing `export.py` does not ensure float32 casting
    before ONNX export. Models with mixed half/float tensors will fail.
@@ -107,7 +107,7 @@ TTA at inference (average 6 augmented views) provides a 2-4% F1 boost for free.
    A MobileNetV3-Small binary classifier trained on fundus vs non-fundus images will
    be more robust and faster.
 10. **LoRA adapters**: Already implemented in v1. The key fix is using rank=16, alpha=32
-    (2x scaling) instead of rank=16, alpha=16 -- this gives LoRA more expressiveness
+    (2x scaling) instead of rank=16, alpha=16 - this gives LoRA more expressiveness
     without adding parameters.
 
 ## Actual Performance After All Fixes (25 epochs, GPU 2, 5.5 hours)

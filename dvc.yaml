@@ -51,3 +51,50 @@ stages:
     outs:
       - outputs/export/:
           persist: true
+
+  distill:
+    cmd: PYTHONPATH=. python scripts/distill_mobile_student.py --config configs/distillation_mobile_2026.yaml
+    deps:
+      - configs/distillation_mobile_2026.yaml
+      - src/models/mobile_student.py
+      - src/training/distillation_loss.py
+      - scripts/distill_mobile_student.py
+      - outputs/checkpoints/
+    params:
+      - configs/distillation_mobile_2026.yaml:
+          - distillation
+          - training
+          - precision_floor
+    outs:
+      - outputs/distillation/:
+          persist: true
+    metrics:
+      - outputs/distillation/distillation_metrics.json:
+          cache: false
+
+  export_mobile:
+    cmd: >
+      PYTHONPATH=. python scripts/export_mobile_student.py
+        --checkpoint outputs/distillation/student_best.pth
+        --output-dir outputs/mobile_export
+      && PYTHONPATH=. python scripts/export_fundus_gate_onnx.py
+        --output-dir outputs/mobile_export
+      && PYTHONPATH=. python scripts/extract_clinical_kg_json.py
+        --output outputs/mobile_export/clinical_kg.json
+      && PYTHONPATH=. python scripts/build_screening_bundle.py
+        --input-dir outputs/mobile_export
+        --output-dir outputs/bundles
+    deps:
+      - outputs/distillation/
+      - scripts/export_mobile_student.py
+      - scripts/export_fundus_gate_onnx.py
+      - scripts/extract_clinical_kg_json.py
+      - scripts/build_screening_bundle.py
+    outs:
+      - outputs/mobile_export/:
+          persist: true
+      - outputs/bundles/:
+          persist: true
+    metrics:
+      - outputs/mobile_export/parity_report.json:
+          cache: false

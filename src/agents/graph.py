@@ -31,11 +31,19 @@ class ScreeningState(TypedDict, total=False):
     image: Any  # PIL.Image
     threshold: float | None
 
+    # Multimodal inputs (Phase 4)
+    voice_transcript: str  # Transcribed patient history from voice
+    patient_demographics: dict  # age, sex, location, comorbidities
+    risk_factors: dict  # diabetes, hypertension, HIV status, etc.
+
     # Classification output
     predictions: list[dict]
     all_probabilities: dict
     referral_priority: str
     inference_ms: float
+
+    # History extraction output (Phase 4)
+    history_extraction: dict  # Structured symptoms from voice
 
     # Triage decision (Claude or deterministic)
     triage: dict  # {priority, should_explain, should_review, reasoning}
@@ -51,6 +59,10 @@ class ScreeningState(TypedDict, total=False):
 
     # Final report (Claude-generated or template)
     report: dict
+
+    # Multimodal outputs (Phase 4)
+    urgency_score: int  # MoH 1-5 scale
+    multimodal_confidence: float  # Combined confidence across modalities
 
     # Metadata
     steps_completed: list[str]
@@ -76,6 +88,49 @@ async def classify_node(state: ScreeningState) -> dict:
         "inference_ms": result.get("inference_ms", 0),
         "steps_completed": state.get("steps_completed", []) + ["classify"],
     }
+
+
+async def extract_history_node(state: ScreeningState) -> dict:
+    """Node 1.5: Extract structured clinical data from voice transcript.
+
+    Parses voice history (if present) to extract symptoms, conditions,
+    medications, and risk factors for multimodal fusion. Uses
+    VoiceHistoryExtractor with Claude or regex fallback.
+    """
+    transcript = state.get("voice_transcript", "")
+    demographics = state.get("patient_demographics", {})
+
+    if not transcript:
+        return {
+            "history_extraction": {},
+            "risk_factors": state.get("risk_factors", {}),
+            "steps_completed": state.get("steps_completed", []) + ["extract_history"],
+        }
+
+    try:
+        from src.agents.voice_extractor import VoiceHistoryExtractor
+
+        extractor = VoiceHistoryExtractor()
+        extraction = await extractor.extract(transcript)
+
+        # Merge extracted risk factors with any provided demographics
+        risk_factors = extraction.get("risk_factors", {})
+        if demographics.get("age") and int(demographics.get("age", 0)) >= 50:
+            risk_factors.setdefault("age_related_risk", True)
+
+        return {
+            "history_extraction": extraction,
+            "risk_factors": risk_factors,
+            "steps_completed": state.get("steps_completed", []) + ["extract_history"],
+        }
+    except Exception as e:
+        logger.warning("History extraction failed: %s — continuing without", e)
+        return {
+            "history_extraction": {"error": str(e)},
+            "risk_factors": state.get("risk_factors", {}),
+            "steps_completed": state.get("steps_completed", []) + ["extract_history"],
+            "errors": state.get("errors", []) + [f"extract_history: {e}"],
+        }
 
 
 async def triage_node(state: ScreeningState) -> dict:
@@ -363,14 +418,16 @@ def build_screening_graph() -> StateGraph:
 
     # Add nodes
     graph.add_node("classify", classify_node)
+    graph.add_node("extract_history", extract_history_node)
     graph.add_node("triage", triage_node)
     graph.add_node("reason", reason_node)
     graph.add_node("explain", explain_node)
     graph.add_node("review", review_node)
     graph.add_node("report", report_node)
 
-    # Linear edges
-    graph.add_edge("classify", "triage")
+    # Linear edges (classify -> extract_history -> triage)
+    graph.add_edge("classify", "extract_history")
+    graph.add_edge("extract_history", "triage")
     graph.add_edge("triage", "reason")
 
     # After reason: 3-way branch (explain, review-only, or report)

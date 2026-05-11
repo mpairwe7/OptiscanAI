@@ -21,6 +21,23 @@ The most critical production improvement: fixing the precision crisis (P=0.025) 
 
 See [Precision Rescue Verification](precision-rescue-verification.md) and [Architecture](architecture-retinal-foundation-hybrid.md#8-v2-precision-rescue-architecture-april-2026) for details.
 
+## HF Spaces Deployment Hardening (April 2026)
+
+Critical deployment fixes for Hugging Face Spaces free-tier compatibility.
+
+| Issue | Root Cause | Fix |
+|-------|-----------|-----|
+| Supervisor crash on startup | `%(ENV_CUDA_VISIBLE_DEVICES)s` expansion fails — HF Spaces doesn't inject CUDA env vars | Hardcoded `CUDA_VISIBLE_DEVICES="-1"` and `DEVICE="cpu"` in `supervisord.conf` |
+| Docker build fails / GPU warnings | `nvidia/cuda:12.1.1` base image on `cpu-basic` hardware | Switched `Dockerfile.hf` to `python:3.11-slim-bookworm` |
+| PyTorch install bloated (~2GB CUDA libs) | CUDA PyTorch index `whl/cu121` on CPU-only platform | Changed to CPU-only index `whl/cpu` (~200MB) |
+| HF push rejected | `short_description` > 60 chars in README YAML frontmatter | Shortened to < 60 chars |
+
+**Key lesson**: Supervisor `%(ENV_X)s` syntax requires the variable to exist in the container environment — it does not default to empty. On restricted platforms (HF Spaces, some K8s pods), always hardcode or use shell-level defaults instead.
+
+**Files changed**: `Dockerfile.hf`, `supervisord.conf`
+
+---
+
 ## Stage 1: Data Quality + Validation
 
 **Module**: `src/data/validation.py`

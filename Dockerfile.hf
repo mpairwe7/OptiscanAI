@@ -1,6 +1,8 @@
 # ============================================================================
 # Hugging Face Spaces Docker Deployment
-# GPU-enabled, port 7860, combined frontend + backend
+# CPU-optimized, port 7860, combined frontend + backend via supervisord
+# Base: python:3.11-slim-bookworm (CPU-only PyTorch from whl/cpu)
+# Process manager: supervisord → nginx(:7860) + uvicorn(:8080) + node(:3000)
 # ============================================================================
 FROM python:3.11-slim-bookworm
 

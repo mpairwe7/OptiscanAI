@@ -62,6 +62,31 @@ class EventType(str, Enum):
     # Graceful Degradation (Phase 4)
     GRACEFUL_DEGRADATION_ACTIVATED = "resilience.degradation_activated"
 
+    # Voice (Phase 2)
+    VOICE_SESSION_STARTED = "voice.session_started"
+    VOICE_TRANSCRIPTION_COMPLETE = "voice.transcription_complete"
+    VOICE_SCREENING_COMPLETE = "voice.screening_complete"
+    VOICE_REFERRAL_SPOKEN = "voice.referral_spoken"
+
+    # DHIS2 (Phase 3)
+    DHIS2_REFERRAL_CREATED = "dhis2.referral_created"
+    DHIS2_SYNC_COMPLETED = "dhis2.sync_completed"
+    DHIS2_SYNC_FAILED = "dhis2.sync_failed"
+
+    # Payments (Phase 3)
+    PAYMENT_REQUESTED = "payment.requested"
+    PAYMENT_COMPLETED = "payment.completed"
+    PAYMENT_FAILED = "payment.failed"
+
+    # SMS/USSD (Phase 3)
+    SMS_REFERRAL_SENT = "sms.referral_sent"
+    SMS_DELIVERY_CONFIRMED = "sms.delivery_confirmed"
+    USSD_SESSION_COMPLETED = "ussd.session_completed"
+
+    # Privacy (Phase 3)
+    CONSENT_RECORDED = "privacy.consent_recorded"
+    CONSENT_REVOKED = "privacy.consent_revoked"
+
     # System
     AGENT_STARTED = "system.agent_started"
     AGENT_STOPPED = "system.agent_stopped"

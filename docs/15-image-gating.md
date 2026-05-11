@@ -185,10 +185,21 @@ Statistical thresholds are defined as constants at the top of `src/data/fundus_g
 - **Too many false accepts**: Tighten the radial sharpness thresholds (`max_step > 0.08`)
 - **OOD too sensitive**: Raise `OOD_MAX_CONFIDENCE` above 0.15 or `OOD_MEAN_CONFIDENCE` above 0.03
 
+### Deployment Modes
+
+The gate runs identically across all deployment targets, but the device context differs:
+
+| Deployment | PyTorch Backend | Learned Gate | Notes |
+|-----------|----------------|--------------|-------|
+| GPU Docker | CUDA | GPU inference (~3ms) | Fastest learned gate inference |
+| CPU Docker | CPU | CPU inference (~8ms) | Adequate for clinical workloads |
+| HF Spaces | CPU (hardcoded) | CPU inference (~8ms) | `DEVICE=cpu` set in supervisord.conf; uses `python:3.11-slim-bookworm` base image with CPU-only PyTorch |
+| Development | Auto-detect | GPU or CPU | Set `CUDA_VISIBLE_DEVICES=-1` to force CPU |
+
 ### Validation
 
 The current system was validated against:
 - 30 real fundus images from the RFMiD dataset → all pass
 - 33 synthetic adversarial test images → all correctly handled (see `tests/test_fundus_gate_v2_adversarial.py`)
 - 24 unit tests covering fusion logic, fallback, visual evidence, thread safety
-- 188 total tests passing with zero regressions
+- 198 total tests passing with zero regressions

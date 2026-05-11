@@ -1,0 +1,367 @@
+{
+  "version": "1.0.0",
+  "num_diseases": 28,
+  "disease_names": [
+    "DR",
+    "ARMD",
+    "MH",
+    "DN",
+    "MYA",
+    "BRVO",
+    "TSLN",
+    "ERM",
+    "LS",
+    "MS",
+    "CSR",
+    "ODC",
+    "CRVO",
+    "TV",
+    "AH",
+    "ODP",
+    "ODE",
+    "ST",
+    "AION",
+    "PT",
+    "RT",
+    "RS",
+    "CRS",
+    "EDN",
+    "RPEC",
+    "MHL",
+    "RP",
+    "CWS"
+  ],
+  "diseases": {
+    "DR": {
+      "code": "DR",
+      "related_diseases": [
+        "CWS"
+      ],
+      "treatment": [
+        "tight_glycemic_control",
+        "laser_photocoagulation",
+        "anti_vegf"
+      ],
+      "uganda_prevalence": 0.87
+    },
+    "ARMD": {
+      "code": "ARMD",
+      "related_diseases": [
+        "DN"
+      ],
+      "treatment": [
+        "anti_vegf",
+        "low_vision_support"
+      ],
+      "uganda_prevalence": 0.46
+    },
+    "MH": {
+      "code": "MH",
+      "related_diseases": [],
+      "treatment": [],
+      "uganda_prevalence": null
+    },
+    "DN": {
+      "code": "DN",
+      "related_diseases": [],
+      "treatment": [],
+      "uganda_prevalence": null
+    },
+    "MYA": {
+      "code": "MYA",
+      "related_diseases": [],
+      "treatment": [],
+      "uganda_prevalence": null
+    },
+    "BRVO": {
+      "code": "BRVO",
+      "related_diseases": [
+        "DR"
+      ],
+      "treatment": [
+        "anti_vegf",
+        "sectoral_laser"
+      ],
+      "uganda_prevalence": 0.27
+    },
+    "TSLN": {
+      "code": "TSLN",
+      "related_diseases": [],
+      "treatment": [],
+      "uganda_prevalence": null
+    },
+    "ERM": {
+      "code": "ERM",
+      "related_diseases": [],
+      "treatment": [],
+      "uganda_prevalence": null
+    },
+    "LS": {
+      "code": "LS",
+      "related_diseases": [],
+      "treatment": [],
+      "uganda_prevalence": null
+    },
+    "MS": {
+      "code": "MS",
+      "related_diseases": [],
+      "treatment": [],
+      "uganda_prevalence": null
+    },
+    "CSR": {
+      "code": "CSR",
+      "related_diseases": [],
+      "treatment": [],
+      "uganda_prevalence": null
+    },
+    "ODC": {
+      "code": "ODC",
+      "related_diseases": [
+        "ODE"
+      ],
+      "treatment": [
+        "iop_lowering_therapy",
+        "trabeculectomy_consideration"
+      ],
+      "uganda_prevalence": 0.41
+    },
+    "CRVO": {
+      "code": "CRVO",
+      "related_diseases": [
+        "DR"
+      ],
+      "treatment": [
+        "anti_vegf",
+        "systemic_workup"
+      ],
+      "uganda_prevalence": 0.22
+    },
+    "TV": {
+      "code": "TV",
+      "related_diseases": [],
+      "treatment": [],
+      "uganda_prevalence": null
+    },
+    "AH": {
+      "code": "AH",
+      "related_diseases": [],
+      "treatment": [],
+      "uganda_prevalence": null
+    },
+    "ODP": {
+      "code": "ODP",
+      "related_diseases": [],
+      "treatment": [],
+      "uganda_prevalence": null
+    },
+    "ODE": {
+      "code": "ODE",
+      "related_diseases": [],
+      "treatment": [],
+      "uganda_prevalence": null
+    },
+    "ST": {
+      "code": "ST",
+      "related_diseases": [],
+      "treatment": [],
+      "uganda_prevalence": null
+    },
+    "AION": {
+      "code": "AION",
+      "related_diseases": [],
+      "treatment": [],
+      "uganda_prevalence": null
+    },
+    "PT": {
+      "code": "PT",
+      "related_diseases": [],
+      "treatment": [],
+      "uganda_prevalence": null
+    },
+    "RT": {
+      "code": "RT",
+      "related_diseases": [],
+      "treatment": [],
+      "uganda_prevalence": null
+    },
+    "RS": {
+      "code": "RS",
+      "related_diseases": [],
+      "treatment": [],
+      "uganda_prevalence": null
+    },
+    "CRS": {
+      "code": "CRS",
+      "related_diseases": [],
+      "treatment": [],
+      "uganda_prevalence": null
+    },
+    "EDN": {
+      "code": "EDN",
+      "related_diseases": [],
+      "treatment": [],
+      "uganda_prevalence": null
+    },
+    "RPEC": {
+      "code": "RPEC",
+      "related_diseases": [
+        "CWS"
+      ],
+      "treatment": [
+        "pyrimethamine_sulfadiazine",
+        "systemic_steroids"
+      ],
+      "uganda_prevalence": 0.26
+    },
+    "MHL": {
+      "code": "MHL",
+      "related_diseases": [],
+      "treatment": [],
+      "uganda_prevalence": null
+    },
+    "RP": {
+      "code": "RP",
+      "related_diseases": [],
+      "treatment": [],
+      "uganda_prevalence": null
+    },
+    "CWS": {
+      "code": "CWS",
+      "related_diseases": [
+        "DR",
+        "RPEC"
+      ],
+      "treatment": [
+        "optimize_haart",
+        "retinal_monitoring"
+      ],
+      "uganda_prevalence": 0.38
+    }
+  },
+  "co_occurrence": [
+    {
+      "from": "DR",
+      "to": "CWS"
+    },
+    {
+      "from": "CRVO",
+      "to": "DR"
+    },
+    {
+      "from": "BRVO",
+      "to": "DR"
+    },
+    {
+      "from": "ARMD",
+      "to": "DN"
+    },
+    {
+      "from": "ODC",
+      "to": "ODE"
+    },
+    {
+      "from": "CWS",
+      "to": "RPEC"
+    }
+  ],
+  "disease_categories": {
+    "VASCULAR": [
+      "DR",
+      "CRVO",
+      "BRVO"
+    ],
+    "DEGENERATIVE": [
+      "ARMD",
+      "MH",
+      "MHL",
+      "DN",
+      "ERM",
+      "CSR"
+    ],
+    "GLAUCOMATOUS": [
+      "ODC",
+      "ODP",
+      "ODE"
+    ],
+    "INFECTIOUS_IMMUNOLOGIC": [
+      "CWS",
+      "RPEC"
+    ],
+    "NEURO_OPHTHALMIC": [
+      "AION"
+    ],
+    "TRACTIONAL": [
+      "PT",
+      "RT",
+      "RS",
+      "TSLN"
+    ]
+  },
+  "referral_rules": {
+    "priority_levels": {
+      "EMERGENCY": {
+        "score": 5,
+        "description": "Sight-threatening, immediate referral",
+        "max_hours": 0
+      },
+      "URGENT": {
+        "score": 4,
+        "description": "Refer within 24 hours",
+        "max_hours": 24
+      },
+      "ROUTINE": {
+        "score": 3,
+        "description": "Refer within 1 week",
+        "max_hours": 168
+      },
+      "FOLLOW_UP": {
+        "score": 2,
+        "description": "Schedule routine follow-up",
+        "max_hours": 720
+      },
+      "NORMAL": {
+        "score": 1,
+        "description": "No pathology detected",
+        "max_hours": null
+      }
+    },
+    "emergency_diseases": [],
+    "urgent_diseases": [
+      "DR",
+      "ODC",
+      "CRVO"
+    ]
+  },
+  "uganda_prevalence": {
+    "DR": 0.87,
+    "ARMD": 0.46,
+    "BRVO": 0.27,
+    "ODC": 0.41,
+    "CRVO": 0.22,
+    "RPEC": 0.26,
+    "CWS": 0.38
+  },
+  "alias_map": {
+    "diabetic_retinopathy": "DR",
+    "glaucoma": "ODC",
+    "age_related_macular_degeneration": "ARMD",
+    "hiv_retinopathy": "CWS",
+    "retinal_vein_occlusion": "CRVO",
+    "branch_retinal_vein_occlusion": "BRVO",
+    "toxoplasmosis_retinochoroiditis": "RPEC",
+    "macular_hole": "MH",
+    "drusen": "DN",
+    "myopia": "MYA",
+    "epiretinal_membrane": "ERM",
+    "central_serous_retinopathy": "CSR",
+    "tractional_schisis_like_network": "TSLN",
+    "optic_disc_cupping": "ODC",
+    "optic_disc_edema": "ODE",
+    "optic_disc_pit": "ODP",
+    "posterior_vitreous_detachment": "PT",
+    "retinal_tear": "RT",
+    "retinoschisis": "RS",
+    "atrophic_hole": "AH",
+    "anterior_ischemic_optic_neuropathy": "AION"
+  }
+}

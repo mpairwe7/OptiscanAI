@@ -1,0 +1,139 @@
+# =============================================================================
+# MobileStudentV1 Knowledge Distillation Configuration
+# Distills RetinalFoundationHybridV2 (304M params) -> MobileNetV3-Large (5.4M)
+# Target: INT8 ONNX <= 50 MB, p95 <= 1.8s on mid-range Android
+# =============================================================================
+
+# --- Data (reuse teacher's dataset & transforms) ---
+data:
+  dataset_name: "mpairwelauben/multi-disease-retinal-eye-disease-dataset"
+  data_dir: "data/rfmid"
+  img_size: 224
+  batch_size: 32          # Larger batch than teacher (student is smaller)
+  num_workers: 0
+  pin_memory: true
+  train_split: 0.7
+  val_split: 0.2
+  test_split: 0.1
+  prefetch_factor: 2
+
+# --- Class Filtering (same as teacher) ---
+class_filtering:
+  min_samples: 10
+  num_classes: 24   # Teacher was trained with 24 classes after ultra-rare filtering
+
+# --- Teacher Model ---
+teacher:
+  checkpoint: "outputs/checkpoints/v2/final_with_thresholds.pth"
+  thresholds: "outputs/checkpoints/v2/thresholds_optimized.json"
+  config: "configs/hybrid_precision_2026.yaml"
+  # Teacher runs in eval mode with TTA for soft targets
+  use_tta: true
+  tta_n_augments: 6
+
+# --- Student Model ---
+student:
+  backbone: "mobilenetv3_large_100"
+  hidden_dim: 512
+  dropout1: 0.4
+  dropout2: 0.25
+  pretrained: true
+
+# --- Distillation ---
+distillation:
+  alpha: 0.3              # KD weight (reduced from 0.6 so ASL can fight false positives)
+  beta: 0.10              # Feature alignment weight
+  gamma: 0.10             # Threshold alignment weight (doubled to enforce precision floors)
+  initial_temperature: 4.0  # Lower start for sharper soft targets from epoch 1
+  final_temperature: 1.5    # Sharper final T for hard prediction matching
+
+# --- Training ---
+training:
+  max_epochs: 40
+  seed: 42
+
+  # Optimizer
+  lr: 3.0e-4
+  weight_decay: 0.01
+
+  # Scheduler
+  scheduler: "cosine_warmup"
+  warmup_epochs: 3
+
+  # ASL loss (task component matches teacher)
+  loss: "asymmetric_v2"
+  gamma_neg: 4.0
+  gamma_pos: 0.0
+  asl_clip: 0.05
+  label_smoothing: 0.05
+
+  # Early stopping
+  patience: 10
+  early_stopping_metric: "precision_macro"
+
+  # Mixed precision
+  precision: "bf16-mixed"
+
+  # Gradient
+  gradient_clip_val: 1.0
+
+# --- Precision Floor Validation ---
+precision_floor:
+  min_precision: 0.10     # Per-class precision floor (must match teacher)
+  fallback_threshold: 0.95
+  search_step: 0.02
+  validate_every_epoch: true
+
+# --- Augmentation (same as teacher) ---
+augmentation:
+  train:
+    random_horizontal_flip: 0.5
+    random_vertical_flip: 0.5
+    random_rotation: 15
+    color_jitter:
+      brightness: 0.2
+      contrast: 0.2
+      saturation: 0.1
+      hue: 0.05
+    random_resized_crop:
+      scale: [0.8, 1.0]
+      ratio: [0.9, 1.1]
+    random_erasing: 0.1
+    normalize:
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
+  val:
+    normalize:
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
+
+# --- Parity Validation ---
+parity:
+  max_f1_drop: 0.15       # Student F1 must be within 15% of teacher
+  max_logit_divergence: 0.01  # INT8 vs FP32 max logit diff
+  max_model_size_mb: 50   # INT8 ONNX file size limit
+
+# --- Export ---
+export:
+  output_dir: "outputs/mobile_export"
+  onnx:
+    enabled: true
+    opset_version: 18
+    dynamic_axes: true
+  quantization:
+    dynamic_int8: true
+    static_int8: false     # Requires calibration dataset; enable later
+
+# --- Checkpointing ---
+checkpointing:
+  dirpath: "outputs/distillation"
+  monitor: "precision_macro"
+  mode: "max"
+  save_top_k: 3
+  save_last: true
+
+# --- Logging ---
+logging:
+  project_name: "retinal-mobile-distillation"
+  experiment_name: "mobilenetv3-large-student-v1"
+  save_dir: "outputs/distillation"

@@ -158,6 +158,65 @@ class FundusGateSettings(BaseModel):
     mc_dropout_samples: int = 5            # uncertainty estimation forward passes
 
 
+class OfflineRAGSettings(BaseModel):
+    """Offline RAG pipeline (Phase 5: Offline-First)."""
+    enabled: bool = False
+    index_dir: str = "data/offline_rag/index"
+    source_dir: str = "data/offline_rag/source"
+    bundles_dir: str = "data/offline_rag/bundles"
+    embedder_path: str = "models/embedder/bge-m3-quantized.onnx"
+    top_k: int = 5
+    similarity_threshold: float = 0.45
+    sync_interval_s: float = 3600.0
+    compression: str = "gzip"  # gzip | zstd
+    target_bundle_size_mb: int = 150
+
+
+class QuantizationSettings(BaseModel):
+    """Quantization pipeline and server optimization (Phase 5)."""
+    enabled: bool = False
+    active_format: str = ""                 # gguf_q4_k_m | awq_4bit | onnx_int8 | etc.
+    models_dir: str = "outputs/quantized"
+    torch_compile_enabled: bool = False
+    torch_compile_mode: str = "max-autotune"  # default | reduce-overhead | max-autotune
+    prefix_cache_enabled: bool = False
+    speculative_decoding_enabled: bool = False
+    speculative_draft_model: str = ""       # path to draft model for speculative decoding
+    embedder_format: str = ""               # onnx_int8 | fp16 | etc.
+    vllm_enabled: bool = False
+    vllm_gpu_memory_fraction: float = 0.9
+    max_faithfulness_drop: float = 0.04     # max 4% faithfulness drop from baseline
+    max_p95_latency_ms: float = 1800.0      # target: <= 1.8s for full RAG
+
+
+class VoiceFirstSettings(BaseModel):
+    """Voice-first mobile experience (Phase 5)."""
+    enabled: bool = False
+    default_language: str = "en-ug"         # Ugandan English
+    asr_model: str = "whisper-tiny"         # whisper-tiny | whisper-base
+    asr_model_path: str = "models/voice/whisper-tiny.onnx"
+    tts_engine: str = "piper"              # piper | sherpa
+    tts_model_path: str = "models/voice/piper-en-ug.onnx"
+    vad_sensitivity: float = 0.6            # 0.0-1.0, higher = more sensitive
+    barge_in_enabled: bool = True
+    speech_rate: float = 1.0
+    max_recording_seconds: float = 30.0
+    accent_adaptation_enabled: bool = False
+
+
+class MobileBundleSettings(BaseModel):
+    """Mobile bundle optimization (Phase 5)."""
+    enabled: bool = False
+    max_bundle_size_mb: int = 800
+    target_model: str = "gemma-2-2b-q4_k_m"
+    embedder_model: str = "bge-m3-4bit-onnx"
+    faiss_index_path: str = "data/offline_rag/index/index.faiss"
+    include_voice_models: bool = True
+    min_android_sdk: int = 21
+    min_ram_mb: int = 4096
+    bundle_output_dir: str = "outputs/mobile_bundle"
+
+
 class ResilienceSettings(BaseModel):
     """Graceful degradation (Phase 4)."""
     enabled: bool = False
@@ -173,13 +232,64 @@ class MultiModalSettings(BaseModel):
 
 
 class FederatedSettings(BaseModel):
-    """Federated learning skeleton (Phase 4)."""
+    """Federated learning (Phase 4)."""
     enabled: bool = False
     framework: str = "flower"  # flower | nvflare
     server_address: str = "localhost:8080"
     local_epochs: int = 3
     dp_enabled: bool = False
     dp_epsilon: float = 10.0
+    dp_delta: float = 1e-5
+    dp_clip_norm: float = 1.0
+    lora_only: bool = True
+    secure_aggregation: bool = False
+    num_sim_clients: int = 5
+
+
+class DHIS2Settings(BaseModel):
+    """DHIS2 Uganda health information system integration (Phase 3)."""
+    enabled: bool = False
+    base_url: str = "https://dhis2.health.go.ug"
+    auth_method: str = "pat"  # pat | oauth2
+    personal_access_token: str = ""
+    oauth2_client_id: str = ""
+    oauth2_client_secret: str = ""
+    screening_program_id: str = ""
+    data_set_id: str = ""
+    queue_dir: str = "data/dhis2_queue"
+    auto_flush_interval_s: float = 300.0
+    request_timeout_s: float = 30.0
+
+
+class MobileMoneySettings(BaseModel):
+    """Mobile money integration — MTN MoMo + Airtel Money (Phase 3)."""
+    enabled: bool = False
+    mtn_api_key: str = ""
+    mtn_api_secret: str = ""
+    mtn_subscription_key: str = ""
+    mtn_environment: str = "sandbox"  # sandbox | production
+    airtel_client_id: str = ""
+    airtel_client_secret: str = ""
+    default_transport_amount_ugx: int = 50000
+
+
+class AfricasTalkingSettings(BaseModel):
+    """Africa's Talking SMS/USSD integration (Phase 3)."""
+    enabled: bool = False
+    api_key: str = ""
+    username: str = "sandbox"
+    sender_id: str = "RetinalAI"
+
+
+class PrivacySettings(BaseModel):
+    """Uganda PDP Act 2019 privacy compliance (Phase 3)."""
+    enabled: bool = True
+    consent_required: bool = True
+    consent_storage_dir: str = "data/consent"
+    data_retention_days: int = 730  # 2 years
+    cross_border_allowed_countries: list[str] = ["UG", "KE", "TZ", "RW"]
+    purpose_limitation_enabled: bool = True
+    anonymize_exports: bool = True
 
 
 # ── Main Settings ────────────────────────────────────────────────────────────
@@ -271,9 +381,19 @@ class Settings(BaseSettings):
     fairness: FairnessSettings = FairnessSettings()
     model_card: ModelCardSettings = ModelCardSettings()
     fundus_gate: FundusGateSettings = FundusGateSettings()
+    offline_rag: OfflineRAGSettings = OfflineRAGSettings()
+    quantization: QuantizationSettings = QuantizationSettings()
+    voice_first: VoiceFirstSettings = VoiceFirstSettings()
+    mobile_bundle: MobileBundleSettings = MobileBundleSettings()
     resilience: ResilienceSettings = ResilienceSettings()
     multimodal: MultiModalSettings = MultiModalSettings()
     federated: FederatedSettings = FederatedSettings()
+
+    # Phase 3: Uganda health ecosystem
+    dhis2: DHIS2Settings = DHIS2Settings()
+    mobile_money: MobileMoneySettings = MobileMoneySettings()
+    africastalking: AfricasTalkingSettings = AfricasTalkingSettings()
+    privacy: PrivacySettings = PrivacySettings()
 
     model_config = {
         "env_prefix": "",

@@ -14,7 +14,7 @@ from starlette.responses import Response
 from backend.app.core.config import settings
 from backend.app.core.logging_config import setup_logging
 from backend.app.core.model_service import model_service
-from backend.app.routers import health, predict, auth, review, clinical, explain, analytics, agents, governance, gate, predict_edge
+from backend.app.routers import health, predict, auth, review, clinical, explain, analytics, agents, governance, gate, predict_edge, offline, quantized, monitoring
 
 setup_logging(settings.log_level, settings.log_format)
 logger = logging.getLogger(__name__)
@@ -170,7 +170,7 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Permissions-Policy"] = "camera=(self), microphone=(self), geolocation=(self)"
     if settings.environment == "production":
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
@@ -187,6 +187,21 @@ app.include_router(agents.router)
 app.include_router(governance.router)
 app.include_router(gate.router)
 app.include_router(predict_edge.router)
+app.include_router(offline.router)
+app.include_router(quantized.router)
+app.include_router(monitoring.router)
+
+# Phase 2: Voice-first
+from backend.app.routers import voice
+app.include_router(voice.router)
+
+# Phase 3: Uganda health ecosystem
+from backend.app.routers import dhis2, payments, sms, fhir, dicom
+app.include_router(dhis2.router)
+app.include_router(payments.router)
+app.include_router(sms.router)
+app.include_router(fhir.router)
+app.include_router(dicom.router)
 
 
 if __name__ == "__main__":

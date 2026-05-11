@@ -1,0 +1,34 @@
+{
+  "n_samples": 10,
+  "fp32_onnx": {
+    "max_logit_diff": 1.4603137969970703e-06,
+    "mean_logit_diff": 1.2457370530682965e-06,
+    "max_probability_diff": 3.5762786865234375e-07,
+    "mean_probability_diff": 2.637505644997873e-07,
+    "size_mb": 20.765008
+  },
+  "int8_onnx": {
+    "max_logit_diff": 0.6695226430892944,
+    "mean_logit_diff": 0.48446908593177795,
+    "max_probability_diff": 0.14470607042312622,
+    "mean_probability_diff": 0.10447844117879868,
+    "mean_binary_agreement_at_0_5": 0.9958333333333333,
+    "size_mb": 5.439933,
+    "latency_p50_ms": 101.55243799090385,
+    "latency_p95_ms": 124.52389374375342,
+    "latency_p99_ms": 127.98587992787361
+  },
+  "torch": {
+    "latency_p50_ms": 6222.422543913126,
+    "latency_p95_ms": 7438.902773335574
+  },
+  "parity_checks": {
+    "fp32_parity_ok": true,
+    "int8_parity_ok": true
+  },
+  "size_check": {
+    "int8_size_mb": 5.439933,
+    "max_allowed_mb": 50.0,
+    "passed": true
+  }
+}

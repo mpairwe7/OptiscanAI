@@ -115,17 +115,11 @@ try:
 except ImportError:
     CAPTUM_AVAILABLE = False
 
-# Import SHAP
+# Import SHAP (KernelExplainer is model-agnostic, no TensorFlow needed)
 SHAP_AVAILABLE = False
 try:
     import shap
-    # Check if TensorFlow is available (required by SHAP)
-    try:
-        import tensorflow
-        SHAP_AVAILABLE = True
-    except ImportError:
-        SHAP_AVAILABLE = False
-        print("⚠ SHAP available but TensorFlow not found - SHAP features will be disabled")
+    SHAP_AVAILABLE = True
 except ImportError:
     SHAP_AVAILABLE = False
 
@@ -330,7 +324,7 @@ class ModelExplainer:
     def explain_shap(self, image, target_classes=None):
         """Generate SHAP explanations using GradientExplainer"""
         if not SHAP_AVAILABLE:
-            return {'error': 'SHAP not available - requires TensorFlow backend'}
+            return {'error': 'SHAP not available - install shap package'}
 
         try:
             # For PyTorch models, use KernelExplainer which is model-agnostic

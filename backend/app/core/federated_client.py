@@ -714,3 +714,121 @@ def start_flower_client(
         server_address=address,
         client=flower_client,
     )
+
+
+# ---------------------------------------------------------------------------
+# LoRA-Only Federated Client (Phase 4)
+# ---------------------------------------------------------------------------
+
+class FlowerLoRAClient(FlowerRetinalClient):
+    """Federated client that exchanges only LoRA adapter parameters.
+
+    Reduces per-round communication from ~600 MB (full model) to ~2 MB
+    (LoRA adapters only), making federation feasible over Ugandan 2G/3G.
+
+    Overrides get/set_model_parameters to filter LoRA keys only.
+    """
+
+    LORA_KEY_PATTERNS = ("lora_", "adapter_", "lora_A", "lora_B")
+
+    def _is_lora_key(self, key: str) -> bool:
+        """Check if a state dict key belongs to a LoRA adapter."""
+        return any(pattern in key for pattern in self.LORA_KEY_PATTERNS)
+
+    def get_model_parameters(self) -> list[np.ndarray]:
+        """Extract only LoRA adapter parameters (~2 MB vs ~600 MB full model)."""
+        return [
+            val.cpu().numpy()
+            for key, val in self.model.state_dict().items()
+            if self._is_lora_key(key)
+        ]
+
+    def set_model_parameters(self, parameters: list[np.ndarray]) -> None:
+        """Load aggregated LoRA parameters, keeping backbone frozen."""
+        state_dict = self.model.state_dict()
+        lora_keys = [k for k in state_dict.keys() if self._is_lora_key(k)]
+
+        if len(parameters) != len(lora_keys):
+            logger.warning(
+                "LoRA parameter count mismatch: received %d, expected %d. "
+                "Falling back to partial load.",
+                len(parameters), len(lora_keys),
+            )
+
+        new_state = OrderedDict(state_dict)
+        for key, param in zip(lora_keys, parameters):
+            new_state[key] = torch.tensor(param, dtype=state_dict[key].dtype)
+
+        self.model.load_state_dict(new_state, strict=True)
+
+    def get_parameter_count(self) -> dict:
+        """Report LoRA vs total parameter counts."""
+        total = sum(p.numel() for p in self.model.parameters())
+        lora = sum(
+            v.numel() for k, v in self.model.state_dict().items()
+            if self._is_lora_key(k)
+        )
+        return {
+            "total_params": total,
+            "lora_params": lora,
+            "lora_ratio": lora / total if total > 0 else 0,
+            "estimated_transfer_mb": lora * 4 / 1e6,  # float32
+        }
+
+
+class SecureAggregation:
+    """Additive secret sharing for privacy-preserving aggregation.
+
+    Before parameters are sent to the server, each client splits its
+    update into N shares (one per other client). The server sums the
+    shares per layer, preventing it from seeing any single client's
+    raw update.
+
+    Note: Full implementation requires client-to-client communication.
+    This is a functional stub demonstrating the splitting/recombination
+    interface for integration testing.
+    """
+
+    def __init__(self, num_clients: int = 5, seed: int = 42):
+        self.num_clients = num_clients
+        self._rng = np.random.RandomState(seed)
+
+    def split_parameters(
+        self, parameters: list[np.ndarray]
+    ) -> list[list[np.ndarray]]:
+        """Split each parameter array into N additive shares.
+
+        The shares sum to the original: sum(shares[i]) == parameters for each layer.
+        """
+        shares = [[] for _ in range(self.num_clients)]
+
+        for param in parameters:
+            # Generate N-1 random shares
+            random_shares = [
+                self._rng.normal(0, 1, param.shape).astype(param.dtype)
+                for _ in range(self.num_clients - 1)
+            ]
+            # Last share = original - sum(random_shares)
+            last_share = param - sum(random_shares)
+            all_shares = random_shares + [last_share]
+
+            for i, share in enumerate(all_shares):
+                shares[i].append(share)
+
+        return shares
+
+    def recombine_shares(
+        self, all_shares: list[list[np.ndarray]]
+    ) -> list[np.ndarray]:
+        """Recombine shares from all clients by summing."""
+        if not all_shares:
+            return []
+
+        num_layers = len(all_shares[0])
+        result = []
+
+        for layer_idx in range(num_layers):
+            layer_sum = sum(shares[layer_idx] for shares in all_shares)
+            result.append(layer_sum)
+
+        return result

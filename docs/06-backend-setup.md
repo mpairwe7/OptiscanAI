@@ -41,17 +41,18 @@
 │  │  5. CORS (configurable origins)                                │ │
 │  └────────────────────────────────────────────────────────────────┘ │
 │                                                                      │
-│  ┌──────────────────── 10 API Routers ────────────────────────────┐ │
-│  │  health    ── /health, /health/model, /health/gate, /          │ │
-│  │  predict   ── /api/v1/predict, /api/v1/diseases                │ │
-│  │  auth      ── /api/v1/auth/token                               │ │
-│  │  review    ── /api/v1/review/*                                 │ │
-│  │  clinical  ── /api/v1/clinical/*                               │ │
-│  │  explain   ── /api/v1/explain/*                                │ │
-│  │  analytics ── /api/v1/system/info, /api/v1/analytics/summary   │ │
-│  │  agents    ── /api/v1/agents/*                                 │ │
-│  │  governance── /api/v1/governance/*                              │ │
-│  │  gate      ── /api/v1/gate/status, /api/v1/gate/validate       │ │
+│  ┌──────────────────── 11 API Routers ────────────────────────────┐ │
+│  │  health      ── /health, /health/model, /health/gate, /        │ │
+│  │  predict     ── /api/v1/predict, /api/v1/diseases              │ │
+│  │  predict_edge── /api/v1/predict/onnx,coreml,quantized (Ph 3)  │ │
+│  │  auth        ── /api/v1/auth/token                             │ │
+│  │  review      ── /api/v1/review/*                               │ │
+│  │  clinical    ── /api/v1/clinical/*                             │ │
+│  │  explain     ── /api/v1/explain/*                              │ │
+│  │  analytics   ── /api/v1/system/info, /api/v1/analytics/summary│ │
+│  │  agents      ── /api/v1/agents/*                               │ │
+│  │  governance  ── /api/v1/governance/* (drift,AL,fairness,audit) │ │
+│  │  gate        ── /api/v1/gate/status, /api/v1/gate/validate     │ │
 │  └────────────────────────────────────────────────────────────────┘ │
 │                                                                      │
 │  ┌──────────────────── Core Services ─────────────────────────────┐ │
@@ -135,9 +136,12 @@ backend/
       explain.py                   # GradCAM, LIME, SHAP, IG, ELI5 endpoints
       analytics.py                 # System info + prediction analytics
       agents.py                    # Agent orchestration, screening pipeline, events
+      governance.py                # Governance: drift, fairness, model cards, audit
+      gate.py                      # Fundus gate v2: status, validate debug endpoints
+      predict_edge.py              # Edge inference: ONNX, CoreML, quantized (Phase 3)
 ```
 
-**Total:** ~1,800 lines of Python across 16 modules.
+**Total:** ~2,200 lines of Python across 19 modules.
 
 ---
 
@@ -225,6 +229,24 @@ Append-only audit trail for regulatory compliance and drift detection.
 - **Payload fields:** `sub` (subject), `exp` (expiry), `role` (user/admin), `iat` (issued-at)
 - **RBAC:** Two roles — `user` and `admin`; admin bypasses all role checks
 - **Toggle:** `AUTH_ENABLED=false` (default) skips auth for development
+
+### Additional Services (initialized during lifespan)
+
+These services are initialized in `main.py` lifespan and are opt-in via environment variables:
+
+| Service | Module | Env Toggle | Purpose |
+|---------|--------|-----------|---------|
+| AgentOrchestrator | `src/agents/orchestrator` | Always (non-fatal) | LangGraph multi-agent screening pipeline |
+| ReviewGate | `routers/review.py` | Always | Human-in-the-loop clinical review queue |
+| HealthMonitor | `src/monitoring/health` | Always | Latency tracking, SLA compliance, throughput |
+| GateMonitor | `src/monitoring/gate_monitor` | `FUNDUS_GATE__ENABLED` | Gate pass/reject rates, disagreements, alerting |
+| LearnedFundusGate | `src/data/fundus_gate_learned` | `FUNDUS_GATE__ENABLED` | MobileNetV3-Small binary classifier for gate v2 |
+| DriftDetector | `core/drift_detector` | `DRIFT__ENABLED` | PSI + KS test + NannyML + Evidently drift detection |
+| ActiveLearningLoop | `core/active_learning` | `ACTIVE_LEARNING_LOOP__ENABLED` | Review → LoRA fine-tune → MLflow registration |
+| MLflowRegistry | `core/mlflow_registry` | `MLFLOW__ENABLED` | Model versioning, staging/production promotion |
+| Telemetry | `core/telemetry` | `TELEMETRY__ENABLED` | OpenTelemetry distributed tracing + metrics |
+
+All optional services are wrapped in try/except during startup — failure is non-fatal and logged as a warning.
 
 ---
 
@@ -766,6 +788,112 @@ Describe the LangGraph workflow topology.
 
 ---
 
+### Governance & Compliance
+
+#### `GET /api/v1/governance/drift`
+Current drift detection status and history (PSI, KS test results, alerts).
+
+#### `GET /api/v1/governance/active-learning-stats`
+Active learning queue size, fine-tune history, and retraining status.
+
+#### `GET /api/v1/governance/model-registry`
+MLflow model registry status — registered models, stages, versions.
+
+#### `GET /api/v1/governance/fairness`
+Fairness dashboard with demographic subgroup performance breakdowns.
+
+#### `GET /api/v1/governance/fairness/history`
+Historical fairness evaluation results over time.
+
+#### `GET /api/v1/governance/model-card`
+Current model card in JSON or Markdown format. Accepts `?format=markdown` query param.
+
+#### `GET /api/v1/governance/audit`
+Query the immutable audit log. Supports filtering by event type and date range.
+
+#### `GET /api/v1/governance/audit/integrity`
+Verify audit trail integrity using SHA-256 hash chain validation.
+```json
+{
+  "integrity": "verified",
+  "total_events": 1523,
+  "chain_valid": true,
+  "last_verified": "2026-04-29T10:00:00Z"
+}
+```
+
+---
+
+### Fundus Gate
+
+#### `GET /api/v1/gate/status`
+Gate configuration, runtime statistics, and learned model status.
+```json
+{
+  "gate_version": "v2",
+  "enabled": true,
+  "learned_model_loaded": true,
+  "config": {
+    "learned_weight": 0.4,
+    "min_confidence": 0.70,
+    "visual_evidence": false
+  },
+  "stats": {
+    "total_checked": 150,
+    "passed": 142,
+    "rejected": 8,
+    "pass_rate": 0.947
+  }
+}
+```
+
+#### `POST /api/v1/gate/validate`
+Debug endpoint — runs full gate analysis on an uploaded image but **always returns 200** (never 422). Includes visual evidence for debugging.
+```bash
+curl -X POST http://localhost:8080/api/v1/gate/validate -F "file=@image.png"
+```
+
+#### `GET /health/gate`
+Gate-specific health metrics for monitoring dashboards.
+```json
+{
+  "passed": 142,
+  "rejected": 8,
+  "pass_rate": 0.947,
+  "latency_p50_ms": 5.2,
+  "latency_p95_ms": 7.8,
+  "latency_p99_ms": 9.1,
+  "alert": false
+}
+```
+
+---
+
+### Edge Inference (Phase 3)
+
+Optimized inference endpoints for deployment on resource-constrained devices. Requires `EDGE__ONNX_ENABLED=true` (or coreml/quantized equivalents).
+
+#### `POST /api/v1/predict/onnx`
+ONNX Runtime inference — fastest CPU inference path.
+
+#### `POST /api/v1/predict/coreml`
+Core ML inference — optimized for Apple Silicon (M-series Macs, iOS devices).
+
+#### `POST /api/v1/predict/quantized`
+INT8/FP16 quantized inference — smallest model footprint.
+
+#### `GET /api/v1/predict/edge/status`
+Loaded edge model formats and their configuration.
+```json
+{
+  "onnx": {"loaded": true, "path": "models/export/model.onnx"},
+  "coreml": {"loaded": false, "reason": "EDGE__COREML_ENABLED=false"},
+  "quantized": {"loaded": true, "dtype": "int8"}
+}
+```
+
+---
+
 ## Authentication & Authorization
 
 ### Token Flow
@@ -892,6 +1020,18 @@ All settings are managed via environment variables or `.env` file, loaded by Pyd
 | `EXPLAIN_LIME_DEFAULT_SAMPLES` | `300` | LIME perturbation samples |
 | `EXPLAIN_SHAP_ENABLED` | `true` | Enable SHAP |
 
+### Fundus Gate V2
+
+| Variable | Default | Description |
+|---|---|---|
+| `FUNDUS_GATE__ENABLED` | `true` | Enable pre-inference fundus gating |
+| `FUNDUS_GATE__VERSION` | `v2` | Gate version (`v1` = statistical-only, `v2` = fusion) |
+| `FUNDUS_GATE__LEARNED_WEIGHT` | `0.4` | Weight for learned model in fusion formula |
+| `FUNDUS_GATE__MIN_CONFIDENCE` | `0.70` | Minimum fusion confidence to pass gate |
+| `FUNDUS_GATE__MODEL_PATH` | `weights/fundus_gate.pth` | Path to learned gate weights |
+| `FUNDUS_GATE__VISUAL_EVIDENCE` | `false` | Generate base64 heatmaps on rejection |
+| `FUNDUS_GATE__MC_DROPOUT_SAMPLES` | `5` | MC Dropout samples for uncertainty estimation |
+
 ### Regulatory
 
 | Variable | Default | Description |
@@ -911,6 +1051,67 @@ All settings are managed via environment variables or `.env` file, loaded by Pyd
 | `GROQ_TEMPERATURE` | `0.3` | Groq sampling temperature |
 | `AGENT_MONITOR_INTERVAL` | `60.0` | Monitor agent cycle (seconds) |
 | `AGENT_GOVERNANCE_INTERVAL` | `300.0` | Governance agent cycle (seconds) |
+
+### Phase 1: Observability & MLOps
+
+| Variable | Default | Description |
+|---|---|---|
+| `TELEMETRY__ENABLED` | `false` | Enable OpenTelemetry distributed tracing |
+| `TELEMETRY__OTLP_ENDPOINT` | `http://localhost:4317` | OTEL Collector gRPC endpoint |
+| `TELEMETRY__SERVICE_NAME` | `retinalai` | Service name in traces |
+| `TELEMETRY__SAMPLE_RATE` | `1.0` | Trace sampling rate (0.0–1.0) |
+| `MLFLOW__ENABLED` | `false` | Enable MLflow model registry |
+| `MLFLOW__TRACKING_URI` | `http://localhost:5000` | MLflow tracking server URL |
+| `MLFLOW__MODEL_NAME` | `retinalai-vignn` | Registered model name |
+| `MLFLOW__EXPERIMENT_NAME` | `retinalai-production` | MLflow experiment name |
+| `ACTIVE_LEARNING_LOOP__ENABLED` | `false` | Enable active learning closed loop |
+| `ACTIVE_LEARNING_LOOP__RETRAIN_THRESHOLD` | `150` | Corrections before retraining |
+| `ACTIVE_LEARNING_LOOP__QUEUE_DIR` | `data/active_learning` | Queue directory |
+| `DRIFT__ENABLED` | `true` | Enable drift detection (on by default) |
+| `DRIFT__CHECK_INTERVAL` | `100` | Check every N predictions |
+| `DRIFT__NANNYML_ENABLED` | `false` | Enable NannyML integration |
+| `DRIFT__EVIDENTLY_ENABLED` | `false` | Enable Evidently integration |
+| `DRIFT__ALERT_WEBHOOK_URL` | `""` | Webhook for drift alerts |
+
+### Phase 2: Scalability & Security
+
+| Variable | Default | Description |
+|---|---|---|
+| `RAY__ENABLED` | `false` | Enable Ray Serve dynamic batching |
+| `RAY__SERVE_URL` | `http://localhost:8000` | Ray Serve dashboard URL |
+| `CANARY__ENABLED` | `false` | Enable canary release routing |
+| `CANARY__CANARY_WEIGHT` | `0.0` | Traffic weight for canary version (0.0–1.0) |
+| `CANARY__STICKY_SESSIONS` | `true` | Sticky session routing for canary |
+| `CIRCUIT_BREAKER__FAILURE_THRESHOLD` | `5` | Failures before circuit opens |
+| `CIRCUIT_BREAKER__RECOVERY_TIMEOUT_S` | `60.0` | Seconds before half-open |
+| `KAFKA__ENABLED` | `false` | Enable Kafka audit streaming |
+| `KAFKA__BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker address |
+| `ICEBERG__ENABLED` | `false` | Enable Apache Iceberg audit tables |
+| `MTLS__ENABLED` | `false` | Enable mutual TLS between services |
+
+### Phase 3: Governance & Edge
+
+| Variable | Default | Description |
+|---|---|---|
+| `EDGE__ONNX_ENABLED` | `false` | Enable ONNX Runtime inference endpoint |
+| `EDGE__COREML_ENABLED` | `false` | Enable Core ML inference endpoint |
+| `EDGE__QUANTIZED_ENABLED` | `false` | Enable INT8/FP16 quantized inference |
+| `FAIRNESS__ENABLED` | `false` | Enable fairness dashboard endpoint |
+| `MODEL_CARD__AUTO_GENERATE` | `false` | Auto-generate model cards on MLflow promotion |
+
+### Phase 4: Future-Proofing
+
+| Variable | Default | Description |
+|---|---|---|
+| `RESILIENCE__ENABLED` | `false` | Enable graceful degradation + health-aware routing |
+| `RESILIENCE__HEALTH_CHECK_INTERVAL_S` | `30.0` | Health check frequency |
+| `MULTIMODAL__ENABLED` | `false` | Enable multi-modal fusion (fundus + OCT) |
+| `MULTIMODAL__FUSION_STRATEGY` | `concatenation` | `concatenation` or `cross_attention` |
+| `FEDERATED__ENABLED` | `false` | Enable federated learning client |
+| `FEDERATED__FRAMEWORK` | `flower` | `flower` or `nvflare` |
+| `FEDERATED__DP_ENABLED` | `false` | Enable differential privacy |
+
+> **Note:** All Phase 1-4 features are opt-in and disabled by default. Enabling a feature when its infrastructure is unavailable is non-fatal — the service logs a warning and continues.
 
 ---
 
@@ -1023,6 +1224,60 @@ docker compose up -d api
 docker compose --profile cpu up -d api-cpu
 ```
 
+### Hugging Face Spaces (Docker)
+
+The HF Spaces deployment (`Dockerfile.hf`) runs the full stack (backend + frontend + nginx) in a single container via supervisord, optimized for CPU-only free-tier hardware.
+
+**Architecture:**
+```
+supervisord (PID 1)
+  ├── nginx           :7860  (reverse proxy — static assets + routing)
+  ├── uvicorn/FastAPI  :8080  (backend API — internal only)
+  └── node server.js   :3000  (Next.js standalone — internal only)
+```
+
+**Key differences from GPU deployment:**
+| Aspect | GPU (`Dockerfile`) | HF Spaces (`Dockerfile.hf`) |
+|--------|-------------------|----------------------------|
+| Base image | `nvidia/cuda:12.1.1` | `python:3.11-slim-bookworm` |
+| PyTorch | CUDA 12.1 (`whl/cu121`) | CPU-only (`whl/cpu`) |
+| Port | 8080 (API only) | 7860 (nginx reverse proxy) |
+| Frontend | Separate (`make frontend`) | Built into Docker image |
+| Process manager | Single uvicorn | supervisord (3 processes) |
+| Device | `CUDA_VISIBLE_DEVICES=0` | `CUDA_VISIBLE_DEVICES=-1`, `DEVICE=cpu` |
+
+**Supervisord configuration** (`supervisord.conf`):
+- Environment variables are hardcoded (not `%(ENV_*)s` expansion) because HF Spaces does not inject standard CUDA env vars
+- Backend binds to `127.0.0.1:8080` (internal, proxied by nginx)
+- Frontend binds to `127.0.0.1:3000` (internal, proxied by nginx)
+- All processes set `autorestart=true` with 3 retries
+
+**Nginx routing** (`nginx.conf`):
+| Path | Destination | Purpose |
+|------|-------------|---------|
+| `/_next/static/*` | `/srv/nextjs/` (filesystem) | Pre-built Next.js static assets (365d cache) |
+| `/api/*` | `proxy_pass :8080` | Backend API passthrough |
+| `/health` | `proxy_pass :8080` | Health check (used by HF Spaces HEALTHCHECK) |
+| `/docs` | `proxy_pass :8080` | Swagger UI |
+| `/openapi.json` | `proxy_pass :8080` | OpenAPI schema |
+| `/*` | `proxy_pass :3000` | Next.js pages and SSR |
+
+**Deploy to HF Spaces:**
+```bash
+# Automated (clones Space, syncs files, pushes)
+make deploy-hf
+# or
+HF_TOKEN=hf_xxx bash scripts/deploy_hf.sh
+
+# Local test before pushing
+docker compose --profile hf up --build
+```
+
+**Troubleshooting HF Spaces:**
+- Check build logs at `https://huggingface.co/spaces/<user>/<space>`
+- Runtime status: `curl https://huggingface.co/api/spaces/<user>/<space>/runtime`
+- Common failures: supervisor env var expansion (`%(ENV_X)s` fails if `X` is not set), CUDA base image on CPU hardware, `short_description` > 60 chars in README frontmatter
+
 ### Manual (Development)
 
 ```bash
@@ -1052,6 +1307,8 @@ CUDA_VISIBLE_DEVICES=2 PYTHONPATH=. uv run uvicorn backend.app.main:app \
 | `RATE_LIMIT_PER_MINUTE` | Tune based on expected traffic |
 | SSL/TLS | Terminate at reverse proxy (nginx, Caddy, ALB) |
 | Model checkpoint | Ensure `MODEL_PATH` points to production weights |
+| `FUNDUS_GATE__ENABLED` | Set to `true` for pre-inference safety gating |
+| `FUNDUS_GATE__MODEL_PATH` | Ensure learned gate weights exist at configured path |
 
 ---
 
@@ -1067,7 +1324,7 @@ CUDA_VISIBLE_DEVICES=2 PYTHONPATH=. uv run uvicorn backend.app.main:app \
 
 5. **Demo mode** — If no model checkpoint is found, the API returns random predictions and never crashes. Useful for frontend development and CI testing.
 
-6. **3-layer fundus gating** — Non-fundus images are rejected before inference, preventing misleading predictions on non-medical images.
+6. **4-layer fundus gating (v2)** — Non-fundus images are rejected before inference via a fusion of statistical rules and a learned MobileNetV3-Small classifier. Visual evidence (GradCAM, heatmaps) supports explainable rejection for regulatory compliance.
 
 7. **Prediction audit trail** — Every inference is logged to append-only JSONL files for regulatory compliance, drift detection, and analytics.
 
@@ -1080,3 +1337,7 @@ CUDA_VISIBLE_DEVICES=2 PYTHONPATH=. uv run uvicorn backend.app.main:app \
 11. **Structured JSON logging** — All logs are machine-parseable for integration with ELK, CloudWatch, Datadog, or any log aggregation system.
 
 12. **Security headers by default** — XSS protection, clickjacking prevention, HSTS (production), and permissions policy are applied to every response via middleware.
+
+13. **HF Spaces single-container deployment** — Supervisord orchestrates nginx + backend + frontend in one Docker container with CPU-only PyTorch, enabling zero-config deployment on Hugging Face Spaces free tier. Hardcoded env vars avoid supervisor expansion failures on restricted platforms.
+
+14. **Configuration hierarchy** — Nested Pydantic Settings with `__` delimiter (e.g., `FUNDUS_GATE__ENABLED`) allows fine-grained control via env vars without code changes. All features are opt-in with safe defaults.

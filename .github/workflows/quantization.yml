@@ -1,0 +1,155 @@
+name: Quantization Pipeline
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/quantize_models.py'
+      - 'scripts/quantization_quality_gate.py'
+      - 'src/optimization/**'
+      - 'src/export/**'
+      - '.github/workflows/quantization.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/quantize_models.py'
+      - 'scripts/quantization_quality_gate.py'
+      - 'src/optimization/**'
+      - 'src/export/**'
+  workflow_dispatch:
+    inputs:
+      formats:
+        description: 'Quantization formats (space-separated: gguf awq gptq onnx tensorrt)'
+        required: false
+        default: 'gguf onnx'
+      max_faithfulness_drop:
+        description: 'Maximum faithfulness drop (0.04 = 4%)'
+        required: false
+        default: '0.04'
+      max_bundle_size_mb:
+        description: 'Maximum bundle size in MB'
+        required: false
+        default: '500'
+
+env:
+  PYTHON_VERSION: '3.10'
+  TORCH_INDEX_URL: 'https://download.pytorch.org/whl/cpu'
+
+jobs:
+  quantize:
+    name: Quantize Models
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      manifest_path: ${{ steps.quantize.outputs.manifest_path }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install torch torchvision --index-url ${{ env.TORCH_INDEX_URL }}
+          pip install -e ".[dev]"
+          pip install onnxruntime onnx
+
+      - name: Run quantization pipeline
+        id: quantize
+        run: |
+          FORMATS="${{ github.event.inputs.formats || 'gguf onnx' }}"
+          PYTHONPATH=. python scripts/quantize_models.py \
+            --model-path models/model_vignn_rank1.pth \
+            --output-dir outputs/quantized \
+            --formats $FORMATS
+          echo "manifest_path=outputs/quantized/quantization_manifest.json" >> $GITHUB_OUTPUT
+
+      - name: Upload quantized artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: quantized-models
+          path: outputs/quantized/
+          retention-days: 30
+
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    needs: quantize
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install torch torchvision --index-url ${{ env.TORCH_INDEX_URL }}
+          pip install -e ".[dev]"
+          pip install onnxruntime onnx
+
+      - name: Download quantized artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: quantized-models
+          path: outputs/quantized/
+
+      - name: Run quality gates
+        run: |
+          MAX_FAITH="${{ github.event.inputs.max_faithfulness_drop || '0.04' }}"
+          MAX_SIZE="${{ github.event.inputs.max_bundle_size_mb || '500' }}"
+          PYTHONPATH=. python scripts/quantization_quality_gate.py \
+            --manifest-path outputs/quantized/quantization_manifest.json \
+            --max-faithfulness-drop $MAX_FAITH \
+            --max-bundle-size-mb $MAX_SIZE \
+            --max-p95-latency-ms 100
+
+      - name: Upload quality gate report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-gate-report
+          path: outputs/quantized/quality_gate_report.json
+          retention-days: 30
+
+  bundle-size-check:
+    name: Bundle Size Check
+    runs-on: ubuntu-latest
+    needs: quantize
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download quantized artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: quantized-models
+          path: outputs/quantized/
+
+      - name: Check bundle sizes
+        run: |
+          echo "=== Quantized Model Sizes ==="
+          MAX_SIZE_MB="${{ github.event.inputs.max_bundle_size_mb || '500' }}"
+          FAILED=0
+          for f in outputs/quantized/*; do
+            if [ -f "$f" ]; then
+              SIZE_MB=$(du -m "$f" | cut -f1)
+              BASENAME=$(basename "$f")
+              if [ "$SIZE_MB" -gt "$MAX_SIZE_MB" ]; then
+                echo "FAIL: $BASENAME = ${SIZE_MB}MB (max: ${MAX_SIZE_MB}MB)"
+                FAILED=1
+              else
+                echo "PASS: $BASENAME = ${SIZE_MB}MB"
+              fi
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then
+            echo "::error::One or more artifacts exceed the ${MAX_SIZE_MB}MB size limit"
+            exit 1
+          fi
+          echo "All artifacts within size limits."
