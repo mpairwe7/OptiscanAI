@@ -1,6 +1,7 @@
 services:
-  # GPU API backend
+  # GPU API backend (supports quantized models + offline RAG)
   api:
+    image: landwind/optiscan-ai:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -14,10 +15,27 @@ services:
       - CUDA_VISIBLE_DEVICES=0
       - FUNDUS_GATE__ENABLED=true
       - FUNDUS_GATE__MODEL_PATH=weights/fundus_gate.pth
+      # Phase 5: Offline + Quantization (opt-in)
+      - OFFLINE_RAG__ENABLED=${OFFLINE_RAG__ENABLED:-false}
+      - OFFLINE_RAG__INDEX_DIR=data/offline_rag/index
+      - OFFLINE_RAG__BUNDLES_DIR=data/offline_rag/bundles
+      - QUANTIZATION__ENABLED=${QUANTIZATION__ENABLED:-false}
+      - QUANTIZATION__ACTIVE_FORMAT=${QUANTIZATION__ACTIVE_FORMAT:-}
+      - QUANTIZATION__TORCH_COMPILE_ENABLED=${QUANTIZATION__TORCH_COMPILE_ENABLED:-false}
+      - VOICE_FIRST__ENABLED=${VOICE_FIRST__ENABLED:-false}
+      # Phase 3: Uganda ecosystem (opt-in)
+      - DHIS2__ENABLED=${DHIS2__ENABLED:-false}
+      - DHIS2__BASE_URL=${DHIS2__BASE_URL:-}
+      - MOBILE_MONEY__ENABLED=${MOBILE_MONEY__ENABLED:-false}
+      - AFRICASTALKING__ENABLED=${AFRICASTALKING__ENABLED:-false}
+      # Phase 4: Federated + Multimodal (opt-in)
+      - FEDERATED__ENABLED=${FEDERATED__ENABLED:-false}
+      - MULTIMODAL__ENABLED=${MULTIMODAL__ENABLED:-false}
     volumes:
       - ./models:/app/models
       - ./weights:/app/weights
       - ./outputs:/app/outputs
+      - ./data/offline_rag:/app/data/offline_rag
     deploy:
       resources:
         reservations:
@@ -35,6 +53,7 @@ services:
 
   # CPU-only variant
   api-cpu:
+    image: landwind/optiscan-ai:latest
     build:
       context: .
       dockerfile: Dockerfile.cpu
@@ -50,6 +69,7 @@ services:
     restart: unless-stopped
 
   # Hugging Face Spaces build (local test before pushing)
+  # CPU-only: mirrors the HF Spaces free-tier environment
   hf:
     build:
       context: .
@@ -60,18 +80,13 @@ services:
       - "7860:7860"
     environment:
       - MODEL_PATH=models/model_vignn_rank1.pth
-      - CUDA_VISIBLE_DEVICES=0
-      - DEVICE=cuda
+      - CUDA_VISIBLE_DEVICES=-1
+      - DEVICE=cpu
+      - FUNDUS_GATE__ENABLED=true
+      - FUNDUS_GATE__MODEL_PATH=weights/fundus_gate.pth
     volumes:
       - ./models:/app/models
       - ./weights:/app/weights
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: ["0"]
-              capabilities: [gpu]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7860/health"]
       interval: 30s

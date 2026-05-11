@@ -96,6 +96,7 @@ mlops-pipeline: validate-data train export model-card
 	@echo "Full MLOps pipeline complete!"
 
 # --- Hugging Face Spaces Deployment ---
+# Dockerfile.hf: python:3.11-slim-bookworm, CPU PyTorch, supervisord (nginx + backend + frontend)
 deploy-hf:
 	bash scripts/deploy_hf.sh
 
@@ -126,6 +127,74 @@ sbom:
 
 export-all:
 	PYTHONPATH=. python3 scripts/export_all_formats.py --model-path models/model_vignn_rank1.pth --output-dir models/export
+
+# --- Phase 5: Quantization, Offline, Mobile ---
+quantize:
+	PYTHONPATH=. python3 scripts/quantize_models.py --model-path models/model_vignn_rank1.pth --output-dir outputs/quantized --formats gguf onnx
+
+quantize-all:
+	PYTHONPATH=. python3 scripts/quantize_models.py --model-path models/model_vignn_rank1.pth --output-dir outputs/quantized --formats gguf awq gptq onnx tensorrt
+
+quality-gate:
+	PYTHONPATH=. python3 scripts/quantization_quality_gate.py --manifest-path outputs/quantized/quantization_manifest.json --max-faithfulness-drop 0.04 --max-p95-latency-ms 100
+
+mobile-bundle:
+	PYTHONPATH=. python3 scripts/export_mobile_bundle.py --output-dir outputs/mobile_bundle --include-voice
+
+mobile-bundle-validate:
+	PYTHONPATH=. python3 scripts/export_mobile_bundle.py --output-dir outputs/mobile_bundle --no-archive --max-bundle-mb 800
+
+flutter-scaffold:
+	PYTHONPATH=. python3 scripts/export_mobile_bundle.py --output-dir outputs/mobile_bundle --generate-flutter --no-archive
+
+# --- Phase 5 Docker ---
+up-offline:
+	OFFLINE_RAG__ENABLED=true docker compose up -d
+	@echo "API with offline RAG enabled"
+
+up-quantized:
+	QUANTIZATION__ENABLED=true QUANTIZATION__TORCH_COMPILE_ENABLED=true docker compose up -d
+	@echo "API with quantized models + torch.compile"
+
+up-full-v2:
+	OFFLINE_RAG__ENABLED=true QUANTIZATION__ENABLED=true VOICE_FIRST__ENABLED=true docker compose -f docker-compose.yml -f docker-compose.otel.yml up -d
+	@echo "Full Phase 5 stack: offline + quantized + voice + OTEL"
+
+# --- Phase 1: Mobile Distillation ---
+distill:
+	PYTHONPATH=. python3 scripts/distill_mobile_student.py --config configs/distillation_mobile_2026.yaml
+
+export-mobile:
+	PYTHONPATH=. python3 scripts/export_mobile_student.py && \
+	PYTHONPATH=. python3 scripts/export_fundus_gate_onnx.py && \
+	PYTHONPATH=. python3 scripts/extract_clinical_kg_json.py && \
+	PYTHONPATH=. python3 scripts/build_screening_bundle.py
+
+# --- Phase 4: Governance + Production ---
+bias-audit-uganda:
+	PYTHONPATH=. python3 scripts/run_bias_audit.py --uganda --f1-threshold 0.08
+
+federated-sim:
+	PYTHONPATH=. python3 scripts/simulate_federation.py --clients 5 --rounds 10
+
+moh-package:
+	PYTHONPATH=. python3 scripts/generate_moh_package.py
+
+pilot-readiness:
+	PYTHONPATH=. python3 scripts/validate_pilot_readiness.py
+
+up-phase4:
+	VOICE_FIRST__ENABLED=true DHIS2__ENABLED=true docker compose up -d
+
+# --- Docker Hub ---
+docker-login:
+	docker login -u $(DOCKERHUB_USERNAME)
+
+docker-build:
+	docker build -t landwind/optiscan-ai:latest -f Dockerfile .
+
+docker-push: docker-build
+	docker push landwind/optiscan-ai:latest
 
 # --- Clean ---
 clean:
