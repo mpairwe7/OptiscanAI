@@ -20,7 +20,7 @@ if [ "${EMBEDDED_POSTGRES__ENABLED:-true}" = "false" ]; then
   exec sleep infinity
 fi
 
-PG_BIN="${PG_BIN:-/usr/lib/postgresql/14/bin}"
+PG_BIN="${PG_BIN:-/usr/lib/postgresql/15/bin}"
 PGDATA="${PGDATA:-/var/lib/postgresql/data}"
 PG_USER="${POSTGRES_USER:-optiscan}"
 PG_PASSWORD="${POSTGRES_PASSWORD:-optiscan}"
