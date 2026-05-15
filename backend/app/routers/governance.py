@@ -15,7 +15,14 @@ from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/governance", tags=["governance"])
+from fastapi import Depends
+from backend.app.core.feature_gate import require_tier
+
+router = APIRouter(
+    prefix="/api/v1/governance",
+    tags=["governance"],
+    dependencies=[Depends(require_tier("practice", feature="governance"))],
+)
 
 
 # ── Phase 1 Endpoints ───────────────────────────────────────────────────────

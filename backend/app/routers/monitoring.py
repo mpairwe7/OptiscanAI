@@ -16,7 +16,14 @@ from pydantic import BaseModel, Field
 from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/v1/admin", tags=["monitoring"])
+from fastapi import Depends
+from backend.app.core.feature_gate import require_tier
+
+router = APIRouter(
+    prefix="/api/v1/admin",
+    tags=["monitoring"],
+    dependencies=[Depends(require_tier("practice", feature="monitoring"))],
+)
 
 
 # ---------------------------------------------------------------------------

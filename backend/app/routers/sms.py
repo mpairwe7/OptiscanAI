@@ -7,7 +7,15 @@ from fastapi import APIRouter, Form, HTTPException
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
+from fastapi import Depends
+from backend.app.core.feature_gate import require_tier
+
 router = APIRouter(prefix="/api/v1/sms", tags=["sms-ussd"])
+
+# /send-referral and /delivery/* are gated per-endpoint below.
+# /callback and /ussd are public — they are provider-signed webhooks from
+# Africa's Talking and must not require an auth header.
+_sms_gate = require_tier("health_system", feature="sms_referral")
 
 
 class ReferralSMSRequest(BaseModel):
@@ -20,7 +28,7 @@ class ReferralSMSRequest(BaseModel):
 
 
 @router.post("/send-referral")
-async def send_referral_sms(body: ReferralSMSRequest):
+async def send_referral_sms(body: ReferralSMSRequest, _gate=Depends(_sms_gate)):
     """Send screening result + referral as SMS."""
     from backend.app.integrations.africastalking.sms import SMSService
     sms = SMSService()
@@ -54,7 +62,7 @@ async def ussd_callback(
 
 
 @router.get("/delivery/{msg_id}")
-async def check_delivery(msg_id: str):
+async def check_delivery(msg_id: str, _gate=Depends(_sms_gate)):
     """Check SMS delivery status."""
     from backend.app.integrations.africastalking.sms import SMSService
     sms = SMSService()

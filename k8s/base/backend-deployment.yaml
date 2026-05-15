@@ -101,6 +101,39 @@ spec:
             # Phase 4
             - name: RESILIENCE__ENABLED
               value: "true"
+            # Phase 6: Subscription billing — points at the sidecar Postgres
+            # (k8s/base/postgres-statefulset.yaml).
+            - name: DATABASE__ENABLED
+              value: "true"
+            - name: BILLING__ENABLED
+              value: "true"
+            - name: EMBEDDED_POSTGRES__ENABLED
+              value: "false"
+            - name: POSTGRES_HOST
+              value: "optiscan-postgres"
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: optiscan-postgres
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: optiscan-postgres
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: optiscan-postgres
+                  key: POSTGRES_DB
+            - name: DATABASE__URL
+              # asyncpg DSN; backend's backend-start.sh waits for `pg_isready` on
+              # POSTGRES_HOST:POSTGRES_PORT before running `alembic upgrade head`.
+              value: "postgresql+asyncpg://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)"
+            - name: PUBLIC_APP_URL
+              value: "https://www.optiscan.makstartup.com"
             # Secrets from K8s secrets
             - name: JWT_SECRET
               valueFrom:

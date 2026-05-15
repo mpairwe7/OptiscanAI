@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { fetchHealth, fetchModelHealth, fetchAnalytics, fetchSystemInfo } from "@/lib/api";
 import { useAppStore } from "@/stores/app-store";
@@ -50,7 +51,7 @@ function ComplianceBadge({ label, status }: { label: string; status: string }) {
 }
 
 export function DashboardPage() {
-  const { setPage, scanHistory } = useAppStore();
+  const { scanHistory } = useAppStore();
   const health = useQuery({ queryKey: ["health"], queryFn: fetchHealth, refetchInterval: 10_000 });
   const modelHealth = useQuery({ queryKey: ["model-health"], queryFn: fetchModelHealth, refetchInterval: 15_000 });
   const analytics = useQuery({ queryKey: ["analytics"], queryFn: fetchAnalytics, refetchInterval: 30_000 });
@@ -66,13 +67,13 @@ export function DashboardPage() {
             Clinical screening platform overview
           </p>
         </div>
-        <button
-          onClick={() => setPage("screening")}
+        <Link
+          href="/app/screening"
           className="px-4 py-2.5 bg-teal-600 text-white rounded-lg font-semibold text-sm
-                     hover:bg-teal-700 active:bg-teal-800 transition-colors shadow-sm w-full sm:w-auto"
+                     hover:bg-teal-700 active:bg-teal-800 transition-colors shadow-sm w-full sm:w-auto inline-flex items-center justify-center"
         >
           New Screening
-        </button>
+        </Link>
       </div>
 
       {/* Key Metrics */}
@@ -262,9 +263,9 @@ export function DashboardPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
             </svg>
             <p className="text-sm text-slate-400">No scans yet</p>
-            <button onClick={() => setPage("screening")} className="text-sm text-teal-600 font-medium mt-1 hover:text-teal-700">
+            <Link href="/app/screening" className="text-sm text-teal-600 font-medium mt-1 hover:text-teal-700">
               Start a screening
-            </button>
+            </Link>
           </div>
         )}
       </div>

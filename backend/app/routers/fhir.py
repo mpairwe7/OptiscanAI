@@ -4,7 +4,14 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-router = APIRouter(prefix="/api/v1/fhir", tags=["fhir"])
+from fastapi import Depends
+from backend.app.core.feature_gate import require_tier
+
+router = APIRouter(
+    prefix="/api/v1/fhir",
+    tags=["fhir"],
+    dependencies=[Depends(require_tier("health_system", feature="fhir"))],
+)
 
 
 @router.get("/DiagnosticReport/{scan_id}")

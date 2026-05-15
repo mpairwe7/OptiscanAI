@@ -14,7 +14,7 @@ from starlette.responses import Response
 from backend.app.core.config import settings
 from backend.app.core.logging_config import setup_logging
 from backend.app.core.model_service import model_service
-from backend.app.routers import health, predict, auth, review, clinical, explain, analytics, agents, governance, gate, predict_edge, offline, quantized, monitoring
+from backend.app.routers import health, predict, auth, review, clinical, explain, analytics, agents, governance, gate, predict_edge, offline, quantized, monitoring, orgs, billing
 
 setup_logging(settings.log_level, settings.log_format)
 logger = logging.getLogger(__name__)
@@ -24,6 +24,15 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Startup: load model + Phase 1-4 services + agents. Shutdown in reverse."""
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
+
+    # ── Stage -1: Database (must be up before auth/billing/quota) ──
+    if settings.database.enabled:
+        try:
+            from backend.app.core.db import init_engine
+            init_engine()
+            logger.info("Database engine initialized")
+        except Exception as e:
+            logger.error(f"Database init failed (non-fatal): {e}", exc_info=True)
 
     # ── Stage 0: OpenTelemetry (first, so everything else is traced) ──
     if settings.telemetry.enabled:
@@ -112,6 +121,13 @@ async def lifespan(app: FastAPI):
         except Exception:
             pass
 
+    if settings.database.enabled:
+        try:
+            from backend.app.core.db import dispose_engine
+            await dispose_engine()
+        except Exception:
+            pass
+
     logger.info("Shutdown complete")
 
 
@@ -142,11 +158,11 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # ── Middleware stack (order matters: last added = first executed) ──
 
-# 1. CORS - restrict to specific methods and headers
+# 1. CORS - allow credentials for SaaS frontend (cookies + Authorization header)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -190,6 +206,8 @@ app.include_router(predict_edge.router)
 app.include_router(offline.router)
 app.include_router(quantized.router)
 app.include_router(monitoring.router)
+app.include_router(orgs.router)
+app.include_router(billing.router)
 
 # Phase 2: Voice-first
 from backend.app.routers import voice

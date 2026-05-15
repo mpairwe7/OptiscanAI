@@ -1,0 +1,100 @@
+# Sidecar Postgres for the OptiscanAI billing platform (Option 2).
+#
+# Why StatefulSet over Deployment:
+#   * Stable network identity (optiscan-postgres-0.optiscan-postgres.<ns>)
+#   * PersistentVolumeClaim is tied to the pod identity, not the replica set
+#   * Ordered, graceful pod restarts — important for a database
+#
+# Storage:
+#   * volumeClaimTemplates provisions a 20 Gi PVC per replica using the
+#     default StorageClass. On Crane Cloud override with the `cranecloud-ssd`
+#     class via a kustomize patch.
+#
+# Capacity planning:
+#   * 1 replica is fine for billing data (low write volume, small payload).
+#     For HA, layer in Patroni or Stackgres rather than upping `replicas` —
+#     vanilla Postgres doesn't replicate without external orchestration.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: optiscan-postgres
+  namespace: retinalai
+  labels:
+    app: optiscan-postgres
+spec:
+  serviceName: optiscan-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: optiscan-postgres
+  template:
+    metadata:
+      labels:
+        app: optiscan-postgres
+    spec:
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        fsGroup: 999  # postgres group inside postgres:16-alpine
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: optiscan-postgres
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: optiscan-postgres
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: optiscan-postgres
+                  key: POSTGRES_DB
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - exec pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - exec pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 20Gi

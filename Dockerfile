@@ -1,41 +1,46 @@
 # ============================================================================
 # OptiscanAI — Full-Stack GPU Production Image
-# 3-stage multi-stage build | OCI-compliant | Non-root | Graceful shutdown
+# 3-stage build | uv (10x faster) | CUDA 12.4 | OCI-compliant | Non-root
 # Process manager: supervisord → nginx(:8080) + uvicorn(:8081) + node(:3000)
 # ============================================================================
+# syntax=docker/dockerfile:1
 
 # --------------- Stage 1: Python builder ---------------
-FROM docker.io/nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04 AS builder
+FROM docker.io/nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04 AS builder
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=0 \
     PATH="/opt/venv/bin:${PATH}"
 
+# Install Python 3.11 via deadsnakes (Ubuntu 22.04 ships 3.10)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 python3-venv python3-dev \
+    software-properties-common \
+    && add-apt-repository -y ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 python3.11-venv python3.11-dev \
     build-essential git curl ca-certificates \
-    libgl1-mesa-glx libglib2.0-0 \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
-
-RUN python3 -m venv /opt/venv
 
 WORKDIR /app
 
-# Install PyTorch CUDA FIRST — prevents double-download from pyproject.toml
-RUN pip install --upgrade pip && \
-    pip install torch==2.6.0+cu124 torchvision==0.21.0+cu124 \
-    --index-url https://download.pytorch.org/whl/cu124
+# Create venv + install CUDA PyTorch (separate layer — changes rarely)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv venv --python python3.11 /opt/venv && \
+    uv pip install --python /opt/venv/bin/python \
+        "torch==2.6.0+cu124" "torchvision==0.21.0+cu124" \
+        --index-url https://download.pytorch.org/whl/cu124
 
-# Install project deps — torch already satisfied, skip re-download
+# Install project deps (torch already satisfied, skips re-download)
 COPY pyproject.toml /app/pyproject.toml
-RUN pip install ".[deploy]" && \
-    pip uninstall -y streamlit altair pydeck pyarrow 2>/dev/null; \
-    pip install opencv-python-headless && \
-    pip uninstall -y opencv-python 2>/dev/null; \
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --python /opt/venv/bin/python . && \
     find /opt/venv -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null; \
     find /opt/venv -name "*.pyc" -delete 2>/dev/null; \
     find /opt/venv -type d -name "tests" -exec rm -rf {} + 2>/dev/null; \
@@ -43,9 +48,7 @@ RUN pip install ".[deploy]" && \
     true
 
 # --------------- Stage 2: Frontend builder ---------------
-FROM node:20-slim AS frontend-builder
-
-RUN npm install -g bun
+FROM oven/bun:1 AS frontend-builder
 
 WORKDIR /app/frontend
 
@@ -62,65 +65,74 @@ RUN NEXT_PUBLIC_API_URL="" bun run build \
     && cp -r public .next/standalone/public
 
 # --------------- Stage 3: Production runtime ---------------
-FROM docker.io/nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
-
-# OCI standard labels (https://github.com/opencontainers/image-spec/blob/main/annotations.md)
-LABEL maintainer="retinal-screening-team"
-LABEL org.opencontainers.image.title="OptiscanAI"
-LABEL org.opencontainers.image.description="GPU Retinal Disease Screening Platform — Backend + Frontend"
-LABEL org.opencontainers.image.version="2.0.0"
-LABEL org.opencontainers.image.vendor="OptiscanAI"
-LABEL org.opencontainers.image.source="https://github.com/mpairwe7/MLOPS_V1"
-LABEL org.opencontainers.image.licenses="CC-BY-4.0"
-
+FROM docker.io/nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+LABEL org.opencontainers.image.title="OptiscanAI" \
+      org.opencontainers.image.description="GPU Retinal Disease Screening Platform — Backend + Frontend" \
+      org.opencontainers.image.version="3.0.0" \
+      org.opencontainers.image.vendor="OptiscanAI" \
+      org.opencontainers.image.source="https://github.com/mpairwe7/MLOPS_V1" \
+      org.opencontainers.image.licenses="CC-BY-4.0"
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     CUDA_HOME=/usr/local/cuda \
+    MPLBACKEND=Agg \
     PATH="/opt/venv/bin:/usr/local/cuda/bin:${PATH}"
 
-# Runtime deps — pinned Node.js 20 from nodesource without curl|bash
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-       python3 curl ca-certificates gnupg \
-       libgl1-mesa-glx libglib2.0-0 libsm6 libxext6 libxrender1 libgomp1 \
-       nginx supervisor \
-    && mkdir -p /etc/apt/keyrings \
-    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
-       | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
-    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" \
-       > /etc/apt/sources.list.d/nodesource.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends nodejs \
-    && apt-get purge -y gnupg \
+# Runtime deps — Python 3.11, embedded Postgres 14 (Option 1 — dev/pilot),
+# no gnupg, no OpenGL.
+# For multi-tenant production move to a sidecar / managed Postgres
+# (Options 2 + 3 — see docs/23-billing-platform.md § 14).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    software-properties-common \
+    && add-apt-repository -y ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 \
+    curl ca-certificates \
+    libglib2.0-0 libgomp1 \
+    nginx supervisor \
+    postgresql-14 postgresql-client-14 \
+    && apt-get purge -y software-properties-common \
     && apt-get autoremove -y \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    # Disable the Debian-default cluster — our bootstrap script owns its own.
+    && rm -rf /var/lib/postgresql/14/main
 
-# Copy Python venv from builder (no compilers, no pip cache)
+# Node.js binary from official image (replaces 100MB NodeSource apt install)
+COPY --from=node:20-slim /usr/local/bin/node /usr/local/bin/node
+
+# Python venv from builder (no compilers, no pip cache)
 COPY --from=builder /opt/venv /opt/venv
 
-# Copy frontend build artifacts only
+# Frontend build artifacts
 COPY --from=frontend-builder /srv/nextjs /srv/nextjs
 COPY --from=frontend-builder /app/frontend/.next/standalone /app/frontend/.next/standalone
 
 WORKDIR /app
 
-# Copy application code
+# Application code
 COPY src/ ./src/
 COPY backend/ ./backend/
 COPY configs/ ./configs/
+
+# Container entrypoint scripts (Postgres bootstrap + backend wrapper)
+COPY scripts/container/postgres-bootstrap.sh /usr/local/bin/postgres-bootstrap.sh
+COPY scripts/container/backend-start.sh /usr/local/bin/backend-start.sh
+RUN chmod +x /usr/local/bin/postgres-bootstrap.sh /usr/local/bin/backend-start.sh
 
 # Bake model weights (required for Crane Cloud — no volume mounts)
 COPY models/model_vignn_rank1.pth ./models/model_vignn_rank1.pth
 COPY weights/fundus_gate.pth ./weights/fundus_gate.pth
 
-# Non-root user + directories in single layer (no extra chmod layer)
+# Non-root user + directories in single layer (postgres user is created by apt)
 RUN groupadd -r optiscan && useradd -r -g optiscan -d /app -s /sbin/nologin optiscan \
-    && mkdir -p models/checkpoints logs uploads \
+    && mkdir -p models/checkpoints logs uploads /var/lib/postgresql/data \
     && chown -R optiscan:optiscan /app /srv/nextjs \
     && chown -R optiscan:optiscan /var/log/nginx /var/lib/nginx /run \
+    && chown -R postgres:postgres /var/lib/postgresql \
     && ln -sf /dev/stdout /var/log/nginx/access.log \
     && ln -sf /dev/stderr /var/log/nginx/error.log
 
@@ -187,6 +199,8 @@ server {
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
         proxy_cache_bypass $http_upgrade;
     }
 
@@ -195,6 +209,8 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 NGINX
@@ -207,11 +223,27 @@ logfile=/tmp/supervisord.log
 pidfile=/tmp/supervisord.pid
 user=root
 
+[program:postgres]
+command=/usr/local/bin/postgres-bootstrap.sh
+user=root
+priority=10
+environment=PGDATA="/var/lib/postgresql/data",POSTGRES_USER="optiscan",POSTGRES_PASSWORD="optiscan",POSTGRES_DB="optiscan",PG_BIN="/usr/lib/postgresql/14/bin"
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+autorestart=true
+startretries=3
+startsecs=3
+stopwaitsecs=15
+stopsignal=INT
+
 [program:backend]
-command=/opt/venv/bin/uvicorn backend.app.main:app --host 127.0.0.1 --port 8081
+command=/usr/local/bin/backend-start.sh
 directory=/app
 user=optiscan
-environment=MODEL_PATH="models/model_vignn_rank1.pth",API_PORT="8081",LOG_FORMAT="text"
+priority=20
+environment=MODEL_PATH="models/model_vignn_rank1.pth",API_PORT="8081",LOG_FORMAT="text",PYTHONPATH="/app",POSTGRES_HOST="127.0.0.1",POSTGRES_PORT="5432",POSTGRES_USER="optiscan"
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr
@@ -226,6 +258,7 @@ stopsignal=TERM
 command=node server.js
 directory=/app/frontend/.next/standalone
 user=optiscan
+priority=30
 environment=PORT="3000",HOSTNAME="127.0.0.1"
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
@@ -239,6 +272,7 @@ stopsignal=TERM
 
 [program:nginx]
 command=nginx -g "daemon off;"
+priority=40
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr

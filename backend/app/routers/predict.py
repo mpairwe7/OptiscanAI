@@ -3,7 +3,7 @@ import logging
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Request, UploadFile, HTTPException, Query
+from fastapi import APIRouter, Depends, File, Request, Response, UploadFile, HTTPException, Query
 from PIL import Image
 import io
 
@@ -11,6 +11,7 @@ from backend.app.core.model_service import model_service
 from backend.app.core.config import settings
 from backend.app.core.prediction_logger import prediction_logger
 from backend.app.core.auth import get_current_user, TokenPayload
+from backend.app.core.quota import check_scan_quota_inline, record_scan_usage
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ async def predict(
     file: UploadFile = File(...),
     threshold: Optional[float] = Query(None, ge=0.0, le=1.0),
     request: Request = None,
+    response: Response = None,
     user: TokenPayload = Depends(get_current_user),
 ):
     """Predict retinal diseases from uploaded fundus image.
@@ -55,6 +57,9 @@ async def predict(
 
     if image.width < 32 or image.height < 32:
         raise HTTPException(400, "Image too small (min 32x32)")
+
+    # ── Quota enforcement (when billing is enabled) ──
+    billing_ctx = await check_scan_quota_inline(request, response) if request is not None else None
 
     # ── Fundus image gating (pre-inference) ──
     from src.data.fundus_gate_v2 import gate_image, gate_predictions
@@ -184,6 +189,13 @@ async def predict(
         ))
     except Exception:
         pass  # agents are optional
+
+    # Record billable usage event (only when billing is enabled)
+    if billing_ctx is not None:
+        try:
+            await record_scan_usage(billing_ctx, request_id)
+        except Exception as exc:
+            logger.warning("Failed to record usage event: %s", exc)
 
     return {"success": True, "request_id": request_id, **result}
 

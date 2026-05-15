@@ -14,7 +14,14 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/dicom", tags=["dicom"])
+from fastapi import Depends
+from backend.app.core.feature_gate import require_tier
+
+router = APIRouter(
+    prefix="/api/v1/dicom",
+    tags=["dicom"],
+    dependencies=[Depends(require_tier("health_system", feature="dicom"))],
+)
 
 
 class DICOMUploadResponse(BaseModel):

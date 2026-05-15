@@ -17,7 +17,7 @@ dependencies = [
     "numpy<2.0,>=1.24.0",
     "pandas>=2.0.0",
     "pillow>=9.5.0",
-    "opencv-python>=4.8.0",
+    "opencv-python-headless>=4.8.0",
     "scikit-learn>=1.3.0",
     "scikit-image>=0.21.0",
     "albumentations>=1.3.0",
@@ -38,6 +38,16 @@ dependencies = [
     "pydantic-settings>=2.0.0",
     "python-multipart>=0.0.6",
     "aiofiles>=23.0.0",
+
+    # Subscription / billing platform
+    "sqlalchemy[asyncio]>=2.0.30",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.0",
+    "argon2-cffi>=23.1.0",
+    "pyjwt[crypto]>=2.8.0",
+    "email-validator>=2.1.0",
+    "stripe>=10.0.0",
+    "httpx>=0.27.0",
 
     # Config & Utilities
     "pyyaml>=6.0",
@@ -65,10 +75,7 @@ dev = [
     "mypy>=1.5.0",
     "ipykernel>=6.25.0",
 ]
-deploy = [
-    "gunicorn>=21.0.0",
-    "streamlit>=1.35.0",
-]
+deploy = []  # All runtime deps are in core dependencies (uvicorn, torch, etc.)
 wandb = [
     "wandb>=0.17.0",
 ]
@@ -145,6 +152,7 @@ dev-dependencies = [
     "pytest>=7.4.0",
     "ruff>=0.4.0",
     "black>=24.0.0",
+    "pytest-asyncio>=1.3.0",
 ]
 
 [tool.ruff]
@@ -162,6 +170,8 @@ target-version = ["py310"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]

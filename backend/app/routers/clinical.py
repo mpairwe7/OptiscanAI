@@ -2,7 +2,14 @@
 from fastapi import APIRouter, HTTPException
 from backend.app.core.model_service import model_service, DISEASE_NAMES
 
-router = APIRouter(prefix="/api/v1/clinical", tags=["clinical"])
+from fastapi import Depends
+from backend.app.core.feature_gate import require_tier
+
+router = APIRouter(
+    prefix="/api/v1/clinical",
+    tags=["clinical"],
+    dependencies=[Depends(require_tier("clinician", feature="clinical_reasoning"))],
+)
 
 
 DISEASE_INFO = {
