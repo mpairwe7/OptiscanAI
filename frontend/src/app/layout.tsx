@@ -18,13 +18,16 @@ const geistMono = Geist_Mono({
 const CANONICAL_ORIGIN = "https://www.optiscan.makstartup.com";
 
 export async function generateMetadata(): Promise<Metadata> {
-  // Prefer the canonical production origin; fall back to the request host in
-  // dev/staging so og:image links still resolve.
+  // OpenGraph + Twitter image URLs must be absolute AND reachable, otherwise
+  // WhatsApp/Telegram/FB previews silently drop the image. Build the origin
+  // from the current request so previews work on whichever host is live —
+  // Crane Cloud's generated URL today, the canonical domain once DNS lands.
+  // `alternates.canonical` still pins SEO to the canonical origin separately.
   const hdrs = await headers();
   const host = hdrs.get("x-forwarded-host") || hdrs.get("host") || "";
   const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
   const proto = isLocal ? "http" : "https";
-  const origin = isLocal && host ? `${proto}://${host}` : CANONICAL_ORIGIN;
+  const origin = host ? `${proto}://${host}` : CANONICAL_ORIGIN;
 
   return {
     metadataBase: new URL(origin),
@@ -35,7 +38,7 @@ export async function generateMetadata(): Promise<Metadata> {
     description:
       "AI-powered multi-disease retinal screening with explainable AI and clinical knowledge graph reasoning. 45 diseases. Built for Ugandan healthcare.",
     manifest: "/manifest.webmanifest",
-    alternates: { canonical: origin },
+    alternates: { canonical: CANONICAL_ORIGIN },
     keywords: [
       "retinal screening",
       "diabetic retinopathy",
