@@ -37,7 +37,7 @@ export function Hero() {
               </span>
               <span className="font-bold uppercase tracking-wider text-slate-900">Live</span>
               <span className="text-slate-300">·</span>
-              <span>Clinically validated across 6 Uganda facilities</span>
+              <span>Clinical validation planned with Uganda partner facilities</span>
             </div>
 
             <h1 className="mt-6 text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05] text-slate-900 text-balance">
