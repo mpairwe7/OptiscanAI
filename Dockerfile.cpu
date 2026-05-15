@@ -38,8 +38,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     find /opt/venv -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null; \
     find /opt/venv -name "*.pyc" -delete 2>/dev/null; \
     find /opt/venv -type d -name "tests" -exec rm -rf {} + 2>/dev/null; \
-    find /opt/venv -name "*.dist-info" -type d -exec rm -rf {} + 2>/dev/null; \
     true
+# NOTE: do NOT delete *.dist-info directories — Pydantic's EmailStr reads
+# `email-validator`'s version metadata via importlib.metadata at import time;
+# wiping dist-info causes PackageNotFoundError on every backend request.
 
 # --------------- Stage 2: Frontend builder ---------------
 FROM oven/bun:1 AS frontend-builder
