@@ -1,0 +1,25 @@
+# GitGuardian shield configuration.
+#
+# Reference: https://docs.gitguardian.com/ggshield-docs/reference/configuration
+#
+# Purpose: silence the "Generic Password" detector on CI workflow files where
+# any value to the right of `POSTGRES_PASSWORD:` will trigger the keyword-
+# based matcher — even though those values are ephemeral, per-run, and
+# scoped to a service container the workflow itself spawns.
+#
+# Real credentials (Stripe, MoMo, Flutterwave, email providers) live in
+# GitHub repository secrets and are referenced via ${{ secrets.* }}; those
+# never appear in source and remain protected.
+version: 2
+
+secret:
+  ignored_paths:
+    # CI workflows — passwords here are always ephemeral service-container
+    # credentials interpolated from github.run_id at runtime.
+    - .github/workflows/billing-smoke.yml
+
+  ignored_matches:
+    # The ephemeral CI Postgres password pattern. Listed defensively in case
+    # the same pattern moves to another workflow file later.
+    - name: CI ephemeral postgres password (github.run_id-driven)
+      match: "ci-ephemeral-"
