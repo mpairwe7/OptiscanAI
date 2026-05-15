@@ -12,6 +12,7 @@ data/
 !src/data/
 *.pth
 !models/*.pth
+!weights/*.pth
 *.onnx
 wandb/
 mlruns/

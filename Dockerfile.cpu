@@ -76,16 +76,17 @@ ENV PYTHONUNBUFFERED=1 \
     MPLBACKEND=Agg \
     PATH="/opt/venv/bin:${PATH}"
 
-# Runtime deps + embedded Postgres 14 (Option 1 — dev/pilot).
-# For multi-tenant production use a sidecar / managed Postgres
-# (Options 2 + 3 — see docs/23-billing-platform.md § 14).
+# Runtime deps + embedded Postgres 15 (Option 1 — dev/pilot).
+# Postgres 15 is the default in Debian Bookworm; postgresql-14 isn't in
+# the default bookworm repos. For multi-tenant production use a sidecar /
+# managed Postgres (Options 2 + 3 — see docs/23-billing-platform.md § 14).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl ca-certificates \
     libglib2.0-0 libgomp1 \
     nginx supervisor \
-    postgresql-14 postgresql-client-14 \
+    postgresql-15 postgresql-client-15 \
     && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /var/lib/postgresql/14/main
+    && rm -rf /var/lib/postgresql/15/main
 
 # Node.js binary from official image (replaces 100MB NodeSource apt install)
 COPY --from=node:20-slim /usr/local/bin/node /usr/local/bin/node
@@ -153,7 +154,7 @@ user=root
 command=/usr/local/bin/postgres-bootstrap.sh
 user=root
 priority=10
-environment=PGDATA="/var/lib/postgresql/data",POSTGRES_USER="optiscan",POSTGRES_PASSWORD="optiscan",POSTGRES_DB="optiscan",PG_BIN="/usr/lib/postgresql/14/bin"
+environment=PGDATA="/var/lib/postgresql/data",POSTGRES_USER="optiscan",POSTGRES_PASSWORD="optiscan",POSTGRES_DB="optiscan",PG_BIN="/usr/lib/postgresql/15/bin"
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr
