@@ -114,8 +114,8 @@ export function FundusMockup({ className = "" }: { className?: string }) {
         </svg>
       </div>
 
-      {/* Detection chip (floats lower-left) */}
-      <div className="absolute -bottom-5 -left-3 sm:-left-5 bg-white border border-slate-200 rounded-xl shadow-xl p-3.5 sm:p-4 max-w-[230px]">
+      {/* Detection chip — overlaid bottom-left, contained inside the card */}
+      <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 bg-white/95 backdrop-blur border border-slate-200 rounded-xl shadow-lg p-3 max-w-[220px]">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse-dot" />
           <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">
@@ -125,18 +125,18 @@ export function FundusMockup({ className = "" }: { className?: string }) {
         <div className="mt-1 font-semibold text-slate-900 text-sm">
           Diabetic Retinopathy
         </div>
-        <div className="mt-2 flex items-center justify-between text-xs">
+        <div className="mt-1.5 flex items-center justify-between text-xs">
           <span className="text-slate-500">Confidence</span>
           <span className="font-mono font-semibold text-slate-900">0.94</span>
         </div>
-        <div className="mt-1.5 h-1 bg-slate-100 rounded-full overflow-hidden">
+        <div className="mt-1 h-1 bg-slate-100 rounded-full overflow-hidden">
           <div className="h-full bg-amber-500" style={{ width: "94%" }} />
         </div>
       </div>
 
-      {/* Latency chip (floats upper-right) */}
-      <div className="absolute -top-3 -right-3 sm:-right-5 bg-slate-900 text-white rounded-xl shadow-xl px-3 py-2 text-xs font-mono hidden sm:block">
-        <span className="text-emerald-400">●</span> 85 ms inference
+      {/* Latency chip — overlaid top-right, contained inside the card */}
+      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 bg-slate-900/90 backdrop-blur text-white rounded-lg shadow-lg px-2.5 py-1.5 text-[11px] font-mono">
+        <span className="text-emerald-400">●</span> 85 ms
       </div>
     </div>
   );
