@@ -1,4 +1,30 @@
 services:
+  # ─── Postgres sidecar (Option 2 — production-ready) ─────────────────────────
+  # Decoupled DB lifecycle from the app: restart, scale, back up independently.
+  # See docs/23-billing-platform.md § 14 for the alternative shapes (embedded /
+  # managed) and for migration runbooks.
+  postgres:
+    image: postgres:16-alpine
+    container_name: retinal-postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-optiscan}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-optiscan}
+      - POSTGRES_DB=${POSTGRES_DB:-optiscan}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - optiscan-pgdata:/var/lib/postgresql/data
+    # Bound to host loopback so devs can `psql` directly during debugging.
+    # Drop the `127.0.0.1:` prefix to expose for remote access (NOT recommended).
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-optiscan} -d $${POSTGRES_DB:-optiscan}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    restart: unless-stopped
+
   # GPU API backend (supports quantized models + offline RAG)
   api:
     image: landwind/optiscan-ai:latest
@@ -31,6 +57,21 @@ services:
       # Phase 4: Federated + Multimodal (opt-in)
       - FEDERATED__ENABLED=${FEDERATED__ENABLED:-false}
       - MULTIMODAL__ENABLED=${MULTIMODAL__ENABLED:-false}
+      # Phase 6: Subscription billing — points the app at the sidecar Postgres
+      - DATABASE__ENABLED=${DATABASE__ENABLED:-true}
+      - DATABASE__URL=postgresql+asyncpg://${POSTGRES_USER:-optiscan}:${POSTGRES_PASSWORD:-optiscan}@postgres:5432/${POSTGRES_DB:-optiscan}
+      - BILLING__ENABLED=${BILLING__ENABLED:-true}
+      - AUTH_ENABLED=${AUTH_ENABLED:-true}
+      - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET in .env}
+      - PUBLIC_APP_URL=${PUBLIC_APP_URL:-https://www.optiscan.makstartup.com}
+      # Suppress the in-container Postgres now that we have a sidecar
+      - EMBEDDED_POSTGRES__ENABLED=false
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-optiscan}
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       - ./models:/app/models
       - ./weights:/app/weights
@@ -64,12 +105,28 @@ services:
     environment:
       - MODEL_PATH=models/model_vignn_rank1.pth
       - CUDA_VISIBLE_DEVICES=-1
+      # Sidecar-Postgres wiring (same defaults as the GPU api service)
+      - DATABASE__ENABLED=${DATABASE__ENABLED:-true}
+      - DATABASE__URL=postgresql+asyncpg://${POSTGRES_USER:-optiscan}:${POSTGRES_PASSWORD:-optiscan}@postgres:5432/${POSTGRES_DB:-optiscan}
+      - BILLING__ENABLED=${BILLING__ENABLED:-true}
+      - AUTH_ENABLED=${AUTH_ENABLED:-true}
+      - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET in .env}
+      - PUBLIC_APP_URL=${PUBLIC_APP_URL:-https://www.optiscan.makstartup.com}
+      - EMBEDDED_POSTGRES__ENABLED=false
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-optiscan}
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       - ./models:/app/models
     restart: unless-stopped
 
   # Hugging Face Spaces build (local test before pushing)
-  # CPU-only: mirrors the HF Spaces free-tier environment
+  # CPU-only: mirrors the HF Spaces free-tier environment.
+  # HF doesn't support sidecar containers, so this profile keeps the embedded
+  # Postgres path active. SaaS billing is OFF here by default.
   hf:
     build:
       context: .
@@ -84,6 +141,9 @@ services:
       - DEVICE=cpu
       - FUNDUS_GATE__ENABLED=true
       - FUNDUS_GATE__MODEL_PATH=weights/fundus_gate.pth
+      - DATABASE__ENABLED=${HF_DATABASE__ENABLED:-false}
+      - BILLING__ENABLED=${HF_BILLING__ENABLED:-false}
+      - EMBEDDED_POSTGRES__ENABLED=${HF_EMBEDDED_POSTGRES__ENABLED:-true}
     volumes:
       - ./models:/app/models
       - ./weights:/app/weights
@@ -95,8 +155,19 @@ services:
       start_period: 60s
     restart: unless-stopped
 
+volumes:
+  # Persistent Postgres data — survives `docker compose down`,
+  # removed by `docker compose down -v`.
+  optiscan-pgdata:
+
 # Usage:
-#   docker compose up -d                 # GPU backend
-#   docker compose --profile cpu up      # CPU backend
-#   docker compose --profile hf up       # HF Spaces (full stack on 7860)
+#   docker compose up -d                 # GPU api + sidecar Postgres
+#   docker compose --profile cpu up      # CPU api + sidecar Postgres
+#   docker compose --profile hf up       # HF Spaces (full stack on 7860, no sidecar)
+#   docker compose exec postgres psql -U optiscan optiscan   # direct DB access
 #   docker compose logs -f
+#
+# Required .env entries (see .env.example):
+#   JWT_SECRET=…                       # generate with: openssl rand -hex 32
+#   POSTGRES_PASSWORD=…                # any strong password
+#   PUBLIC_APP_URL=https://www.optiscan.makstartup.com

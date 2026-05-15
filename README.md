@@ -6,6 +6,19 @@ Offline-first retinal disease screening platform for rural Uganda. Classifies 24
 
 **v4.0 additions:** On-device MobileNetV3 student model (5.2M params, INT8 ONNX), Flutter mobile app with Drift database, voice-first interface (Whisper + Piper TTS) with Luganda support, DHIS2/FHIR/DICOM integration, mobile money referral payments, federated learning with LoRA adapter exchange, and ISO 14971 risk management.
 
+**SaaS / billing layer (Phase 6).** OptiscanAI now runs as a multi-tenant
+SaaS at [www.optiscan.makstartup.com](https://www.optiscan.makstartup.com)
+with a 4-tier subscription model (Free · Clinician · Practice · Health
+System), built-in auth (JWT + magic link + refresh-token rotation), monthly
+scan quotas with paywall + upsell UX, team-seat management, and four
+payment rails (Stripe + MTN MoMo + Airtel Money + Flutterwave). Marketing
+site, `/pricing`, `/legal/{privacy,terms}`, and a superuser admin
+ops view at `/app/admin/webhooks` all ship in the same Next.js app.
+The full architecture and runbook is in
+[docs/23-billing-platform.md](docs/23-billing-platform.md). All of it is
+**opt-in** — flip `BILLING__ENABLED=false` and the layer goes dormant,
+preserving the original on-prem / research deployment story.
+
 ## Architecture (2026)
 
 ```
@@ -122,7 +135,7 @@ The HF Spaces deployment uses `Dockerfile.hf` — a CPU-optimized single contain
 ├── backend/
 │   └── app/
 │       ├── core/
-│       │   ├── config.py              Nested Pydantic settings (16 feature sections)
+│       │   ├── config.py              Nested Pydantic settings (20+ feature sections)
 │       │   ├── model_service.py       Model lifecycle + OTEL tracing + drift hooks
 │       │   ├── telemetry.py           OpenTelemetry setup (Phase 1)
 │       │   ├── mlflow_registry.py     MLflow 3.0 model registry (Phase 1)
@@ -188,7 +201,7 @@ The HF Spaces deployment uses `Dockerfile.hf` — a CPU-optimized single contain
 │   ├── governance/          Bias auditor, audit logs, model cards, fairness evaluator
 │   ├── optimization/        Quantization (INT8/FP16) + export (ONNX/TorchScript/CoreML/TRT)
 │   └── visualization/       IEEE publication plots
-├── tests/                   198 tests (API, models, active learning, monitoring, bias, gate)
+├── tests/                   210+ tests (API, models, AL, monitoring, bias, gate, offline, mobile)
 ├── configs/
 │   ├── train.yaml           Training config (8x RTX A6000, ViGNN)
 │   ├── hybrid_2026.yaml     RETFound + LoRA + MoE config
@@ -199,7 +212,7 @@ The HF Spaces deployment uses `Dockerfile.hf` — a CPU-optimized single contain
 │   ├── base/                Backend deployment + HPA + PDB + ServiceAccount
 │   └── chaos/               LitmusChaos experiments (pod-delete, network, latency)
 ├── scripts/                 Training, export, SBOM, benchmark, bias audit
-├── docs/                    18 documentation files + architecture
+├── docs/                    23 documentation files + architecture
 ├── docker-compose.yml       Base (API + API-CPU + HF)
 ├── docker-compose.otel.yml  Phase 1: OTEL Collector + Jaeger + Prometheus
 ├── docker-compose.mlflow.yml  Phase 1: MLflow tracking server
@@ -238,7 +251,12 @@ The HF Spaces deployment uses `Dockerfile.hf` — a CPU-optimized single contain
 | [Offline Mobile](docs/19-offline-mobile-optimization.md) | Offline-first architecture, delta sync, mobile bundle |
 | [Deployment Rollout](docs/20-deployment-rollout-guide.md) | Deployment guide for Uganda clinics |
 | [vLLM GPU 7 AWQ Runbook](docs/21-vllm-gpu7-awq-optimization.md) | Qwen3-8B-AWQ runtime profile, verification, rollback |
+| [Crane Cloud Deployment](docs/22-crane-cloud-deployment.md) | Production deployment on Crane Cloud K8s (Uganda) |
+| [Billing Platform](docs/23-billing-platform.md) | Subscription, auth, quota, all payment rails, email, renewal cron, seats |
 | [ISO 14971 Risk Analysis](docs/iso14971_risk_analysis.md) | Medical device risk management (12 hazards, controls) |
+| [Architecture](docs/architecture-retinal-foundation-hybrid.md) | RetinalFoundationHybrid V1+V2 architecture deep-dive |
+| [Bill of Materials](docs/Bill-of-Materials.md) | Hardware + software BOM with Uganda Shilling pricing |
+| [IEEE Final Report](docs/IEEE_Final_Report.md) | Academic paper: offline-first retinal detection for rural Uganda |
 
 ## Models
 
@@ -360,7 +378,7 @@ make dev              # Run backend + frontend in parallel
 make backend          # Run backend only (uvicorn, port 8080)
 make frontend         # Run frontend only (bun dev, port 3000)
 make build-frontend   # Build frontend for production
-make test             # Run 198 tests
+make test             # Run 210+ tests
 make test-fast        # Run tests (fail-fast mode)
 
 # Training

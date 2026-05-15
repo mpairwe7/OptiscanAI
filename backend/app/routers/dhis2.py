@@ -12,7 +12,14 @@ from pydantic import BaseModel, Field
 from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/v1/dhis2", tags=["dhis2"])
+from fastapi import Depends
+from backend.app.core.feature_gate import require_tier
+
+router = APIRouter(
+    prefix="/api/v1/dhis2",
+    tags=["dhis2"],
+    dependencies=[Depends(require_tier("health_system", feature="dhis2"))],
+)
 
 _client = None
 _queue = None

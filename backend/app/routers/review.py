@@ -5,7 +5,14 @@ from typing import Optional
 
 from src.governance.human_review import HumanReviewGate, ReviewDecision
 
-router = APIRouter(prefix="/api/v1/review", tags=["human-review"])
+from fastapi import Depends
+from backend.app.core.feature_gate import require_tier
+
+router = APIRouter(
+    prefix="/api/v1/review",
+    tags=["human-review"],
+    dependencies=[Depends(require_tier("practice", feature="review_queue"))],
+)
 
 # Global review gate (shared with prediction pipeline)
 review_gate = HumanReviewGate()

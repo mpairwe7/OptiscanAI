@@ -268,9 +268,86 @@ class MobileMoneySettings(BaseModel):
     mtn_api_secret: str = ""
     mtn_subscription_key: str = ""
     mtn_environment: str = "sandbox"  # sandbox | production
+    mtn_callback_secret: str = ""  # HMAC shared secret for callback verification
     airtel_client_id: str = ""
     airtel_client_secret: str = ""
+    airtel_callback_secret: str = ""
     default_transport_amount_ugx: int = 50000
+    # FX rate for converting plan USD prices → UGX for mobile-money charges.
+    # In production, read from an FX provider; for MVP this is a config knob.
+    ugx_per_usd: int = 3800
+
+
+class StripeSettings(BaseModel):
+    """Stripe card-payment integration (subscription billing)."""
+    enabled: bool = False
+    api_key: str = ""  # sk_test_... or sk_live_...
+    publishable_key: str = ""  # pk_test_... (exposed to frontend via /plans)
+    webhook_secret: str = ""  # whsec_... — for stripe.Webhook.construct_event
+    success_url: str = "https://www.optiscan.makstartup.com/app/checkout/success?session_id={CHECKOUT_SESSION_ID}"
+    cancel_url: str = "https://www.optiscan.makstartup.com/app/billing"
+    portal_return_url: str = "https://www.optiscan.makstartup.com/app/billing"
+
+    # Stripe Price IDs — create these in the Stripe dashboard (one per plan + cycle)
+    # then set via STRIPE__CLINICIAN_MONTHLY_PRICE_ID=price_xxx etc.
+    clinician_monthly_price_id: str = ""
+    clinician_annual_price_id: str = ""
+    practice_monthly_price_id: str = ""
+    practice_annual_price_id: str = ""
+
+    # Extra-seat add-on prices (Practice tier). Per-seat, per cycle.
+    # Recommended: USD 25/seat/mo, USD 250/seat/yr.
+    practice_extra_seat_monthly_price_id: str = ""
+    practice_extra_seat_annual_price_id: str = ""
+    practice_extra_seat_monthly_cents: int = 2500
+    practice_extra_seat_annual_cents: int = 25000
+
+
+class FlutterwaveSettings(BaseModel):
+    """Flutterwave pan-African aggregator (cards + MoMo)."""
+    enabled: bool = False
+    public_key: str = ""
+    secret_key: str = ""
+    encryption_key: str = ""
+    secret_hash: str = ""  # for verif-hash header verification
+    base_url: str = "https://api.flutterwave.com/v3"
+
+
+class BillingSettings(BaseModel):
+    """Subscription billing platform settings."""
+    enabled: bool = False  # master switch — when False, predict.py skips quota
+    free_scan_limit_monthly: int = 10
+    free_period_days: int = 30  # rolling 30-day window for free-tier users
+    quota_cache_ttl_s: int = 60  # in-process cache for (org, period) quota state
+    annual_discount_pct: float = 0.17  # ~17% off (matches Grok)
+
+
+class EmailSettings(BaseModel):
+    """Outbound email — used for verification, magic links, password reset, invites."""
+    enabled: bool = False
+    provider: str = "console"  # console | smtp | sendgrid | resend
+    from_address: str = "noreply@makstartup.com"
+    from_name: str = "OptiscanAI"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    sendgrid_api_key: str = ""
+    resend_api_key: str = ""
+    magic_link_ttl_seconds: int = 900  # 15 min
+    verification_link_ttl_seconds: int = 86400  # 24 hr
+    password_reset_ttl_seconds: int = 3600  # 1 hr
+    invite_ttl_seconds: int = 604800  # 7 days
+
+
+class DatabaseSettings(BaseModel):
+    """Postgres connection (async, asyncpg driver)."""
+    enabled: bool = False  # when False, billing/auth features are disabled
+    url: str = "postgresql+asyncpg://optiscan:optiscan@localhost:5432/optiscan"
+    pool_size: int = 5
+    max_overflow: int = 10
+    pool_pre_ping: bool = True
+    echo: bool = False  # log all SQL — only for debugging
 
 
 class AfricasTalkingSettings(BaseModel):
@@ -317,6 +394,14 @@ class Settings(BaseSettings):
         "http://localhost:3330",
         "http://localhost:8080",
         "http://localhost:8088",
+        # Production — HTTPS canonical
+        "https://www.optiscan.makstartup.com",
+        "https://optiscan.makstartup.com",
+        # Production — HTTP variants (the edge proxy upgrades to HTTPS, but
+        # listing them keeps CORS happy during cert renewals or http-only probes).
+        "http://www.optiscan.makstartup.com",
+        "http://optiscan.makstartup.com",
+        # Legacy
         "https://mpairwe49-retinal-screening.hf.space",
         "https://huggingface.co",
     ]
@@ -394,6 +479,19 @@ class Settings(BaseSettings):
     mobile_money: MobileMoneySettings = MobileMoneySettings()
     africastalking: AfricasTalkingSettings = AfricasTalkingSettings()
     privacy: PrivacySettings = PrivacySettings()
+
+    # Phase 6: Subscription billing platform
+    database: DatabaseSettings = DatabaseSettings()
+    billing: BillingSettings = BillingSettings()
+    email: EmailSettings = EmailSettings()
+    stripe: StripeSettings = StripeSettings()
+    flutterwave: FlutterwaveSettings = FlutterwaveSettings()
+
+    # JWT (rewritten in core/auth.py — keys here)
+    jwt_algorithm: str = "HS256"
+    jwt_access_ttl_seconds: int = 900  # 15 min
+    jwt_refresh_ttl_seconds: int = 2592000  # 30 days
+    public_app_url: str = "https://www.optiscan.makstartup.com"  # for email links
 
     model_config = {
         "env_prefix": "",

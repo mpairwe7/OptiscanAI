@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { ServiceWorkerRegistrar } from "@/components/sw-registrar";
@@ -14,28 +15,86 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "OptiscanAI - Clinical Screening Platform",
-  description:
-    "AI-powered multi-disease retinal screening with clinical knowledge graph reasoning. 45 diseases. Explainable AI. Production-grade MLOps.",
-  manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "OptiscanAI",
-  },
-  icons: {
-    icon: [
-      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-      { url: "/favicon-48x48.png", sizes: "48x48", type: "image/png" },
+const CANONICAL_ORIGIN = "https://www.optiscan.makstartup.com";
+
+export async function generateMetadata(): Promise<Metadata> {
+  // Prefer the canonical production origin; fall back to the request host in
+  // dev/staging so og:image links still resolve.
+  const hdrs = await headers();
+  const host = hdrs.get("x-forwarded-host") || hdrs.get("host") || "";
+  const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
+  const proto = isLocal ? "http" : "https";
+  const origin = isLocal && host ? `${proto}://${host}` : CANONICAL_ORIGIN;
+
+  return {
+    metadataBase: new URL(origin),
+    title: {
+      default: "OptiscanAI — Clinical Retinal Screening, Explained",
+      template: "%s · OptiscanAI",
+    },
+    description:
+      "AI-powered multi-disease retinal screening with explainable AI and clinical knowledge graph reasoning. 45 diseases. Built for Ugandan healthcare.",
+    manifest: "/manifest.webmanifest",
+    alternates: { canonical: origin },
+    keywords: [
+      "retinal screening",
+      "diabetic retinopathy",
+      "AI eye screening",
+      "explainable AI healthcare",
+      "Uganda healthcare AI",
+      "fundus image analysis",
     ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
-  },
-  other: {
-    "mobile-web-app-capable": "yes",
-  },
-};
+    authors: [{ name: "MakStartup" }],
+    openGraph: {
+      title: "OptiscanAI — Clinical Retinal Screening, Explained",
+      description:
+        "Detect 45 retinal diseases with explainable AI. Knowledge-graph clinical reasoning. Built for Ugandan healthcare.",
+      url: origin,
+      siteName: "OptiscanAI",
+      locale: "en_UG",
+      type: "website",
+      images: [
+        {
+          url: `${origin}/og-image.png`,
+          width: 1200,
+          height: 630,
+          alt: "OptiscanAI - Clinical Retinal Screening Platform",
+          type: "image/png",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "OptiscanAI — Clinical Retinal Screening, Explained",
+      description: "AI-powered multi-disease eye screening with explainable AI. Built for Ugandan healthcare.",
+      images: [
+        {
+          url: `${origin}/og-image.png`,
+          width: 1200,
+          height: 630,
+          alt: "OptiscanAI - Clinical Retinal Screening Platform",
+        },
+      ],
+    },
+    robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: "OptiscanAI",
+    },
+    icons: {
+      icon: [
+        { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+        { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+        { url: "/favicon-48x48.png", sizes: "48x48", type: "image/png" },
+      ],
+      apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+    },
+    other: {
+      "mobile-web-app-capable": "yes",
+    },
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",

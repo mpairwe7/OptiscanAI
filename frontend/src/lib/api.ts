@@ -1,4 +1,6 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+// Use same-origin paths so the Next rewrite + httpOnly cookies work seamlessly.
+// In production set BACKEND_URL on the Next runtime; in dev defaults to localhost:8080.
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 // ── System Info ──
 export interface SystemInfo {
@@ -45,7 +47,7 @@ export interface SystemInfo {
 }
 
 export async function fetchSystemInfo(): Promise<SystemInfo> {
-  const res = await fetch(`${API_BASE}/api/v1/system/info`);
+  const res = await fetch(`${API_BASE}/api/v1/system/info`, { credentials: "include" });
   if (!res.ok) throw new Error("System info unavailable");
   return res.json();
 }
@@ -61,7 +63,7 @@ export interface AnalyticsSummary {
 }
 
 export async function fetchAnalytics(): Promise<AnalyticsSummary> {
-  const res = await fetch(`${API_BASE}/api/v1/analytics/summary`);
+  const res = await fetch(`${API_BASE}/api/v1/analytics/summary`, { credentials: "include" });
   if (!res.ok) throw new Error("Analytics unavailable");
   return res.json();
 }
@@ -73,7 +75,7 @@ export interface AllDiseaseInfo {
 }
 
 export async function fetchAllDiseaseInfo(): Promise<AllDiseaseInfo> {
-  const res = await fetch(`${API_BASE}/api/v1/clinical/disease-info`);
+  const res = await fetch(`${API_BASE}/api/v1/clinical/disease-info`, { credentials: "include" });
   if (!res.ok) throw new Error("Disease info unavailable");
   return res.json();
 }
@@ -97,7 +99,7 @@ export async function fetchPendingReviews(priority?: string): Promise<PendingRev
   const url = priority
     ? `${API_BASE}/api/v1/review/pending?priority=${priority}`
     : `${API_BASE}/api/v1/review/pending`;
-  const res = await fetch(url);
+  const res = await fetch(url, { credentials: "include" });
   if (!res.ok) throw new Error("Reviews unavailable");
   return res.json();
 }
@@ -110,7 +112,7 @@ export interface ReviewStats {
 }
 
 export async function fetchReviewStats(): Promise<ReviewStats> {
-  const res = await fetch(`${API_BASE}/api/v1/review/stats`);
+  const res = await fetch(`${API_BASE}/api/v1/review/stats`, { credentials: "include" });
   if (!res.ok) throw new Error("Review stats unavailable");
   return res.json();
 }
@@ -122,6 +124,7 @@ export async function resolveReview(
   notes?: string,
 ): Promise<{ status: string; request_id: string; decision: string }> {
   const res = await fetch(`${API_BASE}/api/v1/review/${requestId}/resolve`, {
+    credentials: "include",
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -158,7 +161,7 @@ export interface AgentStatus {
 }
 
 export async function fetchAgentStatus(): Promise<AgentStatus> {
-  const res = await fetch(`${API_BASE}/api/v1/agents/status`);
+  const res = await fetch(`${API_BASE}/api/v1/agents/status`, { credentials: "include" });
   if (!res.ok) throw new Error("Agent status unavailable");
   return res.json();
 }
@@ -172,20 +175,20 @@ export interface AgentEvent {
 }
 
 export async function fetchAgentEvents(limit = 20): Promise<{ total: number; events: AgentEvent[] }> {
-  const res = await fetch(`${API_BASE}/api/v1/agents/events?limit=${limit}`);
+  const res = await fetch(`${API_BASE}/api/v1/agents/events?limit=${limit}`, { credentials: "include" });
   if (!res.ok) throw new Error("Agent events unavailable");
   return res.json();
 }
 
 export async function fetchComplianceReport(): Promise<Record<string, unknown>> {
-  const res = await fetch(`${API_BASE}/api/v1/agents/compliance`);
+  const res = await fetch(`${API_BASE}/api/v1/agents/compliance`, { credentials: "include" });
   if (!res.ok) throw new Error("Compliance report unavailable");
   return res.json();
 }
 
 // ── Health ──
 export async function fetchHealth() {
-  const res = await fetch(`${API_BASE}/health`);
+  const res = await fetch(`${API_BASE}/health`, { credentials: "include" });
   if (!res.ok) throw new Error("API unreachable");
   return res.json() as Promise<{
     status: string;
@@ -196,7 +199,7 @@ export async function fetchHealth() {
 }
 
 export async function fetchModelHealth() {
-  const res = await fetch(`${API_BASE}/health/model`);
+  const res = await fetch(`${API_BASE}/health/model`, { credentials: "include" });
   if (!res.ok) throw new Error("Model health unavailable");
   return res.json() as Promise<{
     latency_p50_ms: number;
@@ -212,7 +215,7 @@ export async function fetchModelHealth() {
 
 // ── Diseases ──
 export async function fetchDiseases() {
-  const res = await fetch(`${API_BASE}/api/v1/diseases`);
+  const res = await fetch(`${API_BASE}/api/v1/diseases`, { credentials: "include" });
   if (!res.ok) throw new Error("Failed to fetch diseases");
   return res.json() as Promise<{
     total: number;
@@ -232,7 +235,7 @@ export interface KnowledgeGraphData {
 }
 
 export async function fetchKnowledgeGraph(): Promise<KnowledgeGraphData> {
-  const res = await fetch(`${API_BASE}/api/v1/clinical/knowledge-graph`);
+  const res = await fetch(`${API_BASE}/api/v1/clinical/knowledge-graph`, { credentials: "include" });
   if (!res.ok) throw new Error("Knowledge graph unavailable");
   return res.json();
 }
@@ -251,7 +254,7 @@ export interface DiseaseInfo {
 }
 
 export async function fetchDiseaseInfo(code: string): Promise<DiseaseInfo> {
-  const res = await fetch(`${API_BASE}/api/v1/clinical/disease-info/${code}`);
+  const res = await fetch(`${API_BASE}/api/v1/clinical/disease-info/${code}`, { credentials: "include" });
   if (!res.ok) throw new Error("Disease info unavailable");
   return res.json();
 }
@@ -289,6 +292,7 @@ export async function predictImage(file: File, threshold = 0.5): Promise<Predict
   const res = await fetch(`${API_BASE}/api/v1/predict?threshold=${threshold}`, {
     method: "POST",
     body: form,
+    credentials: "include",
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
@@ -322,6 +326,7 @@ export async function explainReasoning(
   predictions: Record<string, number>,
 ): Promise<ReasoningResponse> {
   const res = await fetch(`${API_BASE}/api/v1/clinical/explain-reasoning`, {
+    credentials: "include",
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(predictions),
@@ -429,7 +434,7 @@ export interface AvailableMethods {
 }
 
 export async function fetchAvailableMethods(): Promise<AvailableMethods> {
-  const res = await fetch(`${API_BASE}/api/v1/explain/available`);
+  const res = await fetch(`${API_BASE}/api/v1/explain/available`, { credentials: "include" });
   if (!res.ok) throw new Error("Methods unavailable");
   return res.json();
 }
@@ -438,6 +443,7 @@ export async function explainGradCAM(file: File, topK = 3): Promise<GradCAMRespo
   const form = new FormData();
   form.append("file", file);
   const res = await fetch(`${API_BASE}/api/v1/explain/gradcam?top_k=${topK}`, {
+    credentials: "include",
     method: "POST",
     body: form,
   });
@@ -453,7 +459,7 @@ export async function explainLIME(file: File, topK = 3, numSamples = 300): Promi
   form.append("file", file);
   const res = await fetch(
     `${API_BASE}/api/v1/explain/lime?top_k=${topK}&num_samples=${numSamples}`,
-    { method: "POST", body: form },
+    { credentials: "include", method: "POST", body: form },
   );
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
@@ -466,6 +472,7 @@ export async function explainSHAP(file: File, topK = 3): Promise<SHAPResponse> {
   const form = new FormData();
   form.append("file", file);
   const res = await fetch(`${API_BASE}/api/v1/explain/shap?top_k=${topK}`, {
+    credentials: "include",
     method: "POST",
     body: form,
   });
@@ -481,7 +488,7 @@ export async function explainIG(file: File, topK = 2, nSteps = 25): Promise<IGRe
   form.append("file", file);
   const res = await fetch(
     `${API_BASE}/api/v1/explain/integrated-gradients?top_k=${topK}&n_steps=${nSteps}`,
-    { method: "POST", body: form },
+    { credentials: "include", method: "POST", body: form },
   );
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
@@ -494,6 +501,7 @@ export async function explainELI5(file: File, topK = 3): Promise<ELI5Response> {
   const form = new FormData();
   form.append("file", file);
   const res = await fetch(`${API_BASE}/api/v1/explain/eli5?top_k=${topK}`, {
+    credentials: "include",
     method: "POST",
     body: form,
   });

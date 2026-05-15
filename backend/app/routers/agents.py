@@ -11,7 +11,14 @@ from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/agents", tags=["agents"])
+from fastapi import Depends
+from backend.app.core.feature_gate import require_tier
+
+router = APIRouter(
+    prefix="/api/v1/agents",
+    tags=["agents"],
+    dependencies=[Depends(require_tier("clinician", feature="agents"))],
+)
 
 # Global reference — set during app startup
 _orchestrator = None

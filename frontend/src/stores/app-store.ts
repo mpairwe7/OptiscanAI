@@ -1,12 +1,8 @@
 import { create } from "zustand";
 import type { PredictionResponse, GradCAMResponse, LIMEResponse, SHAPResponse, IGResponse, ELI5Response } from "@/lib/api";
 
-export type Page = "dashboard" | "screening" | "reports" | "review" | "system";
-
 interface AppState {
-  // Navigation
-  currentPage: Page;
-  setPage: (p: Page) => void;
+  // Sidebar (desktop collapse + mobile drawer)
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
   mobileMenuOpen: boolean;
@@ -50,8 +46,6 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  currentPage: "dashboard",
-  setPage: (p) => set({ currentPage: p, mobileMenuOpen: false }),
   sidebarCollapsed: false,
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   mobileMenuOpen: false,

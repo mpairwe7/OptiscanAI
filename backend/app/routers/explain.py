@@ -5,12 +5,16 @@ import logging
 import time
 from typing import Optional
 
-from fastapi import APIRouter, File, UploadFile, HTTPException, Query
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Query
 from PIL import Image
 import torch
 
+from backend.app.core.feature_gate import require_tier
 from backend.app.core.model_service import model_service, DISEASE_NAMES
 from backend.app.core.config import settings
+
+# Clinician-or-above gate for advanced XAI methods.
+_clinician = require_tier("clinician", feature="advanced_explainability")
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +157,7 @@ async def explain_lime(
     top_k: int = Query(3, ge=1, le=5, description="Number of classes to explain"),
     num_samples: int = Query(300, ge=50, le=2000, description="Perturbation samples (higher=slower but more accurate)"),
     num_features: int = Query(10, ge=3, le=30, description="Number of superpixels"),
+    _gate=Depends(_clinician),
 ):
     """Generate LIME superpixel explanations for uploaded image."""
     explainer = _get_explainer()
@@ -201,6 +206,7 @@ async def explain_lime(
 async def explain_shap(
     file: UploadFile = File(...),
     top_k: int = Query(3, ge=1, le=5, description="Number of classes to explain"),
+    _gate=Depends(_clinician),
 ):
     """Generate SHAP feature importance explanations."""
     explainer = _get_explainer()
@@ -243,6 +249,7 @@ async def explain_integrated_gradients(
     file: UploadFile = File(...),
     top_k: int = Query(2, ge=1, le=5),
     n_steps: int = Query(25, ge=5, le=100),
+    _gate=Depends(_clinician),
 ):
     """Generate Integrated Gradients attribution maps."""
     explainer = _get_explainer()
@@ -274,6 +281,7 @@ async def explain_eli5(
     file: UploadFile = File(...),
     top_k: int = Query(3, ge=1, le=5),
     top_features: int = Query(10, ge=3, le=20),
+    _gate=Depends(_clinician),
 ):
     """Generate ELI5 human-readable explanations with feature importance."""
     explainer = _get_explainer()
@@ -304,6 +312,7 @@ async def explain_eli5(
 async def explain_comprehensive(
     file: UploadFile = File(...),
     top_k: int = Query(3, ge=1, le=10),
+    _gate=Depends(_clinician),
 ):
     """Run all available explainability methods on uploaded image.
 

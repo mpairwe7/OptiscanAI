@@ -2,10 +2,42 @@
 
 Production deployment of OptiscanAI on [Crane Cloud](https://cranecloud.io) — Uganda's Kubernetes-as-a-Service platform.
 
-> **Last verified:** 2026-05-12  
-> **Live CPU URL:** https://optiscan-ai-4fe6e1aa.renu-01.cranecloud.io  
-> **Live GPU URL:** https://optiscan-gpu-00ed3a8b.renu-01.cranecloud.io  
+> **Last verified:** 2026-05-15
+> **Canonical SaaS URL:** https://www.optiscan.makstartup.com
+> **Live CPU URL:** https://optiscan-ai-4fe6e1aa.renu-01.cranecloud.io
+> **Live GPU (CPU fallback) URL:** https://optiscan-gpu-renu-9458f363.renu-01.cranecloud.io
+> **Live CPU Fallback URL:** https://optiscan-cpu-fallback-e4d13933.renu-01.cranecloud.io
 > **Docker Hub:** https://hub.docker.com/r/landwind/optiscan-ai
+
+---
+
+## SaaS billing layer — Postgres requirement
+
+When `BILLING__ENABLED=true` the backend needs a Postgres reachable at
+`$DATABASE__URL`. The current default ships **Option 2 — sidecar
+Postgres** for both compose and Kubernetes. Bring up the database before
+the API rolls out:
+
+```bash
+# Replace POSTGRES_PASSWORD in postgres-secret.yaml first!
+kubectl apply -f k8s/base/postgres-secret.yaml
+kubectl apply -f k8s/base/postgres-service.yaml
+kubectl apply -f k8s/base/postgres-statefulset.yaml
+kubectl rollout status statefulset/optiscan-postgres -n retinalai
+kubectl apply -f k8s/base/backend-deployment.yaml
+```
+
+The StatefulSet provisions a 20 Gi `PersistentVolumeClaim` (default
+StorageClass — override to `cranecloud-ssd` via a kustomize patch if your
+project has it).
+
+If you'd rather not run a sidecar (single-pod pilot, tight memory budget):
+set `EMBEDDED_POSTGRES__ENABLED=true` on the api Deployment and the in-image
+Postgres takes over. **Mount a PVC at `/var/lib/postgresql/data` in that
+case** — without it, every pod restart resets the database.
+
+See [docs/23-billing-platform.md](23-billing-platform.md) §§ 14–18 for the
+full architecture and runbook.
 
 ---
 
@@ -16,7 +48,7 @@ Two images are published to Docker Hub under `landwind/optiscan-ai`:
 | Tag | Base Image | Size | PyTorch | Model Weights | Use Case |
 |-----|-----------|------|---------|---------------|----------|
 | `cpu` | `python:3.11-slim-bookworm` | **2.4 GB** | CPU-only (`whl/cpu`) | Baked in (137 MB) | Crane Cloud (RENU), any CPU host |
-| `latest` | `nvidia/cuda:12.1.1-cudnn8-runtime` | **9.8 GB** | CUDA 12.4 (`cu124`) | Baked in (137 MB) | GPU servers, Crane Cloud (AHUMAIN) |
+| `latest` | `nvidia/cuda:12.4.1-cudnn-runtime` | **10.1 GB** | CUDA 12.4 (`cu124`) | Baked in (137 MB) | GPU servers, Crane Cloud (AHUMAIN) |
 
 Both images are **full-stack**: nginx (port 8080) + FastAPI backend (8081) + Next.js frontend (3000), orchestrated by supervisord.
 
@@ -104,11 +136,12 @@ Or bypass the CLI and use the API directly (see deployment scripts below).
 
 ### Why CPU for Crane Cloud?
 
-1. **RENU has no NVIDIA GPUs** — CUDA initialization fails, model won't load
-2. **AHUMAIN ML has scheduling issues** — pods stuck in "unknown" status for hours
-3. **Image size matters** — 2.4 GB pulls in ~60s vs 9.8 GB taking 4+ minutes
-4. **CPU inference is sufficient** — all 45 disease classes work, ~100-200ms per prediction
-5. **Crane Cloud golden rule** — model weights must be baked in (no volume mounts)
+1. **RENU has no NVIDIA GPUs** — `torch.cuda.is_available()` returns `False`, auto-falls back to CPU
+2. **AHUMAIN ML has scheduling issues** — pods stuck in "unknown" status for hours (cluster-level, not image/config)
+3. **Image size matters** — 2.4 GB pulls in ~60s vs 10.1 GB taking 4+ minutes
+4. **CPU inference is fast enough** — ~87ms inference + ~46ms gate after warmup (verified 2026-05-12)
+5. **GPU image also works on CPU** — `DEVICE=auto` detects no CUDA and falls back gracefully
+6. **Crane Cloud golden rule** — model weights must be baked in (no volume mounts)
 
 ### Model Weights (Baked In)
 
@@ -233,12 +266,12 @@ Endpoints verified:
 
 | Component | Version |
 |-----------|---------|
-| Base | `nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04` |
+| Base | `nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04` |
 | PyTorch | `2.6.0+cu124` |
-| CUDA | 12.4 (via pip wheels, not base image CUDA) |
+| CUDA | 12.4 |
 | cuDNN | 9.1.0.70 |
 | Triton | 3.2.0 |
-| Python | 3.10 (from Ubuntu 22.04) |
+| Python | 3.11 (deadsnakes PPA) |
 
 ### Running on Local GPU Server
 
@@ -252,7 +285,25 @@ docker run -d \
 # Verify CUDA inference
 curl http://localhost:8080/health
 # {"status": "healthy", "model_loaded": true, "device": "cuda", "diseases_count": 45}
+
+curl http://localhost:8080/api/v1/system/info | jq .infrastructure
+# {"cuda_available": true, "cuda_version": "12.4", "gpu": "NVIDIA RTX A6000", "gpu_memory": "47.5 GB", "device": "cuda"}
 ```
+
+### Verified Local GPU Inference (2026-05-12)
+
+Tested on local server with 8x NVIDIA RTX A6000 (49 GB each):
+
+| Metric | GPU (CUDA) | CPU (Crane Cloud RENU) |
+|--------|-----------|------------------------|
+| ViGNN inference | **148ms** | 87ms |
+| Fundus gate v2 | **125ms** | 46ms |
+| Total pipeline | **287ms** | 133ms |
+| `torch.cuda.is_available()` | `True` | `False` |
+| Device reported | `cuda` | `cpu` |
+
+> GPU inference is ~2x faster on first cold-start prediction (~700ms GPU vs ~800ms CPU)
+> but both converge after warmup. GPU advantage grows with batch size and model complexity.
 
 ### Running with docker-compose
 
@@ -274,7 +325,7 @@ requests.post(f"{API}/projects", headers=headers, json={
     "owner_id": user_id
 })
 
-# Deploy GPU app
+# Deploy GPU app with auto device detection
 requests.post(f"{API}/projects/{project_id}/apps", headers=headers, json={
     "name": "optiscan-gpu",
     "image": "landwind/optiscan-ai:latest",
@@ -283,43 +334,49 @@ requests.post(f"{API}/projects/{project_id}/apps", headers=headers, json={
     "env_vars": {
         "MODEL_PATH": "models/model_vignn_rank1.pth",
         "CUDA_VISIBLE_DEVICES": "0",
-        "DEVICE": "cuda",
+        "DEVICE": "auto",
+        "NVIDIA_VISIBLE_DEVICES": "all",
+        "NVIDIA_DRIVER_CAPABILITIES": "compute,utility",
         "FUNDUS_GATE__ENABLED": "true"
     }
 })
 ```
 
-#### GPU on RENU (CPU Fallback)
+#### GPU Image on RENU (Auto CPU Fallback)
 
-RENU has no NVIDIA drivers. The GPU image (`latest`) will deploy but **cannot load the model on CUDA**. Set env vars to force CPU fallback:
+RENU has no NVIDIA GPUs. The GPU image (`latest`) deploys and runs correctly with `DEVICE=auto` — PyTorch auto-detects no CUDA and falls back to CPU inference. No manual override needed.
 
-| Key | Value |
-|-----|-------|
-| `CUDA_VISIBLE_DEVICES` | `-1` |
-| `DEVICE` | `cpu` |
+| Key | Recommended Value | Behavior |
+|-----|-------------------|----------|
+| `DEVICE` | `auto` | Detects GPU if available, falls back to CPU |
+| `CUDA_VISIBLE_DEVICES` | `0` (GPU) or `-1` (force CPU) | Controls GPU visibility |
 
-> The GPU image on a CPU-only cluster wastes ~7 GB of CUDA libraries. Use the `:cpu` tag instead.
+> The GPU image on a CPU-only cluster wastes ~7 GB of CUDA libraries. Use the `:cpu` tag for production on CPU-only clusters.
 
-### Verified GPU Deployment (2026-05-12)
+### Verified Deployments (2026-05-12)
 
-| Field | Value |
-|-------|-------|
-| Cluster | RENU (no GPU — deployed for testing only) |
-| App ID | `5ae2a83a-d5fe-43df-ae40-91555e298912` |
-| URL | https://optiscan-gpu-00ed3a8b.renu-01.cranecloud.io |
-| Image | `landwind/optiscan-ai:latest` |
-| Status | Running (frontend + API up, model needs CPU fallback or GPU node) |
-| Pod startup | `ContainerCreating` (4 min image pull) → `running` |
+#### RENU Cluster (all healthy)
+
+| App | Image | Device | App ID | URL | Status |
+|-----|-------|--------|--------|-----|--------|
+| optiscan-ai | `:cpu` | cpu | `f58201b7-5ba1-48b1-a635-02ee29965352` | `optiscan-ai-4fe6e1aa.renu-01.cranecloud.io` | **Running** |
+| optiscan-cpu-fallback | `:cpu` | cpu | `cef474cf-0805-4b0c-9cbc-7b27fe74bd4f` | `optiscan-cpu-fallback-e4d13933.renu-01.cranecloud.io` | **Running** |
+| optiscan-gpu-renu | `:latest` | cpu (auto) | `8efaf32a-c9be-4bf8-9fe3-f79d01940e88` | `optiscan-gpu-renu-9458f363.renu-01.cranecloud.io` | **Running** |
+
+#### AHUMAIN ML Cluster (broken)
+
+| App | Image | App ID | Status | Notes |
+|-----|-------|--------|--------|-------|
+| optiscan-gpu | `:cpu` | `90c50d78-ef62-4b4b-896c-4ad34e620e5c` | **Failed** | Pod unknown — even CPU image fails |
 
 ### AHUMAIN Cluster Issues (2026-05-12)
 
 Multiple deployment attempts on AHUMAIN failed with:
 - Pod status: `unknown` (not `pending`, `waiting`, or `running`)
-- 2 pods created despite `replicas: 1`
-- Deployment message: "Deployment does not have minimum availability"
-- No pod logs accessible via API
+- Failure persists even with the lightweight 2.4 GB CPU image
+- Confirmed cluster-level issue, not image or config
 
-**Root cause:** Cluster-level scheduling issue, not image or config. Recommendation: use RENU until AHUMAIN stabilizes. Contact Crane Cloud support if GPU inference is required.
+**Root cause:** Cluster-level scheduling/node issue. Recommendation: use RENU until AHUMAIN stabilizes. Contact Crane Cloud support.
 
 ---
 
@@ -337,19 +394,28 @@ Multiple deployment attempts on AHUMAIN failed with:
 
 ### PyTorch Device Fallback Logic
 
-The backend (`backend/app/main.py`) handles device selection:
+The backend (`backend/app/core/model_service.py`) handles device selection:
 
 ```python
-# Simplified device selection logic
-if os.environ.get("DEVICE") == "cpu" or os.environ.get("CUDA_VISIBLE_DEVICES") == "-1":
-    device = torch.device("cpu")
-elif torch.cuda.is_available():
-    device = torch.device("cuda")
-else:
-    device = torch.device("cpu")  # auto-fallback
+# model_service.py — ViGNN classifier
+device_str = settings.device  # "auto" | "cpu" | "cuda"
+if device_str == "auto":
+    device_str = "cuda" if torch.cuda.is_available() else "cpu"
+self.device = torch.device(device_str)
 ```
 
-If CUDA is requested but unavailable (no driver/GPU), the model fails to load (`model_loaded: false` in `/health`). Always set `DEVICE=cpu` on CPU-only hosts.
+The fundus gate (`src/data/fundus_gate_learned.py`) auto-detects device independently:
+
+```python
+# fundus_gate_learned.py — MobileNetV3 gate
+self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+self.to(self._device)  # moves model to detected device
+# tensors also moved: tensor.to(self._device) in check()
+```
+
+Both models auto-detect and use the same device. On CPU-only hosts, both run on CPU. On GPU hosts, both run on CUDA. No manual override needed when `DEVICE=auto`.
+
+> **Fixed 2026-05-12**: The fundus gate previously always ran on CPU regardless of GPU availability, causing a 42x performance regression (5,355ms vs 125ms) due to CPU/GPU context switching. Now auto-detects device.
 
 ---
 
@@ -378,7 +444,7 @@ make docker-push-all      # Both
 | PyTorch | ~300 MB (CPU wheels) | ~5.2 GB (CUDA wheels) |
 | App + frontend + nginx | ~350 MB | ~350 MB |
 | Model weights | 137 MB | 137 MB |
-| **Total** | **~2.4 GB** | **~9.8 GB** |
+| **Total** | **~2.4 GB** | **~10.1 GB** |
 | Build time (cached) | ~2 min | ~5 min |
 | Build time (clean) | ~5 min | ~12 min |
 | Docker Hub push | ~1 min | ~5 min |
@@ -430,7 +496,7 @@ Set at `github.com/mpairwe7/MLOPS_V1/settings/secrets/actions`:
 | `CRANE_CLOUD_EMAIL` | Crane Cloud login email (lowercase) | `mpairwelauben75@gmail.com` |
 | `CRANE_CLOUD_PASSWORD` | Crane Cloud login password | |
 | `CRANE_CLOUD_CPU_APP_ID` | CPU app ID on RENU | `f58201b7-5ba1-48b1-a635-02ee29965352` |
-| `CRANE_CLOUD_GPU_APP_ID` | GPU app ID on RENU | `5ae2a83a-d5fe-43df-ae40-91555e298912` |
+| `CRANE_CLOUD_GPU_APP_ID` | GPU (latest) app ID on RENU | `8efaf32a-c9be-4bf8-9fe3-f79d01940e88` |
 | `CRANE_CLOUD_CPU_URL` | CPU app URL for health check | `https://optiscan-ai-4fe6e1aa.renu-01.cranecloud.io` |
 
 ---
@@ -553,8 +619,11 @@ for k, v in env.items():
 | 2026-05-12 | AHUMAIN | `latest` (9.8 GB, no weights) | Failed | `optiscanai-988735ef.ahumain.cranecloud.io` | Pod unknown, env var spaces |
 | 2026-05-12 | AHUMAIN | `cpu` (2.1 GB, no weights) | Failed | `optiscanai-5124a665.ahumain.cranecloud.io` | Pod unknown, cluster issue |
 | 2026-05-12 | AHUMAIN | `cpu` (2.4 GB, baked weights) | Failed | `optiscanai-17ba7046.ahumain.cranecloud.io` | Pod unknown, cluster issue |
+| 2026-05-12 | AHUMAIN | `latest` + GPU env vars | Failed | `optiscan-gpu-3764a139.ahumain.cranecloud.io` | Pod unknown, cluster-level failure |
+| 2026-05-12 | AHUMAIN | `cpu` (retest) | Failed | `optiscan-gpu-2d5807bb.ahumain.cranecloud.io` | Confirmed cluster broken, not image |
 | 2026-05-12 | RENU | `cpu` (2.4 GB, baked weights) | **Running** | `optiscan-ai-4fe6e1aa.renu-01.cranecloud.io` | All endpoints verified |
-| 2026-05-12 | RENU | `latest` (9.8 GB, baked weights) | Running | `optiscan-gpu-00ed3a8b.renu-01.cranecloud.io` | No GPU — needs CPU fallback env vars |
+| 2026-05-12 | RENU | `cpu` (fallback) | **Running** | `optiscan-cpu-fallback-e4d13933.renu-01.cranecloud.io` | CPU redundancy |
+| 2026-05-12 | RENU | `latest` (10.1 GB, DEVICE=auto) | **Running** | `optiscan-gpu-renu-9458f363.renu-01.cranecloud.io` | GPU image, auto-falls back to CPU |
 
 **Lessons learned:**
 1. Always bake model weights — Crane Cloud has no volume mounts
@@ -563,3 +632,45 @@ for k, v in env.items():
 4. Prefer RENU cluster over AHUMAIN for reliability
 5. Use `:cpu` tag for Crane Cloud — 4x smaller, faster pulls, no CUDA dependency
 6. PATCH `/apps/{id}` merges env vars — delete and recreate to replace them entirely
+7. Use `DEVICE=auto` instead of `DEVICE=cuda` — graceful CPU fallback on clusters without GPUs
+8. Fundus gate must auto-detect device (fixed 2026-05-12) — CPU-only gate on GPU host caused 42x regression
+
+---
+
+## Fundus Gate GPU Auto-Detection Fix (2026-05-12)
+
+### Problem
+
+The `LearnedFundusGate` (MobileNetV3-Small) in `src/data/fundus_gate_learned.py` was always loaded on CPU via `map_location="cpu"` and never moved to GPU, even when the main ViGNN model ran on CUDA. This caused CPU/GPU context switching overhead during the mixed-device prediction pipeline.
+
+### Impact
+
+| Metric | Before Fix (GPU host) | After Fix (GPU host) | CPU-only host |
+|--------|----------------------|---------------------|---------------|
+| Gate latency | **5,355ms** | **125ms** | 46ms |
+| ViGNN inference | 270ms | 148ms | 87ms |
+| Total pipeline | 5,625ms | **287ms** | 133ms |
+| Speedup | — | **42x gate improvement** | — |
+
+### Fix
+
+Added auto-detection in `LearnedFundusGate.__init__()`:
+
+```python
+# Auto-detect device: use GPU if available, else CPU
+self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# After loading weights...
+self.to(self._device)  # move model to detected device
+```
+
+And in `check()` / `check_tensor()`:
+
+```python
+tensor = self.transform(image.convert("RGB")).unsqueeze(0).to(self._device)
+```
+
+### Files Changed
+
+- `src/data/fundus_gate_learned.py` — auto-device detection + tensor placement
+- `OptiscanAI/src/data/fundus_gate_learned.py` — synced copy

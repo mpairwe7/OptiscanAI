@@ -40,11 +40,17 @@ frontend/
       settings-sidebar.tsx      # Threshold slider, API status, model info
       nav-sidebar.tsx           # Main navigation sidebar
       sw-registrar.tsx          # Service worker registration (PWA)
+      VoiceFirstChat.tsx        # Voice-first conversational UI with animated waveform
+      VoiceVisionMode.tsx       # Camera preview + voice-vision multimodal mode
     stores/
       app-store.ts         # Zustand store (image, results, settings, navigation)
     hooks/
       use-predict.ts       # TanStack Query mutation for /api/v1/predict
       use-explain.ts       # TanStack Query mutation for /api/v1/explain/*
+      useVoiceWebSocket.ts # WebSocket hook for real-time voice streaming
+    stores/
+      app-store.ts         # Zustand store (image, results, settings, navigation)
+      voice-store.ts       # Zustand store (WebSocket state, audio, transcript, TTS)
     lib/
       api.ts               # API client (fetchHealth, predictImage, explain, etc.)
   public/
@@ -75,15 +81,48 @@ Frontend available at `http://localhost:3000`.
 
 ## Pages
 
-| Page | Route | Description |
-|------|-------|-------------|
-| Screening | `/` (default) | Upload fundus image, run prediction, view results |
-| Dashboard | `/` (tab) | Analytics: scan volumes, disease distribution, referral breakdown |
-| Review | `/` (tab) | Human-in-the-loop clinical review queue |
-| Reports | `/` (tab) | Prediction history and exportable clinical reports |
-| System | `/` (tab) | Infrastructure health, model status, gate metrics |
+The app uses Next.js 16 **route groups** to separate the public marketing
+site from the authenticated app. All routes are real file routes — the
+former Zustand-driven single-page setup has been retired.
 
-Navigation is handled via Zustand state (`activePage`) and the `NavSidebar` component — all pages render in a single-page app without route changes.
+### Public (`src/app/(public)/`)
+
+| Route | Description |
+|---|---|
+| `/` | Marketing landing — hero (animated mesh + SVG fundus mockup), trust strip, logo cloud, how-it-works, value props, compliance badges, testimonials, pricing teaser, FAQ |
+| `/pricing` | 4-card pricing grid with annual toggle (~17 % off) + full feature-comparison matrix |
+| `/sign-in` · `/sign-up` · `/reset-password` · `/verify-email` | Auth flows (email + password, with magic-link fallback) |
+| `/contact-sales` | Lead form for Health System tier |
+| `/legal/privacy` · `/legal/terms` | Stub policies — PDP Act 2019 aware, marked "Draft pending legal review" |
+
+### Authed (`src/app/(app)/app/`)
+
+Gated by **`src/proxy.ts`** (note: this Next.js renames `middleware.ts` →
+`proxy.ts`). Unauthenticated visitors are redirected to
+`/sign-in?next=…`.
+
+| Route | Description |
+|---|---|
+| `/app/dashboard` | Analytics: scan volumes, disease distribution, referral breakdown |
+| `/app/screening` | Upload fundus image, run prediction, view results, explainability tabs |
+| `/app/review` | Human-in-the-loop clinical review queue (Practice+) |
+| `/app/reports` | Prediction history and exportable clinical reports |
+| `/app/system` | Infrastructure health, model status, gate metrics |
+| `/app/account` | Profile, sessions, sign-out |
+| `/app/billing` | Plan card, invoices, change plan, **Downgrade to Free**, Stripe billing portal, inline renewal banner |
+| `/app/usage` | Scan history chart, per-endpoint breakdown, CSV audit export |
+| `/app/team` | Multi-seat management (Practice+): invite, role, seat purchases |
+| `/app/checkout/[plan]` | Payment-method picker (Card / MTN / Airtel / Flutterwave) |
+| `/app/checkout/success` | Post-checkout page that polls `/me` until the plan flips |
+| `/app/admin/webhooks` | **Superuser only** — webhook event table with filters, JSON drawer, "Replay event" button |
+
+Navigation lives in `src/components/nav-sidebar.tsx`, which uses
+`usePathname` + `<Link>` (no more Zustand routing). The sidebar shows an
+"Admin" section only when `useAuthStore.user.is_superuser === true`.
+
+See [docs/23-billing-platform.md](23-billing-platform.md) § 15 for the
+in-product billing UI surfaces (PaywallModal, UpsellSheet, UsageChip,
+RenewalBanner, SeatManager, DowngradeDialog).
 
 ## State Management (Zustand)
 
@@ -280,3 +319,46 @@ When running `docker compose up -d api`, only the backend is containerized. Run 
 - Top-K predictions slider
 - Model/GPU info
 - Medical disclaimer
+
+### `VoiceFirstChat` (Phase 5)
+- Voice-first conversational screening UI
+- Animated waveform canvas visualization
+- Microphone input capture + speaker output
+- Real-time ASR transcript display
+- Integrates with voice WebSocket pipeline
+
+### `VoiceVisionMode` (Phase 5)
+- Camera preview with live capture
+- Voice narration overlay
+- Combined voice + vision multimodal screening
+
+## Voice WebSocket Hook (`useVoiceWebSocket`)
+
+```typescript
+// hooks/useVoiceWebSocket.ts
+const { connect, disconnect, sendAudio, isConnected } = useVoiceWebSocket({
+  url: "ws://localhost:8080/v1/voice/stream",
+  onTranscript: (text) => ...,
+  onTTSAudio: (audioBlob) => ...,
+  onResult: (screeningResult) => ...,
+});
+```
+
+- Exponential-backoff reconnect (1s – 30s)
+- Captures microphone audio as 250ms WebM/Opus chunks
+- Dispatches transcripts and TTS audio to voice store
+
+## Voice Store (Zustand)
+
+```typescript
+// stores/voice-store.ts
+useVoiceStore = create<VoiceState>({
+  isConnected: false,
+  isRecording: false,
+  transcript: "",
+  audioChunks: Blob[],
+  ttsPlaying: false,
+  waveformData: Float32Array,
+  // Actions: startRecording, stopRecording, setTranscript, playTTS, ...
+})
+```

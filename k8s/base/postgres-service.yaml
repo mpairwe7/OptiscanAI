@@ -1,0 +1,17 @@
+# Headless service so the backend can reach the StatefulSet pod by stable
+# DNS name `optiscan-postgres.<namespace>.svc.cluster.local`.
+apiVersion: v1
+kind: Service
+metadata:
+  name: optiscan-postgres
+  namespace: retinalai
+  labels:
+    app: optiscan-postgres
+spec:
+  clusterIP: None
+  selector:
+    app: optiscan-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
