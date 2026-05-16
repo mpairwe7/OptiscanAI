@@ -5,16 +5,16 @@ import logging
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from pydantic import BaseModel, Field
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.auth import AuthContext, get_auth_context, require_superuser
 from backend.app.core.db import get_db
-from backend.app.models.membership import MembershipRole, MembershipStatus, Membership
+from backend.app.models.membership import Membership, MembershipRole, MembershipStatus
 from backend.app.models.plan import Plan
 from backend.app.models.subscription import BillingCycle
+from backend.app.models.usage_event import UsageEventType
 from backend.app.schemas.billing import (
     ChangePlanRequest,
     InvoiceResponse,
@@ -34,8 +34,6 @@ from backend.app.services.usage_service import (
     breakdown_by_event_type,
     count_events_in_period,
 )
-from backend.app.models.usage_event import UsageEventType
-from sqlalchemy import func
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/billing", tags=["billing"])
@@ -336,8 +334,8 @@ async def list_webhook_events(
     db: AsyncSession = Depends(get_db),
 ) -> list[WebhookEventDTO]:
     """Recent webhook events for the ops UI."""
-    from backend.app.models.webhook_event import WebhookEvent
     from backend.app.models.subscription import PaymentProvider
+    from backend.app.models.webhook_event import WebhookEvent
 
     stmt = select(WebhookEvent).order_by(WebhookEvent.received_at.desc()).limit(min(limit, 500))
     if provider:

@@ -221,7 +221,6 @@ async def remove_member(
         raise HTTPException(status_code=404, detail="Member not found")
     if target.role == MembershipRole.OWNER:
         raise HTTPException(status_code=400, detail="Cannot remove owner")
-    from datetime import datetime, timezone
     target.status = MembershipStatus.REVOKED
     target.accepted_at = target.accepted_at  # keep history
     return {"status": "revoked"}

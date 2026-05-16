@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import logging
-from fastapi import APIRouter, Form, HTTPException
+
+from fastapi import APIRouter, Form
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 from fastapi import Depends
+
 from backend.app.core.feature_gate import require_tier
 
 router = APIRouter(prefix="/api/v1/sms", tags=["sms-ussd"])
@@ -50,8 +52,8 @@ async def sms_delivery_callback(body: dict):
 
 @router.post("/ussd")
 async def ussd_callback(
-    sessionId: str = Form(""),
-    phoneNumber: str = Form(""),
+    sessionId: str = Form(""),  # noqa: N803 — Africa's Talking callback field name
+    phoneNumber: str = Form(""),  # noqa: N803 — Africa's Talking callback field name
     text: str = Form(""),
 ):
     """USSD session callback from Africa's Talking."""

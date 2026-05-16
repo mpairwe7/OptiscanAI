@@ -27,7 +27,7 @@ from __future__ import annotations
 import logging
 import threading
 import zlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)

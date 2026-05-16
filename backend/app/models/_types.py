@@ -5,8 +5,8 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import DateTime
-from sqlalchemy.orm import mapped_column
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy.orm import mapped_column
 
 
 def uuid_pk():

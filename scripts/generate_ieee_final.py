@@ -7,17 +7,15 @@ Produces:
 """
 
 import subprocess
-import sys
 from pathlib import Path
 
 from docx import Document
-from docx.shared import Inches, Pt, Cm, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.section import WD_SECTION
+from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-
+from docx.shared import Cm, Pt, RGBColor
 from docx_pdf_fallback import export_docx_to_pdf
 
 DOCS_DIR = Path(__file__).resolve().parents[1] / "docs"
@@ -47,8 +45,8 @@ def set_section_columns(section, count, space_twips=360):
 
 def set_cell_shading(cell, color_hex):
     """Set cell background color."""
-    from docx.oxml.ns import qn
     from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
     shading = OxmlElement("w:shd")
     shading.set(qn("w:fill"), color_hex)
     shading.set(qn("w:val"), "clear")

@@ -10,8 +10,6 @@ by Ugandan clinical linguists before national deployment.
 
 from __future__ import annotations
 
-from typing import Optional
-
 # ---------------------------------------------------------------------------
 # Disease name translations
 # ---------------------------------------------------------------------------

@@ -2,9 +2,10 @@
 Learning Rate Finder - exponential LR sweep to find optimal learning rate.
 """
 from __future__ import annotations
-from pathlib import Path
+
 import copy
 import logging
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -95,7 +96,7 @@ class LRFinder:
 
     def plot(self, save_dir: Path):
         """Save LR finder plot."""
-        from src.visualization.ieee_style import ieee_style, ieee_figure, save_ieee
+        from src.visualization.ieee_style import ieee_figure, ieee_style, save_ieee
         save_dir.mkdir(parents=True, exist_ok=True)
         with ieee_style():
             fig, ax = ieee_figure(1, 1, width="single")

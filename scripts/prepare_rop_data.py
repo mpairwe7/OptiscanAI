@@ -13,7 +13,6 @@ Usage:
 
 import logging
 import os
-import shutil
 from pathlib import Path
 
 import pandas as pd
@@ -128,14 +127,14 @@ def main():
     logger.info("")
     logger.info("=== INTEGRATION SUMMARY ===")
     logger.info(f"1. ROP flat dataset: {n_rop} images at data/rop_processed/")
-    logger.info(f"   Labels: data/rop_processed/labels.csv")
-    logger.info(f"   Use for: future ROP classification task")
-    logger.info(f"")
+    logger.info("   Labels: data/rop_processed/labels.csv")
+    logger.info("   Use for: future ROP classification task")
+    logger.info("")
     logger.info(f"2. Fundus gate training: {n_gate} positive examples at data/fundus_gate_training/fundus/")
     logger.info(f"   Sources: {n_rop} ROP + {n_gate - n_rop} RFMiD training images")
-    logger.info(f"   Need: Add non-fundus images to data/fundus_gate_training/non_fundus/")
-    logger.info(f"")
-    logger.info(f"3. RFMiD pipeline: no changes needed (already integrated via kagglehub)")
+    logger.info("   Need: Add non-fundus images to data/fundus_gate_training/non_fundus/")
+    logger.info("")
+    logger.info("3. RFMiD pipeline: no changes needed (already integrated via kagglehub)")
 
 
 if __name__ == "__main__":

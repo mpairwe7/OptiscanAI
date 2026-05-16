@@ -1,9 +1,8 @@
 """Clinical reasoning, disease info, and knowledge graph endpoints."""
-from fastapi import APIRouter, HTTPException
-from backend.app.core.model_service import model_service, DISEASE_NAMES
+from fastapi import APIRouter, Depends, HTTPException
 
-from fastapi import Depends
 from backend.app.core.feature_gate import require_tier
+from backend.app.core.model_service import DISEASE_NAMES, model_service
 
 router = APIRouter(
     prefix="/api/v1/clinical",

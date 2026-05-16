@@ -1,12 +1,11 @@
 """Human-in-the-loop review API endpoints."""
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 from typing import Optional
 
-from src.governance.human_review import HumanReviewGate, ReviewDecision
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
-from fastapi import Depends
 from backend.app.core.feature_gate import require_tier
+from src.governance.human_review import HumanReviewGate, ReviewDecision
 
 router = APIRouter(
     prefix="/api/v1/review",

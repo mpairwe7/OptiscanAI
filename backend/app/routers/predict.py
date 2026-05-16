@@ -1,16 +1,16 @@
 """Prediction router - image upload, fundus gating, and inference."""
+import io
 import logging
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Request, Response, UploadFile, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
 from PIL import Image
-import io
 
-from backend.app.core.model_service import model_service
+from backend.app.core.auth import TokenPayload, get_current_user
 from backend.app.core.config import settings
+from backend.app.core.model_service import model_service
 from backend.app.core.prediction_logger import prediction_logger
-from backend.app.core.auth import get_current_user, TokenPayload
 from backend.app.core.quota import check_scan_quota_inline, record_scan_usage
 
 logger = logging.getLogger(__name__)
@@ -175,7 +175,7 @@ async def predict(
 
     # Notify agents of the new scan
     try:
-        from src.agents.event_bus import event_bus, Event, EventType
+        from src.agents.event_bus import Event, EventType, event_bus
         await event_bus.emit(Event(
             type=EventType.SCAN_ANALYZED,
             source="predict_endpoint",

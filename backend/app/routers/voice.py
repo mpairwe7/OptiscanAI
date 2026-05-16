@@ -21,13 +21,16 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.websockets import WebSocketState
 
 from backend.app.core.config import settings
+from backend.app.core.voice_screening_session import (
+    SessionPhase,
+    VoiceScreeningSession,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -58,12 +61,8 @@ async def voice_stream(websocket: WebSocket) -> None:
     session_id = str(uuid4())
     logger.info("Voice session started: %s", session_id)
 
-    # Lazy imports to avoid loading voice deps when disabled
-    from backend.app.core.voice_pipeline import VoicePipeline, create_pipeline
-    from backend.app.core.voice_screening_session import (
-        SessionPhase,
-        VoiceScreeningSession,
-    )
+    # Lazy import of the heavy ASR/TTS pipeline when enabled
+    from backend.app.core.voice_pipeline import create_pipeline
 
     session = VoiceScreeningSession(
         session_id=session_id,

@@ -19,7 +19,7 @@ import numpy as np
 from src.agents.base import BaseAgent, ToolResult
 from src.agents.event_bus import EventType
 from src.monitoring.drift import DriftReport
-from src.training.retraining import RetrainingTrigger, RetrainingDecision
+from src.training.retraining import RetrainingDecision, RetrainingTrigger
 
 logger = logging.getLogger(__name__)
 

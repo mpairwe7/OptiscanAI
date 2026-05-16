@@ -3,30 +3,30 @@ Multi-GPU DDP training engine for retinal disease classification.
 Uses PyTorch native DDP with torchrun, mixed precision, and W&B logging.
 """
 
+import json
+import logging
 import math
 import os
 import time
-import json
-import logging
-from pathlib import Path
 from copy import deepcopy
+from pathlib import Path
 
 import torch
-import torch.nn as nn
 import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel as DDP
+import torch.nn as nn
 from torch.amp import GradScaler, autocast
+from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim.lr_scheduler import (
     CosineAnnealingLR,
-    StepLR,
     OneCycleLR,
+    StepLR,
 )
 from tqdm import tqdm
 
-from src.training.metrics import MetricTracker
+from src.data.mixup import build_mixup
 from src.training.ema import ModelEMA
 from src.training.lr_finder import LRFinder
-from src.data.mixup import build_mixup
+from src.training.metrics import MetricTracker
 
 logger = logging.getLogger(__name__)
 
@@ -262,7 +262,7 @@ class DDPTrainer:
         if self.is_main:
             eff_batch = self.datamodule.batch_size * self.world_size * self.grad_accum_steps
             logger.info(f"{'='*70}")
-            logger.info(f"  TRAINING START")
+            logger.info("  TRAINING START")
             logger.info(f"  GPUs: {self.world_size} | Batch/GPU: {self.datamodule.batch_size}")
             logger.info(f"  Effective batch size: {eff_batch}")
             logger.info(f"  Epochs: {max_epochs} | LR: {self.train_cfg['learning_rate']}")

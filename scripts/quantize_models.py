@@ -32,7 +32,6 @@ import copy
 import io
 import json
 import logging
-import os
 import sys
 import time
 from pathlib import Path
@@ -82,8 +81,8 @@ def load_model(checkpoint_path: str) -> tuple[nn.Module, dict]:
     model_name = ckpt.get("model_name", "vignn") if isinstance(ckpt, dict) else "vignn"
     state_dict = ckpt.get("model_state_dict", ckpt) if isinstance(ckpt, dict) else ckpt
 
-    from src.models.vignn import create_vignn_model, ClinicalKnowledgeGraph
     from src.data.datamodule import DISEASE_COLUMNS
+    from src.models.vignn import ClinicalKnowledgeGraph, create_vignn_model
 
     kg = ClinicalKnowledgeGraph(disease_names=DISEASE_COLUMNS)
     num_classes = len(DISEASE_COLUMNS)
@@ -325,7 +324,6 @@ def _convert_gguf_native(
     the conversion serialises each weight tensor with the requested
     quantisation scheme.
     """
-    import llama_cpp  # noqa: F811
 
     state = model.state_dict()
 
@@ -470,7 +468,6 @@ def _apply_awq_quantisation(
     statistics, then scales and quantises Linear layer weights to
     4-bit integers.
     """
-    from awq.quantize.quantizer import AwqQuantizer  # type: ignore
 
     # Collect activation magnitudes for scaling
     hooks: list[Any] = []
@@ -656,7 +653,7 @@ def _apply_gptq_quantisation(
     for name, module in model.named_modules():
         if isinstance(module, nn.Linear) and name in layer_inputs:
             try:
-                inp_cat = torch.cat(layer_inputs[name], dim=0)
+                torch.cat(layer_inputs[name], dim=0)
                 quantizer = GPTQQuantizer()
                 quantizer.configure(bits=4, perchannel=True, sym=False)
                 quantizer.find_params(module.weight.data, weight=True)
@@ -809,8 +806,8 @@ def quantize_onnx(
         # ORT dynamic INT8 quantisation
         int8_size = 0.0
         try:
-            from onnxruntime.quantization import quantize_dynamic as ort_quantize_dynamic
             from onnxruntime.quantization import QuantType
+            from onnxruntime.quantization import quantize_dynamic as ort_quantize_dynamic
 
             source = str(optimised_path) if optimised_path.exists() else str(base_path)
             ort_quantize_dynamic(
@@ -989,8 +986,8 @@ def load_calibration_data(
         cal_dir = Path(calibration_path)
         if cal_dir.is_dir():
             try:
-                from torchvision import transforms
                 from PIL import Image
+                from torchvision import transforms
 
                 transform = transforms.Compose([
                     transforms.Resize((224, 224)),

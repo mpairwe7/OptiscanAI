@@ -3,9 +3,10 @@ Data and model drift detection for production monitoring.
 Detects distribution shifts in inputs and prediction patterns.
 """
 from __future__ import annotations
+
 import logging
-from dataclasses import dataclass, field
 from collections import deque
+from dataclasses import dataclass, field
 
 import numpy as np
 from scipy import stats as scipy_stats

@@ -2,10 +2,11 @@
 SceneGraphTransformer - Anatomical scene understanding with spatial reasoning.
 Extracted from notebook cell 47. ~52M parameters.
 """
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-from src.models.vignn import SparseTopKAttention, MultiResolutionEncoder
+
+from src.models.vignn import MultiResolutionEncoder, SparseTopKAttention
 
 
 class SceneGraphTransformer(nn.Module):

@@ -224,7 +224,6 @@ def check_statistical(image: Image.Image) -> tuple[bool, float, dict]:
     # (H < 40° or H > 340° in 360° space, i.e. H < 28 or H > 238 in
     # OpenCV 0-179 range).
     # -------------------------------------------------------------------
-    from PIL import ImageStat
     hsv = rgb.convert("HSV")
     hsv_arr = np.array(hsv, dtype=np.float32)
     hue = hsv_arr[:, :, 0]          # 0-255 in PIL (maps to 0-360°)

@@ -39,8 +39,8 @@ from PIL import Image
 
 from src.data.fundus_gate import (
     GateResult,
-    check_structural,
     check_statistical,
+    check_structural,
     gate_predictions,  # noqa: F401 — re-exported
 )
 
@@ -576,7 +576,6 @@ class FundusGateV2:
 
     def _render_gradcam(self, image: Image.Image) -> str:
         """Generate GradCAM activation map from the learned gate."""
-        import torch
         import matplotlib
         matplotlib.use("Agg")
         from matplotlib.figure import Figure

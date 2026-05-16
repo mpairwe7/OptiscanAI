@@ -69,8 +69,8 @@ class DHIS2Agent:
     async def tick(self) -> None:
         """Periodic: flush offline queue (every 5 minutes)."""
         try:
-            from backend.app.integrations.dhis2.offline_queue import DHIS2OfflineQueue
             from backend.app.core.config import settings
+            from backend.app.integrations.dhis2.offline_queue import DHIS2OfflineQueue
 
             if not hasattr(settings, "dhis2") or not settings.dhis2.enabled:
                 return

@@ -5,11 +5,9 @@ Reads the template, preserves title/abstract/keywords, replaces all body
 content with the actual concept paper, and saves as IEEE_Concept_Paper_Final.docx.
 """
 
-import copy
 from pathlib import Path
+
 from docx import Document
-from docx.shared import Pt, Inches
-from lxml import etree
 
 TEMPLATE = Path("docs/FinalIEEETemplate.docx")
 OUTPUT = Path("docs/IEEE_Concept_Paper_Final.docx")
@@ -1100,7 +1098,7 @@ def main():
     verify_doc = Document(str(OUTPUT))
     total_paras = len(verify_doc.paragraphs)
     word_count = sum(len(p.text.split()) for p in verify_doc.paragraphs)
-    print(f"\nVerification:")
+    print("\nVerification:")
     print(f"  Total paragraphs: {total_paras}")
     print(f"  Approximate word count: {word_count}")
     print(f"  Abstract updated: {'ABSTRACT Retinal imaging' in verify_doc.paragraphs[11].text}")

@@ -5,7 +5,10 @@ Fine-tune the best model (SGT) on full dataset, then export to ONNX + TorchScrip
 Usage:
   PYTHONPATH=. CUDA_VISIBLE_DEVICES=4 python3 -u scripts/finetune_and_export.py
 """
-import json, logging, os, random, sys, time
+import logging
+import random
+import sys
+import time
 from copy import deepcopy
 from pathlib import Path
 
@@ -17,14 +20,14 @@ import yaml
 from PIL import Image
 from torch.utils.data import DataLoader
 
-from src.data.datamodule import RetinalDataModule, DISEASE_COLUMNS
 from src.data.augmentation import get_train_transforms, get_val_transforms
-from src.training.losses import build_loss
-from src.training.metrics import MetricTracker
+from src.data.datamodule import DISEASE_COLUMNS, RetinalDataModule
+from src.models.scene_graph_transformer import SceneGraphTransformer
+from src.models.vignn import ClinicalKnowledgeGraph
 from src.training.early_stopping import AdvancedEarlyStopping
 from src.training.ema import ModelEMA
-from src.models.vignn import ClinicalKnowledgeGraph
-from src.models.scene_graph_transformer import SceneGraphTransformer
+from src.training.losses import build_loss
+from src.training.metrics import MetricTracker
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s",
                     datefmt="%H:%M:%S", stream=sys.stdout)

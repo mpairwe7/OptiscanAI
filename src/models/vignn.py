@@ -4,15 +4,14 @@ Transformer-based architecture with graph reasoning for retinal disease classifi
 Extracted from notebook for production deployment
 """
 import os
+from collections import defaultdict
+from typing import Any, Dict, Optional
+
+import numpy as np
+import timm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import timm
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from collections import defaultdict
-from typing import Dict, Any, Optional
 
 
 class ClinicalKnowledgeGraph:
@@ -567,23 +566,23 @@ class SparseTopKAttention(nn.Module):
         self.num_heads = num_heads
         self.head_dim = embed_dim // num_heads
         self.top_k = top_k
-        
+
         # Separate projections for Q, K, V (supports cross-attention)
         self.q_proj = nn.Linear(embed_dim, embed_dim)
         self.k_proj = nn.Linear(embed_dim, embed_dim)
         self.v_proj = nn.Linear(embed_dim, embed_dim)
         self.out_proj = nn.Linear(embed_dim, embed_dim)
         self.dropout = nn.Dropout(dropout)
-        
+
     def forward(self, query, key, value):
         """
         Apply sparse top-k attention.
-        
+
         Args:
             query: Query tensor [batch, seq_len, embed_dim]
             key: Key tensor [batch, seq_len, embed_dim]
             value: Value tensor [batch, seq_len, embed_dim]
-            
+
         Returns:
             output: Attended features [batch, seq_len, embed_dim]
             attn_weights: Attention weights [batch, num_heads, seq_len, seq_len]
@@ -591,37 +590,37 @@ class SparseTopKAttention(nn.Module):
         batch_size = query.size(0)
         seq_len_q = query.size(1)
         seq_len_kv = key.size(1)
-        
+
         # Project Q, K, V separately (supports cross-attention)
         q = self.q_proj(query)
         k = self.k_proj(key)
         v = self.v_proj(value)
-        
+
         # Reshape for multi-head attention
         q = q.view(batch_size, seq_len_q, self.num_heads, self.head_dim).transpose(1, 2)
         k = k.view(batch_size, seq_len_kv, self.num_heads, self.head_dim).transpose(1, 2)
         v = v.view(batch_size, seq_len_kv, self.num_heads, self.head_dim).transpose(1, 2)
-        
+
         # Compute attention scores
         scores = torch.matmul(q, k.transpose(-2, -1)) / np.sqrt(self.head_dim)
-        
+
         # Sparse top-k selection
         k_value = min(self.top_k, scores.size(-1))
         topk_scores, topk_indices = torch.topk(scores, k=k_value, dim=-1)
-        
+
         # Create sparse attention mask
         mask = torch.full_like(scores, float('-inf'))
         mask.scatter_(-1, topk_indices, topk_scores)
-        
+
         # Apply softmax and dropout
         attn_weights = F.softmax(mask, dim=-1)
         attn_weights = self.dropout(attn_weights)
-        
+
         # Apply attention to values
         attn_output = torch.matmul(attn_weights, v)
         attn_output = attn_output.transpose(1, 2).contiguous().view(batch_size, seq_len_q, self.embed_dim)
         output = self.out_proj(attn_output)
-        
+
         return output, attn_weights.mean(dim=1)  # Return mean attention weights across heads
 
 
@@ -695,16 +694,16 @@ class MultiResolutionEncoder(nn.Module):
         if not loaded_local and use_pretrained:
             try:
                 self.encoder = timm.create_model(backbone_name, pretrained=True, num_classes=0, dynamic_img_size=True)
-                print(f"  Loaded pretrained weights from HuggingFace Hub")
+                print("  Loaded pretrained weights from HuggingFace Hub")
             except Exception as e:
                 print(f"  HuggingFace download failed: {e}")
                 self.encoder = timm.create_model(backbone_name, **timm_kwargs)
-                print(f"  Using random initialization (fallback)")
+                print("  Using random initialization (fallback)")
 
         # Priority 3: Random init
         if not use_pretrained:
             self.encoder = timm.create_model(backbone_name, **timm_kwargs)
-            print(f"  Using random initialization (USE_PRETRAINED=0)")
+            print("  Using random initialization (USE_PRETRAINED=0)")
 
         # Backbone output dim (384 for ViT-S, 1024 for ViT-L/RETFound)
         self.backbone_dim = self.encoder.num_features
@@ -759,7 +758,7 @@ class ViGNN(nn.Module):
 
         # Multi-resolution visual encoder
         self.visual_encoder = MultiResolutionEncoder(backbone, patch_embed_dim, img_size=img_size)
-        
+
         # Patch projection
         self.patch_proj = nn.Sequential(
             nn.Linear(patch_embed_dim, hidden_dim),
@@ -767,7 +766,7 @@ class ViGNN(nn.Module):
             nn.GELU(),
             nn.Dropout(dropout)
         )
-        
+
         # Adaptive edge weight generator
         self.edge_weight_generator = nn.Sequential(
             nn.Linear(hidden_dim * 2, hidden_dim),
@@ -775,33 +774,33 @@ class ViGNN(nn.Module):
             nn.Linear(hidden_dim, 1),
             nn.Sigmoid()
         )
-        
+
         # Graph message passing layers with attention
         self.graph_layers = nn.ModuleList([
             SparseTopKAttention(hidden_dim, num_heads=num_heads, dropout=dropout, top_k=32)
             for _ in range(num_graph_layers)
         ])
         self.layer_norms = nn.ModuleList([nn.LayerNorm(hidden_dim) for _ in range(num_graph_layers)])
-        
+
         # Learnable disease prototypes (nodes)
         self.disease_prototypes = nn.Parameter(torch.randn(num_classes, hidden_dim))
         nn.init.normal_(self.disease_prototypes, std=0.02)
-        
+
         # Disease-aware pooling
         self.disease_query = nn.Parameter(torch.randn(num_classes, hidden_dim))
         nn.init.normal_(self.disease_query, std=0.02)
-        
+
         self.disease_attention = SparseTopKAttention(
             hidden_dim, num_heads=num_heads, dropout=dropout, top_k=64
         )
-        
+
         # Global context aggregation
         self.global_context = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.GELU()
         )
-        
+
         # Final classifier
         self.classifier = nn.Sequential(
             nn.Linear(hidden_dim * 2, 512),
@@ -814,7 +813,7 @@ class ViGNN(nn.Module):
             nn.Dropout(dropout),
             nn.Linear(256, num_classes)
         )
-    
+
     def forward(self, x):
         batch_size = x.size(0)
 
@@ -823,47 +822,47 @@ class ViGNN(nn.Module):
 
         # Project patches to hidden dimension
         patch_embeds = self.patch_proj(patch_features)
-        
+
         # Prepare disease prototypes
         disease_proto = self.disease_prototypes.unsqueeze(0).expand(batch_size, -1, -1)
-        
+
         # Generate adaptive edge weights using disease context
         patch_mean = patch_embeds.mean(dim=1, keepdim=True)
         patch_disease_concat = torch.cat(
             [patch_mean.expand(-1, self.num_classes, -1), disease_proto],
             dim=-1
         )
-        
-        edge_weights = self.edge_weight_generator(patch_disease_concat)
-        
+
+        self.edge_weight_generator(patch_disease_concat)
+
         # Graph message passing through patches
         graph_embeds = patch_embeds
         for graph_layer, norm in zip(self.graph_layers, self.layer_norms):
             attn_out, _ = graph_layer(graph_embeds, graph_embeds, graph_embeds)
             graph_embeds = norm(graph_embeds + attn_out)
-        
+
         # Global patch aggregation
         patch_global = graph_embeds.mean(dim=1)
         global_context = self.global_context(patch_global)
-        
+
         # Disease-aware attention
         disease_query = self.disease_query.unsqueeze(0).expand(batch_size, -1, -1)
-        
+
         disease_out, _ = self.disease_attention(
             disease_query,
             graph_embeds,
             graph_embeds
         )
-        
+
         # Aggregate disease-aware features
         disease_aware = disease_out.mean(dim=1)
-        
+
         # Combine global context and disease-aware features
         final_features = torch.cat([global_context, disease_aware], dim=-1)
-        
+
         # Final classification
         logits = self.classifier(final_features)
-        
+
         return logits
 
 
@@ -898,32 +897,32 @@ def create_vignn_model(num_classes=48, hidden_dim=384, num_graph_layers=3, num_h
         backbone=backbone,
         img_size=img_size,
     )
-    
+
     if checkpoint_path is not None:
         print(f"Loading checkpoint from: {checkpoint_path}")
         checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
-        
+
         if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
             model.load_state_dict(checkpoint['model_state_dict'])
-            print(f"✓ Loaded model weights from checkpoint")
-            
+            print("✓ Loaded model weights from checkpoint")
+
             if 'best_f1' in checkpoint:
                 print(f"  Best F1 Score: {checkpoint['best_f1']:.4f}")
             if 'best_auc' in checkpoint:
                 print(f"  Best AUC Score: {checkpoint['best_auc']:.4f}")
         else:
             print("⚠️  Checkpoint format not recognized")
-    
+
     return model
 
 
 def create_knowledge_graph(disease_names=None):
     """
     Create a ClinicalKnowledgeGraph with Uganda-specific disease relationships.
-    
+
     Args:
         disease_names: List of disease codes (default: standard 45 diseases)
-        
+
     Returns:
         knowledge_graph: ClinicalKnowledgeGraph instance
     """
@@ -936,41 +935,41 @@ def create_knowledge_graph(disease_names=None):
             "PRH", "MNF", "HR", "CRAO", "TD", "CME", "PTCR", "CF", "VH", "MCA",
             "VS", "BRAO", "PLQ", "HPED", "CL", "AMD", "DME", "ROP"
         ]
-    
+
     knowledge_graph = ClinicalKnowledgeGraph(disease_names=disease_names)
-    
-    print(f"✓ ClinicalKnowledgeGraph initialized")
+
+    print("✓ ClinicalKnowledgeGraph initialized")
     print(f"  • {knowledge_graph.num_classes} diseases")
     print(f"  • {knowledge_graph.get_edge_count()} clinical relationships")
-    print(f"  • Uganda-specific epidemiology included")
-    
+    print("  • Uganda-specific epidemiology included")
+
     return knowledge_graph
 
 
 if __name__ == "__main__":
     # Test model creation
     print("Testing ViGNN model...")
-    
+
     # Create knowledge graph first (required for ViGNN)
     kg = create_knowledge_graph()
-    
+
     model = create_vignn_model(num_classes=48, clinical_knowledge_graph=kg)
-    
+
     # Test forward pass
     dummy_input = torch.randn(2, 3, 224, 224)
     output = model(dummy_input)
-    
-    print(f"✓ Model created successfully")
+
+    print("✓ Model created successfully")
     print(f"  Input shape: {dummy_input.shape}")
     print(f"  Output shape: {output.shape}")
-    
+
     # Count parameters
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    
+
     print(f"  Total parameters: {total_params/1e6:.1f}M")
     print(f"  Trainable parameters: {trainable_params/1e6:.1f}M")
-    
+
     # Test knowledge graph
     print("\nTesting ClinicalKnowledgeGraph...")
-    print(f"✓ Knowledge graph created successfully")
+    print("✓ Knowledge graph created successfully")

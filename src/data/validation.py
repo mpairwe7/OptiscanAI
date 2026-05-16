@@ -5,9 +5,9 @@ Inspired by Great Expectations patterns."""
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ class DataValidator:
 
     def validate_label_range(self, df: pd.DataFrame) -> ValidationResult:
         """Check labels are binary (0 or 1)."""
-        label_data = df[self.disease_columns]
+        df[self.disease_columns]
         unique_vals = set()
         for col in self.disease_columns:
             unique_vals.update(df[col].dropna().unique().tolist())

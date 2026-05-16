@@ -3,7 +3,6 @@
 Events flow between agents without tight coupling. Each agent subscribes
 to event types it cares about, and emits events for others to react to.
 """
-import asyncio
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field

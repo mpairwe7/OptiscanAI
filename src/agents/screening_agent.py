@@ -9,7 +9,6 @@ Wraps the LangGraph screening pipeline (graph.py) as an agent with:
 The actual workflow is in graph.py — this agent manages when and how it runs.
 """
 import logging
-from typing import Any
 
 from PIL import Image
 

@@ -3,6 +3,7 @@ Temperature scaling calibration and ECE computation.
 Post-hoc calibration (Guo et al. 2017) for reliable prediction confidence.
 """
 from __future__ import annotations
+
 import logging
 
 import numpy as np

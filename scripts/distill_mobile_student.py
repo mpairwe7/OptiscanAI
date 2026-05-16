@@ -19,10 +19,8 @@ import argparse
 import json
 import logging
 import sys
-import time
 from pathlib import Path
 
-import numpy as np
 import torch
 import torch.nn as nn
 from torch.amp import GradScaler, autocast
@@ -57,8 +55,8 @@ def build_teacher(cfg: dict, device: torch.device) -> nn.Module:
     with open(model_cfg_path) as f:
         teacher_model_cfg = yaml.safe_load(f)
 
-    from src.models.vignn import ClinicalKnowledgeGraph
     from src.models.retinal_foundation_hybrid_v2 import RetinalFoundationHybridV2
+    from src.models.vignn import ClinicalKnowledgeGraph
 
     # Get num_classes — prefer from teacher checkpoint, then config
     ckpt_path = teacher_cfg.get("checkpoint")
@@ -294,7 +292,7 @@ def train(cfg: dict) -> dict:
 
     dist_cfg = cfg["distillation"]
     train_cfg = cfg["training"]
-    pf_cfg = cfg.get("precision_floor", {})
+    cfg.get("precision_floor", {})
 
     criterion = PrecisionAwareDistillationLoss(
         alpha=dist_cfg.get("alpha", 0.6),
@@ -522,7 +520,7 @@ def main():
     cfg = load_config(args.config)
     summary = train(cfg)
 
-    print(f"\nDistillation complete!")
+    print("\nDistillation complete!")
     print(f"  Best metric: {summary['best_metric']:.4f}")
     print(f"  Total epochs: {summary['total_epochs']}")
     if summary.get("student_params"):

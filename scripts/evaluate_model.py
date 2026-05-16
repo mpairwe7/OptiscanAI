@@ -8,8 +8,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import yaml
 import torch
+import yaml
+
 from src.data.datamodule import RetinalDataModule
 from src.evaluation.calibration import (
     TemperatureScaler,

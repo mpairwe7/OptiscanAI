@@ -3,6 +3,7 @@ Latency & throughput benchmarking for all 4 models.
 Extracted from notebook cell 56 (LatencyBenchmark).
 """
 from __future__ import annotations
+
 import json
 import time
 from pathlib import Path
@@ -10,9 +11,13 @@ from pathlib import Path
 import numpy as np
 import torch
 import torch.nn as nn
+
 from src.visualization.ieee_style import (
-    ieee_style, ieee_figure, save_ieee, add_watermark,
-    IEEE_COLORS, MODEL_COLORS,
+    MODEL_COLORS,
+    add_watermark,
+    ieee_figure,
+    ieee_style,
+    save_ieee,
 )
 
 

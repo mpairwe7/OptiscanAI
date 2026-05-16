@@ -53,7 +53,7 @@ def extract_kg(disease_names: list[str]) -> dict:
     # --- Diseases ---
     diseases = {}
     for name in disease_names:
-        info = kg.get_disease_info(name) if hasattr(kg, "get_disease_info") else {}
+        kg.get_disease_info(name) if hasattr(kg, "get_disease_info") else {}
         diseases[name] = {
             "code": name,
             "related_diseases": cooccurrence_map.get(name, []),

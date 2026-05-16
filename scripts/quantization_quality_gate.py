@@ -38,7 +38,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import sys
 import time
 from pathlib import Path
@@ -120,7 +119,6 @@ def check_faithfulness(
     -------
     GateResult
     """
-    import torch
 
     fmt = artefact.get("format", "unknown")
     artefact_path = artefact.get("path", "")
@@ -255,8 +253,8 @@ def _infer_pytorch_checkpoint(
             state_dict = payload
 
         # Reconstruct model to load weights into
-        from src.models.vignn import create_vignn_model, ClinicalKnowledgeGraph
         from src.data.datamodule import DISEASE_COLUMNS
+        from src.models.vignn import ClinicalKnowledgeGraph, create_vignn_model
 
         kg = ClinicalKnowledgeGraph(disease_names=DISEASE_COLUMNS)
         model = create_vignn_model(
@@ -588,8 +586,8 @@ def _benchmark_pytorch_checkpoint(
         else:
             state_dict = payload
 
-        from src.models.vignn import create_vignn_model, ClinicalKnowledgeGraph
         from src.data.datamodule import DISEASE_COLUMNS
+        from src.models.vignn import ClinicalKnowledgeGraph, create_vignn_model
 
         kg = ClinicalKnowledgeGraph(disease_names=DISEASE_COLUMNS)
         model = create_vignn_model(

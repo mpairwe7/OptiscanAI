@@ -23,9 +23,8 @@ import json
 import logging
 import os
 import time
-from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
@@ -384,9 +383,9 @@ class UgandaBiasAuditor(BiasAuditor):
         self.f1_disparity_threshold = f1_disparity_threshold
 
         from src.governance.uganda_bias_config import (
-            UGANDA_DEVICES,
-            LIGHTING_CONDITIONS,
             GEOGRAPHIC_REGIONS,
+            LIGHTING_CONDITIONS,
+            UGANDA_DEVICES,
         )
 
         self.uganda_devices = UGANDA_DEVICES

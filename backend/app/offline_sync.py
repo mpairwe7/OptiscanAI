@@ -19,15 +19,12 @@ import hashlib
 import json
 import logging
 import os
-import shutil
 import threading
 import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
-
-from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

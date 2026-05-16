@@ -6,13 +6,11 @@ Create Date: 2026-05-15
 """
 from __future__ import annotations
 
-import json
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
-
 
 revision: str = "0001"
 down_revision: Union[str, None] = None

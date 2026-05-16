@@ -1,5 +1,6 @@
 """Model loading and inference service - singleton lifecycle."""
 from __future__ import annotations
+
 import logging
 import sys
 import time
@@ -15,9 +16,9 @@ from torchvision import transforms
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.models.vignn import create_vignn_model, create_knowledge_graph, ClinicalKnowledgeGraph
-from src.data.datamodule import DISEASE_COLUMNS
 from backend.app.core.config import settings
+from src.data.datamodule import DISEASE_COLUMNS
+from src.models.vignn import ClinicalKnowledgeGraph, create_vignn_model
 
 # V2 disease columns (24 classes after ultra-rare filtering)
 V2_DISEASE_COLUMNS = [

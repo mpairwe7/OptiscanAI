@@ -17,8 +17,7 @@ import copy
 import logging
 import os
 import time
-from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 
 import torch
 import torch.nn as nn
@@ -372,7 +371,7 @@ def optimize_for_production(
 
     # torch.compile
     if enable_compile and torch.cuda.is_available():
-        compiled = compile_model(copy.deepcopy(model))
+        compile_model(copy.deepcopy(model))
         results["models"]["compiled"] = "in-memory (torch.compile)"
 
     # Dynamic INT8

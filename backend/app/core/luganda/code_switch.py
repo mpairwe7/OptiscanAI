@@ -7,9 +7,6 @@ to canonical disease codes. Handles common Ugandan English patterns
 
 from __future__ import annotations
 
-import re
-from typing import Optional
-
 # Ugandan English colloquial -> canonical medical term
 UGANDAN_ENGLISH_MAP: dict[str, str] = {
     "sugar disease": "diabetes",

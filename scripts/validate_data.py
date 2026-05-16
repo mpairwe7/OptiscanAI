@@ -9,7 +9,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import yaml
-from src.data.datamodule import RetinalDataModule, DISEASE_COLUMNS
+
+from src.data.datamodule import DISEASE_COLUMNS, RetinalDataModule
 from src.data.validation import DataValidator
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")

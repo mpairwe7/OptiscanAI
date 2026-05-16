@@ -13,13 +13,11 @@ import argparse
 import logging
 import os
 import random
-import sys
-from pathlib import Path
 
-import yaml
 import numpy as np
 import torch
 import torch.distributed as dist
+import yaml
 
 from src.data.datamodule import RetinalDataModule
 from src.training.losses import build_loss
@@ -66,8 +64,8 @@ def build_model(cfg: dict) -> torch.nn.Module:
 
     # Build knowledge graph (shared by all 4 custom models)
     def _build_kg():
-        from src.models.vignn import ClinicalKnowledgeGraph
         from src.data.datamodule import DISEASE_COLUMNS
+        from src.models.vignn import ClinicalKnowledgeGraph
         names = model_cfg.get("disease_names")
         if not names:
             names = (
@@ -255,7 +253,7 @@ def main():
             trainer.optimizer.load_state_dict(ckpt["optimizer_state_dict"])
 
     # Train
-    history = trainer.train()
+    trainer.train()
 
     # Cleanup
     if world_size > 1:

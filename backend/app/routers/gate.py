@@ -1,9 +1,7 @@
 """Gate router — status and debug endpoints for fundus gate v2."""
-import dataclasses
 import io
 import logging
 import time
-from typing import Optional
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from PIL import Image

@@ -15,6 +15,7 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 
 from fastapi import Depends
+
 from backend.app.core.feature_gate import require_tier
 
 router = APIRouter(

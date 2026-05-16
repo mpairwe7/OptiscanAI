@@ -23,10 +23,9 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models.invoice import Invoice
 from backend.app.models.organization import Organization
 from backend.app.models.plan import Plan
 from backend.app.models.renewal_reminder import ReminderKind, RenewalReminder

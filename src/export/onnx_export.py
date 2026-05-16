@@ -2,12 +2,13 @@
 ONNX export with validation and optimization.
 """
 from __future__ import annotations
+
 import logging
 from pathlib import Path
 
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
 
 logger = logging.getLogger(__name__)
 

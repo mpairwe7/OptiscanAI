@@ -24,10 +24,8 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from src.models.retinal_foundation_encoder import RetinalFoundationEncoder
 from src.models.vignn import ClinicalKnowledgeGraph, SparseTopKAttention

@@ -9,12 +9,11 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import torch
-from torch.utils.data import DataLoader, DistributedSampler
 from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader, DistributedSampler
 
-from src.data.dataset import RetinalDiseaseDataset
 from src.data.augmentation import get_train_transforms, get_val_transforms
+from src.data.dataset import RetinalDiseaseDataset
 from src.data.validation import DataValidator
 
 logger = logging.getLogger(__name__)

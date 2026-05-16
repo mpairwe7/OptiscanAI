@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Run hyperparameter optimization."""
 import argparse
-import json
 import logging
 import sys
 from pathlib import Path
@@ -9,6 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import yaml
+
 from src.training.hpo import run_hpo
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")

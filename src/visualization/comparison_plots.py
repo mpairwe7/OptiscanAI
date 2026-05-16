@@ -4,15 +4,20 @@ Radar charts, head-to-head comparison, GPU benchmarks.
 """
 
 from __future__ import annotations
+
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 import numpy as np
 
 from src.visualization.ieee_style import (
-    ieee_style, ieee_figure, save_ieee, annotate_bars, add_watermark,
-    IEEE_COLORS, MODEL_COLORS, CB_PALETTE,
+    CB_PALETTE,
+    IEEE_COLORS,
+    MODEL_COLORS,
+    add_watermark,
+    ieee_figure,
+    ieee_style,
+    save_ieee,
 )
 
 

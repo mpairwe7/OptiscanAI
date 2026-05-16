@@ -2,9 +2,18 @@
 Gradient and weight monitoring visualizations.
 """
 from __future__ import annotations
+
 from pathlib import Path
+
 import numpy as np
-from src.visualization.ieee_style import ieee_style, ieee_figure, save_ieee, add_watermark, IEEE_COLORS
+
+from src.visualization.ieee_style import (
+    IEEE_COLORS,
+    add_watermark,
+    ieee_figure,
+    ieee_style,
+    save_ieee,
+)
 
 
 def plot_gradient_norms(

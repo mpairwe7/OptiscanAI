@@ -11,11 +11,10 @@ import logging
 import time
 from typing import Any, AsyncIterator, Optional
 
-from backend.app.core.asr_engine import ASREngine, TranscriptionResult
+from backend.app.core.asr_engine import ASREngine
 from backend.app.core.tts_engine import TTSConfig, TTSEngine
-from backend.app.core.vad_engine import VADEngine, VADEvent
+from backend.app.core.vad_engine import VADEngine
 from backend.app.core.voice_screening_session import (
-    SessionPhase,
     VoiceScreeningSession,
 )
 

@@ -1,9 +1,11 @@
 """Health, monitoring, and metadata router."""
-import torch
 from dataclasses import asdict
+
+import torch
 from fastapi import APIRouter
-from backend.app.core.model_service import model_service
+
 from backend.app.core.config import settings
+from backend.app.core.model_service import model_service
 from src.monitoring.health import HealthMonitor
 
 router = APIRouter(tags=["health"])
@@ -32,8 +34,9 @@ async def model_health():
 @router.get("/health/gate")
 async def gate_health():
     """Fundus gate v2 operational metrics."""
-    from src.monitoring.gate_monitor import gate_monitor
     from dataclasses import asdict as _asdict
+
+    from src.monitoring.gate_monitor import gate_monitor
     return _asdict(gate_monitor.metrics())
 
 

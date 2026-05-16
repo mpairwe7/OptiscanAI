@@ -2,19 +2,36 @@
 FastAPI application entry point with modern lifespan management.
 UV-managed, production-ready retinal disease classification API.
 """
-from contextlib import asynccontextmanager
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import Response
 
 from backend.app.core.config import settings
 from backend.app.core.logging_config import setup_logging
 from backend.app.core.model_service import model_service
-from backend.app.routers import health, predict, auth, review, clinical, explain, analytics, agents, governance, gate, predict_edge, offline, quantized, monitoring, orgs, billing
+from backend.app.routers import (
+    agents,
+    analytics,
+    auth,
+    billing,
+    clinical,
+    explain,
+    gate,
+    governance,
+    health,
+    monitoring,
+    offline,
+    orgs,
+    predict,
+    predict_edge,
+    quantized,
+    review,
+)
 
 setup_logging(settings.log_level, settings.log_format)
 logger = logging.getLogger(__name__)
@@ -76,8 +93,9 @@ async def lifespan(app: FastAPI):
     # ── Stage 2.7: Fundus Gate v2 learned model (non-fatal) ──
     if settings.fundus_gate.enabled and settings.fundus_gate.version == "v2":
         try:
-            from src.data.fundus_gate_learned import LearnedFundusGate
             import os
+
+            from src.data.fundus_gate_learned import LearnedFundusGate
             gate_path = settings.fundus_gate.model_path
             weights = gate_path if os.path.isfile(gate_path) else None
             learned_gate = LearnedFundusGate(weights_path=weights)
@@ -92,8 +110,8 @@ async def lifespan(app: FastAPI):
     # ── Stage 3: Agent Orchestrator (existing) ──
     orchestrator = None
     try:
-        from src.agents.orchestrator import AgentOrchestrator
         from backend.app.routers.review import review_gate
+        from src.agents.orchestrator import AgentOrchestrator
         from src.governance.audit import AuditTrail
 
         orchestrator = AgentOrchestrator(
@@ -172,10 +190,12 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # 3. Request ID tracing
 from backend.app.middleware.request_id import RequestIDMiddleware
+
 app.add_middleware(RequestIDMiddleware)
 
 # 4. Rate limiting
 from backend.app.middleware.rate_limit import RateLimiterMiddleware
+
 app.add_middleware(RateLimiterMiddleware, requests_per_minute=settings.rate_limit_per_minute)
 
 # 5. Security headers
@@ -211,10 +231,12 @@ app.include_router(billing.router)
 
 # Phase 2: Voice-first
 from backend.app.routers import voice
+
 app.include_router(voice.router)
 
 # Phase 3: Uganda health ecosystem
-from backend.app.routers import dhis2, payments, sms, fhir, dicom
+from backend.app.routers import dhis2, dicom, fhir, payments, sms
+
 app.include_router(dhis2.router)
 app.include_router(payments.router)
 app.include_router(sms.router)

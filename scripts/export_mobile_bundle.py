@@ -18,16 +18,14 @@ Usage
 from __future__ import annotations
 
 import argparse
-import gzip
 import hashlib
 import json
 import logging
-import os
 import shutil
 import sys
 import tarfile
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Optional
 
@@ -429,11 +427,11 @@ def print_summary(manifest: BundleManifest) -> None:
     if not manifest.within_budget:
         overage = manifest.total_size_mb - manifest.max_size_mb
         print(f"\n  BUDGET EXCEEDED by {overage:.1f} MB")
-        print(f"  Recommendations:")
-        print(f"    - Use a more aggressive quantization (Q4_K_S instead of Q4_K_M)")
-        print(f"    - Prune FAISS index (reduce passage count)")
-        print(f"    - Use model distillation for a smaller specialist model")
-        print(f"    - Exclude voice models (--no-voice) for text-only bundle")
+        print("  Recommendations:")
+        print("    - Use a more aggressive quantization (Q4_K_S instead of Q4_K_M)")
+        print("    - Prune FAISS index (reduce passage count)")
+        print("    - Use model distillation for a smaller specialist model")
+        print("    - Exclude voice models (--no-voice) for text-only bundle")
     print()
 
 
@@ -1065,7 +1063,7 @@ def main() -> None:
         output_dir = _PROJECT_ROOT / output_dir
 
     # 1. Discover components
-    print(f"\n[1/4] Discovering bundle components ...")
+    print("\n[1/4] Discovering bundle components ...")
     components = discover_components(include_voice=args.include_voice)
 
     included = [c for c in components if c.included]

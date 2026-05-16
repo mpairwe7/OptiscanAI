@@ -22,7 +22,6 @@ import os
 import time
 from typing import Any, Dict, List, Optional
 
-import numpy as np
 import torch
 from PIL import Image
 
@@ -227,7 +226,6 @@ if _RAY_AVAILABLE:
         def _load_model(self, model_path: Optional[str]) -> None:
             """Load the ViGNN checkpoint and knowledge graph."""
             from src.models.vignn import (
-                ClinicalKnowledgeGraph,
                 create_knowledge_graph,
                 create_vignn_model,
             )

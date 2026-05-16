@@ -4,6 +4,7 @@ Maintains a shadow copy that tracks a decayed average of parameters,
 typically yielding 1-2% improvement on validation metrics.
 """
 from __future__ import annotations
+
 import copy
 from collections import OrderedDict
 

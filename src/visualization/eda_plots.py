@@ -4,18 +4,21 @@ Preserves and enhances notebook cells 9-17 plots.
 """
 
 from __future__ import annotations
+
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from scipy import stats
 
 from src.visualization.ieee_style import (
-    ieee_style, ieee_figure, save_ieee, annotate_bars,
-    IEEE_COLORS, CB_PALETTE, add_watermark,
+    IEEE_COLORS,
+    add_watermark,
+    ieee_figure,
+    ieee_style,
+    save_ieee,
 )
 
 
@@ -96,7 +99,7 @@ def plot_multilabel_statistics(
         axes[0, 0].set_title("(a) Label Distribution")
 
         # (b) Box plot
-        bp = axes[0, 1].boxplot(labels_per_sample, vert=True, patch_artist=True,
+        axes[0, 1].boxplot(labels_per_sample, vert=True, patch_artist=True,
                                 boxprops=dict(facecolor=IEEE_COLORS["teal"], alpha=0.6))
         axes[0, 1].set_ylabel("Diseases per Sample")
         axes[0, 1].set_title("(b) Box Plot")
@@ -248,7 +251,7 @@ def plot_split_distribution(
         colors = [IEEE_COLORS["blue"], IEEE_COLORS["green"], IEEE_COLORS["orange"]]
         axes[0].bar(labels, sizes, color=colors, edgecolor="black", lw=0.5)
         total = sum(sizes)
-        for i, (s, l) in enumerate(zip(sizes, labels)):
+        for i, (s, _label) in enumerate(zip(sizes, labels)):
             axes[0].text(i, s + total * 0.01, f"{s / total * 100:.1f}%",
                          ha="center", fontsize=8, fontweight="bold")
         axes[0].set_ylabel("Number of Samples")

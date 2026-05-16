@@ -169,6 +169,39 @@ line-length = 100
 select = ["E", "F", "I", "N", "W"]
 ignore = ["E501"]
 
+[tool.ruff.lint.per-file-ignores]
+# Re-export files: imports without uses are intentional public-API surface.
+"**/__init__.py" = ["F401"]
+
+# ML/scientific code conventions — `X`, `Y`, `X_train`, `nn`, `F`, etc. are
+# standard PyTorch/sklearn naming. Ignoring N* lets researchers keep idiomatic
+# names without burying them in noqa. E402 covers conditional imports after
+# torch.cuda.is_available() probes and similar runtime guards.
+"src/**/*.py" = ["N802", "N803", "N806", "N812", "N815", "N817", "E402"]
+
+# Pipeline / training scripts are deliberately dense (multi-statement lines,
+# sys.path insertions, conditional model imports). Style is owned by the
+# script author; lint focuses on real bugs (F-rules) only.
+"scripts/**/*.py" = [
+    "E402", "E701", "E702", "E722",
+    "N802", "N803", "N806", "N812", "N815", "N817",
+]
+"train.py" = ["E402", "N802", "N803", "N806", "N812", "N815", "N817"]
+
+# Backend routers commonly do `if settings.feature_enabled: import heavy_dep`
+# after the module preamble — keep E402 ignored at the router/core layer where
+# this pattern is load-bearing.
+"backend/app/main.py" = ["E402"]
+"backend/app/routers/*.py" = ["E402"]
+"backend/app/core/*.py" = ["E402"]
+
+# DICOM integration probes pydicom and rebinds optional utilities under a
+# try/except so missing extras don't crash the import.
+"backend/app/integrations/dicom/handler.py" = ["F401"]
+# model_card_generator gates a generator class on importing the dataclasses,
+# which act as a feature flag for the optional `src.governance` module.
+"backend/app/core/model_card_generator.py" = ["F401"]
+
 [tool.black]
 line-length = 100
 target-version = ["py310"]

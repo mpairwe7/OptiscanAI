@@ -4,7 +4,8 @@ Extracted from notebook cell 47. ~48M parameters.
 """
 import torch
 import torch.nn as nn
-from src.models.vignn import SparseTopKAttention, MultiResolutionEncoder
+
+from src.models.vignn import MultiResolutionEncoder, SparseTopKAttention
 
 
 class VisualLanguageGNN(nn.Module):

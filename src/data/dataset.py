@@ -3,13 +3,14 @@ RetinalDiseaseDataset - PyTorch Dataset for RFMiD retinal fundus images.
 Extracted and refactored from notebook cell 21.
 """
 
-import torch
-from torch.utils.data import Dataset
+import logging
 from pathlib import Path
-from PIL import Image
+
 import numpy as np
 import pandas as pd
-import logging
+import torch
+from PIL import Image
+from torch.utils.data import Dataset
 
 logger = logging.getLogger(__name__)
 

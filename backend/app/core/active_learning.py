@@ -17,7 +17,10 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import torch
 
 logger = logging.getLogger(__name__)
 
@@ -585,14 +588,15 @@ class ActiveLearningLoop:
     def _load_base_model(self, device: "torch.device") -> "torch.nn.Module | None":
         """Load the base ViGNN model for fine-tuning."""
         import sys
+
         import torch
 
         project_root = Path(__file__).resolve().parents[3]
         sys.path.insert(0, str(project_root))
 
         try:
-            from src.models.vignn import create_vignn_model, ClinicalKnowledgeGraph
             from src.data.datamodule import DISEASE_COLUMNS
+            from src.models.vignn import ClinicalKnowledgeGraph, create_vignn_model
         except ImportError:
             logger.exception("Failed to import model modules")
             return None
@@ -736,7 +740,7 @@ class ActiveLearningLoop:
 
     async def _emit_review_completed(self, request_id: str, decision: str, reviewer: str) -> None:
         try:
-            from src.agents.event_bus import event_bus, Event, EventType
+            from src.agents.event_bus import Event, EventType, event_bus
             await event_bus.emit(Event(
                 type=EventType.REVIEW_COMPLETED,
                 source="active_learning_loop",
@@ -751,7 +755,7 @@ class ActiveLearningLoop:
 
     async def _emit_retrain_triggered(self, run_id: str) -> None:
         try:
-            from src.agents.event_bus import event_bus, Event, EventType
+            from src.agents.event_bus import Event, EventType, event_bus
             await event_bus.emit(Event(
                 type=EventType.RETRAIN_TRIGGERED,
                 source="active_learning_loop",
@@ -762,7 +766,7 @@ class ActiveLearningLoop:
 
     async def _emit_retrain_completed(self, run_id: str, metrics: dict) -> None:
         try:
-            from src.agents.event_bus import event_bus, Event, EventType
+            from src.agents.event_bus import Event, EventType, event_bus
             await event_bus.emit(Event(
                 type=EventType.RETRAIN_COMPLETED,
                 source="active_learning_loop",

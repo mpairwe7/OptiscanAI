@@ -19,7 +19,6 @@ Usage:
 import argparse
 import json
 import logging
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -305,9 +304,9 @@ def generate_architecture():
 
 def generate_benchmarks(cfg: dict, device_str: str = "cuda:0"):
     """Benchmark all 4 models for latency/throughput/memory."""
+    from src.data.datamodule import DISEASE_COLUMNS
     from src.evaluation.benchmark import LatencyBenchmark, plot_latency_benchmark
     from src.models.vignn import ClinicalKnowledgeGraph
-    from src.data.datamodule import DISEASE_COLUMNS
 
     logger.info("=" * 60)
     logger.info("  RUNNING MULTI-MODEL LATENCY BENCHMARKS")

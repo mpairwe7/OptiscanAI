@@ -21,9 +21,8 @@ from __future__ import annotations
 import logging
 import os
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-import numpy as np
 import torch
 from PIL import Image
 
@@ -49,6 +48,7 @@ except ImportError:
 def preprocess_image(image_bytes: bytes, img_size: int = 224) -> torch.Tensor:
     """Convert raw image bytes to model-ready tensor."""
     import io
+
     from torchvision import transforms
 
     transform = transforms.Compose([

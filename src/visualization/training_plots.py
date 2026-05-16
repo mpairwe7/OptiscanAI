@@ -4,14 +4,18 @@ Loss curves, LR schedules, bias-variance, convergence analysis.
 """
 
 from __future__ import annotations
+
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from src.visualization.ieee_style import (
-    ieee_style, ieee_figure, save_ieee, add_watermark,
-    IEEE_COLORS, METRIC_COLORS,
+    IEEE_COLORS,
+    METRIC_COLORS,
+    add_watermark,
+    ieee_figure,
+    ieee_style,
+    save_ieee,
 )
 
 
@@ -166,7 +170,7 @@ def plot_convergence_analysis(
 
         epochs = [h["epoch"] for h in history]
         val_f1 = [h.get("val/f1_macro", 0) for h in history]
-        val_loss = [h["val_loss"] for h in history]
+        [h["val_loss"] for h in history]
 
         # (a) Rate of improvement
         improvements = [0] + [val_f1[i] - val_f1[i-1] for i in range(1, len(val_f1))]

@@ -15,12 +15,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import torch
+
 from src.models.retinal_foundation_hybrid import create_hybrid_model
 from src.models.vignn import create_knowledge_graph
 from src.optimization.export import export_all
 from src.optimization.quantization import (
-    optimize_for_production,
     benchmark_latency,
+    optimize_for_production,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")

@@ -2,9 +2,10 @@
 FP16 and INT8 quantization with accuracy/latency comparison.
 """
 from __future__ import annotations
+
 import json
-import time
 import logging
+import time
 from pathlib import Path
 
 import numpy as np

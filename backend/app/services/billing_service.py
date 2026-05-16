@@ -10,7 +10,6 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.core.config import settings
 from backend.app.core.quota import invalidate_quota_cache
 from backend.app.models.invoice import Invoice, InvoiceStatus
 from backend.app.models.organization import Organization
@@ -67,8 +66,9 @@ async def change_plan_immediately(
       * MoMo/Flutterwave subscriptions: just flip locally; the already-paid
         period is forfeit (the customer initiated the downgrade).
     """
-    from backend.app.models.membership import Membership, MembershipStatus
     from sqlalchemy import func
+
+    from backend.app.models.membership import Membership, MembershipStatus
 
     sub = await get_active_subscription(db, str(organization.id))
     new_plan = await get_plan(db, plan_code)
@@ -116,6 +116,7 @@ async def change_plan_immediately(
     ):
         try:
             import stripe
+
             from backend.app.core.config import settings as _settings
             stripe.api_key = _settings.stripe.api_key
             stripe.Subscription.delete(

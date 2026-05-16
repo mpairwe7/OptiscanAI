@@ -18,7 +18,6 @@ simply wraps the fundus-only path.
 from __future__ import annotations
 
 import logging
-import math
 import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -26,7 +25,7 @@ from typing import Any
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812 — PyTorch convention
 
 # Project root for src imports
 PROJECT_ROOT = Path(__file__).resolve().parents[3]

@@ -16,8 +16,6 @@ from __future__ import annotations
 import io
 import logging
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
@@ -146,7 +144,6 @@ class DICOMHandler:
             return images
 
         try:
-            from PIL import Image
 
             pixel_array = ds.pixel_array
 

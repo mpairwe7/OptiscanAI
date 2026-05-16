@@ -4,14 +4,13 @@ Extracted from notebook cell 43 (ModelArchitectureExplainer).
 Generates architecture diagrams for all 4 models.
 """
 from __future__ import annotations
+
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
-import numpy as np
+from matplotlib.patches import FancyBboxPatch
 
-from src.visualization.ieee_style import ieee_style, save_ieee, add_watermark
+from src.visualization.ieee_style import add_watermark, ieee_style, save_ieee
 
 COLORS = {
     "input": "#E8F4F8",

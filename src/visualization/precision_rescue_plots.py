@@ -12,18 +12,22 @@ Plots for the v2 precision-rescue pipeline:
 """
 
 from __future__ import annotations
+
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 
 from src.visualization.ieee_style import (
-    ieee_style, ieee_figure, save_ieee, annotate_bars, add_watermark,
-    IEEE_COLORS, CB_PALETTE, METRIC_COLORS,
+    CB_PALETTE,
+    IEEE_COLORS,
+    METRIC_COLORS,
+    add_watermark,
+    ieee_figure,
+    ieee_style,
+    save_ieee,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. Before/After Precision Comparison
@@ -386,7 +390,7 @@ def plot_precision_recall_tradeoff(
     """
     with ieee_style():
         fig, axes = ieee_figure(1, 2, width="double", height_ratio=0.55)
-        from sklearn.metrics import precision_score, recall_score, f1_score
+        from sklearn.metrics import f1_score, precision_score, recall_score
 
         thresholds = np.arange(0.05, 0.96, 0.02)
         precisions, recalls, f1s = [], [], []
@@ -462,9 +466,9 @@ def plot_tta_improvement(
         with_tta = [metrics_with_tta.get(m, 0) for m in metrics_list]
 
         w = 0.35
-        bars1 = ax.bar(x - w/2, no_tta, w, label="No TTA", color=IEEE_COLORS["gray"],
+        ax.bar(x - w/2, no_tta, w, label="No TTA", color=IEEE_COLORS["gray"],
                        edgecolor="black", lw=0.3)
-        bars2 = ax.bar(x + w/2, with_tta, w, label="TTA (6 views)", color=IEEE_COLORS["green"],
+        ax.bar(x + w/2, with_tta, w, label="TTA (6 views)", color=IEEE_COLORS["green"],
                        edgecolor="black", lw=0.3)
 
         ax.set_xticks(x)

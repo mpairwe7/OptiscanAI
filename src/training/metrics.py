@@ -3,16 +3,16 @@ Evaluation metrics for multi-label retinal disease classification.
 Extracted from notebook cells 30-31.
 """
 
-import torch
 import numpy as np
+import torch
 from sklearn.metrics import (
     accuracy_score,
+    average_precision_score,
     f1_score,
-    roc_auc_score,
+    hamming_loss,
     precision_score,
     recall_score,
-    hamming_loss,
-    average_precision_score,
+    roc_auc_score,
 )
 
 

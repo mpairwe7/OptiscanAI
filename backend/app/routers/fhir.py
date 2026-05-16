@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends
 
-from fastapi import Depends
 from backend.app.core.feature_gate import require_tier
 
 router = APIRouter(

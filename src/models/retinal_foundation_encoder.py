@@ -18,12 +18,12 @@ from __future__ import annotations
 import logging
 import math
 import os
-from typing import Literal, Optional
+from typing import Optional
 
+import timm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import timm
 
 logger = logging.getLogger(__name__)
 
@@ -265,7 +265,7 @@ class RetinalFoundationEncoder(nn.Module):
         try:
             encoder = timm.create_model(backbone_name, pretrained=True, num_classes=0,
                                         dynamic_img_size=True)
-            logger.info(f"Loaded backbone from HuggingFace Hub / timm registry")
+            logger.info("Loaded backbone from HuggingFace Hub / timm registry")
             return encoder
         except Exception as e:
             logger.warning(f"HuggingFace download failed: {e}")

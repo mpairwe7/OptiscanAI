@@ -8,16 +8,15 @@ This script keeps the document build reproducible:
 4. Run lightweight checks for common template and caption artifacts.
 """
 
-from pathlib import Path
 import os
 import re
 import subprocess
 import sys
-import zipfile
 import xml.etree.ElementTree as ET
+import zipfile
+from pathlib import Path
 
 from docx import Document
-
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCX = ROOT / "docs" / "IEEE_Concept_Paper_Final.docx"

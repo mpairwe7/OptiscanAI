@@ -52,6 +52,7 @@ async def get_seat_state(db: AsyncSession, *, subscription: Subscription) -> Sea
 
     # Count active seats
     from sqlalchemy import func
+
     from backend.app.models.membership import Membership, MembershipStatus
 
     seats_used = int(
