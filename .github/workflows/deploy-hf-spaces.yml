@@ -104,12 +104,19 @@ jobs:
           # Copy Dockerfile
           cp Dockerfile.hf hf_space/Dockerfile
 
-          # Copy application code
+          # Copy application code. pretrained_weights/ is excluded — the
+          # vit_small_patch16_224.safetensors backbone is timm/HF-Hub
+          # downloadable at Space build time (timm.create_model fetches it
+          # transparently). Shipping it via LFS push to the Space fails
+          # whenever the LFS object isn't in the runner's local store
+          # (LFS bandwidth caps, partial fetch) — and there's no point
+          # double-paying bandwidth for a public checkpoint.
           rsync -av --exclude='.git' --exclude='node_modules' --exclude='.next' \
                     --exclude='__pycache__' --exclude='.venv' --exclude='outputs' \
                     --exclude='data' --exclude='wandb' --exclude='mlruns' \
                     --exclude='.env' --exclude='*.onnx' --exclude='docs' \
                     --exclude='logs' --exclude='hf_space' \
+                    --exclude='pretrained_weights' \
                     ./ hf_space/
 
       - name: Push to HF Spaces
