@@ -25,9 +25,17 @@ class DataMinimizer:
         Removes: patient name, ID, phone, GPS coordinates, CHW identity.
         """
         pii_fields = {
-            "patient_name", "patient_id", "patient_id_hash", "chw_name",
-            "chw_id", "phone", "national_id", "gps_lat", "gps_lon",
-            "device_id", "image_hash",
+            "patient_name",
+            "patient_id",
+            "patient_id_hash",
+            "chw_name",
+            "chw_id",
+            "phone",
+            "national_id",
+            "gps_lat",
+            "gps_lon",
+            "device_id",
+            "image_hash",
         }
 
         stripped = {}

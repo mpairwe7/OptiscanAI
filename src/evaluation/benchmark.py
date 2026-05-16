@@ -2,6 +2,7 @@
 Latency & throughput benchmarking for all 4 models.
 Extracted from notebook cell 56 (LatencyBenchmark).
 """
+
 from __future__ import annotations
 
 import json
@@ -88,9 +89,7 @@ class LatencyBenchmark:
 
         return results
 
-    def benchmark_all_models(
-        self, models: dict[str, nn.Module], **kwargs
-    ) -> dict[str, dict]:
+    def benchmark_all_models(self, models: dict[str, nn.Module], **kwargs) -> dict[str, dict]:
         """Benchmark all models sequentially."""
         all_results = {}
         for name, model in models.items():

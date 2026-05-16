@@ -11,75 +11,76 @@ import torch
 from PIL import Image
 
 # Suppress sklearn compatibility warnings
-warnings.filterwarnings('ignore', category=FutureWarning)
-warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
 
 # Fix numpy compatibility for sklearn (sklearn expects int32/int64 for labels, not int8)
 # Note: For model quantization (INT8), this doesn't affect torch.qint8 used in the models
-if not hasattr(np, 'int'):
+if not hasattr(np, "int"):
     np.int = np.int32
-if not hasattr(np, 'float'):
+if not hasattr(np, "float"):
     np.float = np.float64
 
 # ============================================================================
 # DISEASE NAME MAPPING - Short Form to Full Name
 # ============================================================================
 DISEASE_NAME_MAPPING = {
-    'N': 'Normal (No Disease)',
-    'D': 'Diabetic Retinopathy',
-    'G': 'Glaucoma',
-    'C': 'Cataract',
-    'A': 'Age-Related Macular Degeneration (AMD)',
-    'H': 'Hypertensive Retinopathy',
-    'M': 'Myopia',
-    'O': 'Other Diseases/Abnormalities',
-    'DN': 'Diabetic Neuropathy',
-    'MH': 'Macular Hole',
-    'ARMD': 'Age-Related Macular Degeneration',
-    'MYA': 'Myopic Retinopathy',
-    'BRVO': 'Branch Retinal Vein Occlusion',
-    'HTN': 'Hypertensive Retinopathy',
-    'CRS': 'Chorioretinal Scar',
-    'ODC': 'Optic Disc Cupping/Coloboma',
-    'TSLN': 'Tessellation (Myopic Changes)',
-    'EDN': 'Epiretinal Membrane',
-    'RPEC': 'Retinal Pigment Epithelial Changes',
-    'MHL': 'Macular Hole Lamellar',
-    'LS': 'Laser Scars',
-    'MS': 'Macular Scars',
-    'CSR': 'Central Serous Retinopathy',
-    'CRVO': 'Central Retinal Vein Occlusion',
-    'TV': 'Tortuous Vessels',
-    'AH': 'Asteroid Hyalosis',
-    'ODP': 'Optic Disc Pallor',
-    'ODE': 'Optic Disc Edema',
-    'ST': 'Optociliary Shunt',
-    'AION': 'Anterior Ischemic Optic Neuropathy',
-    'PT': 'Parafoveal Telangiectasia',
-    'RT': 'Retinal Traction',
-    'RS': 'Retinitis/Retinal Scarring',
-    'CWS': 'Cotton Wool Spots',
-    'CB': 'Coats Disease/Retinal Exudates',
-    'ODPM': 'Optic Disc Pit Maculopathy',
-    'PRH': 'Preretinal Hemorrhage',
-    'MNF': 'Myelinated Nerve Fibers',
-    'HR': 'Hemorrhagic Retinopathy',
-    'CRAO': 'Central Retinal Artery Occlusion',
-    'TD': 'Tapetal Degeneration',
-    'CME': 'Cystoid Macular Edema',
-    'PTCR': 'Post-Traumatic Chorioretinopathy',
-    'CF': 'Choroidal Folds',
-    'VH': 'Vitreous Hemorrhage',
-    'MCA': 'Macroaneurysm',
-    'VS': 'Vessel Sheathing',
-    'BRAO': 'Branch Retinal Artery Occlusion',
-    'PLQ': 'Peripapillary Lesions/Drusen',
-    'HPED': 'Hemorrhagic Pigment Epithelial Detachment',
-    'CL': 'Choroidal Lesion',
-    'AMD': 'Age-Related Macular Degeneration',
-    'DME': 'Diabetic Macular Edema',
-    'ROP': 'Retinopathy of Prematurity'
+    "N": "Normal (No Disease)",
+    "D": "Diabetic Retinopathy",
+    "G": "Glaucoma",
+    "C": "Cataract",
+    "A": "Age-Related Macular Degeneration (AMD)",
+    "H": "Hypertensive Retinopathy",
+    "M": "Myopia",
+    "O": "Other Diseases/Abnormalities",
+    "DN": "Diabetic Neuropathy",
+    "MH": "Macular Hole",
+    "ARMD": "Age-Related Macular Degeneration",
+    "MYA": "Myopic Retinopathy",
+    "BRVO": "Branch Retinal Vein Occlusion",
+    "HTN": "Hypertensive Retinopathy",
+    "CRS": "Chorioretinal Scar",
+    "ODC": "Optic Disc Cupping/Coloboma",
+    "TSLN": "Tessellation (Myopic Changes)",
+    "EDN": "Epiretinal Membrane",
+    "RPEC": "Retinal Pigment Epithelial Changes",
+    "MHL": "Macular Hole Lamellar",
+    "LS": "Laser Scars",
+    "MS": "Macular Scars",
+    "CSR": "Central Serous Retinopathy",
+    "CRVO": "Central Retinal Vein Occlusion",
+    "TV": "Tortuous Vessels",
+    "AH": "Asteroid Hyalosis",
+    "ODP": "Optic Disc Pallor",
+    "ODE": "Optic Disc Edema",
+    "ST": "Optociliary Shunt",
+    "AION": "Anterior Ischemic Optic Neuropathy",
+    "PT": "Parafoveal Telangiectasia",
+    "RT": "Retinal Traction",
+    "RS": "Retinitis/Retinal Scarring",
+    "CWS": "Cotton Wool Spots",
+    "CB": "Coats Disease/Retinal Exudates",
+    "ODPM": "Optic Disc Pit Maculopathy",
+    "PRH": "Preretinal Hemorrhage",
+    "MNF": "Myelinated Nerve Fibers",
+    "HR": "Hemorrhagic Retinopathy",
+    "CRAO": "Central Retinal Artery Occlusion",
+    "TD": "Tapetal Degeneration",
+    "CME": "Cystoid Macular Edema",
+    "PTCR": "Post-Traumatic Chorioretinopathy",
+    "CF": "Choroidal Folds",
+    "VH": "Vitreous Hemorrhage",
+    "MCA": "Macroaneurysm",
+    "VS": "Vessel Sheathing",
+    "BRAO": "Branch Retinal Artery Occlusion",
+    "PLQ": "Peripapillary Lesions/Drusen",
+    "HPED": "Hemorrhagic Pigment Epithelial Detachment",
+    "CL": "Choroidal Lesion",
+    "AMD": "Age-Related Macular Degeneration",
+    "DME": "Diabetic Macular Edema",
+    "ROP": "Retinopathy of Prematurity",
 }
+
 
 def get_full_disease_name(short_name):
     """
@@ -93,6 +94,7 @@ def get_full_disease_name(short_name):
     """
     return DISEASE_NAME_MAPPING.get(short_name, short_name)
 
+
 # Conditional imports with graceful fallbacks
 try:
     from captum.attr import (  # noqa: F401 — optional probe
@@ -100,6 +102,7 @@ try:
         IntegratedGradients,
         Saliency,
     )
+
     CAPTUM_AVAILABLE = True
 except ImportError:
     CAPTUM_AVAILABLE = False
@@ -108,6 +111,7 @@ except ImportError:
 SHAP_AVAILABLE = False
 try:
     import shap
+
     SHAP_AVAILABLE = True
 except ImportError:
     SHAP_AVAILABLE = False
@@ -125,8 +129,9 @@ try:
     )
     from pytorch_grad_cam.utils.image import show_cam_on_image
     from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
+
     GRADCAM_AVAILABLE = True
-    GRADCAM_LIBRARY = 'pytorch_grad_cam'
+    GRADCAM_LIBRARY = "pytorch_grad_cam"
 except ImportError:
     GRADCAM_AVAILABLE = False
     GRADCAM_LIBRARY = None
@@ -135,6 +140,7 @@ except ImportError:
 LIME_AVAILABLE = False
 try:
     import lime  # noqa: F401 — optional probe
+
     LIME_AVAILABLE = True
 except ImportError:
     LIME_AVAILABLE = False
@@ -143,6 +149,7 @@ except ImportError:
 ELI5_AVAILABLE = False
 try:
     import eli5  # noqa: F401 — optional probe
+
     ELI5_AVAILABLE = True
 except ImportError:
     ELI5_AVAILABLE = False
@@ -153,6 +160,7 @@ class ModelWrapper(torch.nn.Module):
     Wrapper for models that return tuples to ensure single tensor output
     This is needed for compatibility with pytorch-grad-cam
     """
+
     def __init__(self, model):
         super().__init__()
         # Store reference to wrapped model without copying modules to avoid conflicts
@@ -188,7 +196,7 @@ class ModelExplainer:
     - Saliency Maps
     """
 
-    def __init__(self, model, device='cpu', disease_names=None, mobile_mode=False):
+    def __init__(self, model, device="cpu", disease_names=None, mobile_mode=False):
         """
         Args:
             model: PyTorch model
@@ -214,13 +222,13 @@ class ModelExplainer:
     def _get_target_layer(self):
         """Find appropriate layer for CAM methods"""
         # Access the wrapped model
-        model = self.model._wrapped_model if hasattr(self.model, '_wrapped_model') else self.model
+        model = self.model._wrapped_model if hasattr(self.model, "_wrapped_model") else self.model
 
         # For Vision Transformer models, use the patch embedding conv layer
-        if hasattr(model, 'region_extractor'):
-            if hasattr(model.region_extractor, 'encoder'):
-                if hasattr(model.region_extractor.encoder, 'patch_embed'):
-                    if hasattr(model.region_extractor.encoder.patch_embed, 'proj'):
+        if hasattr(model, "region_extractor"):
+            if hasattr(model.region_extractor, "encoder"):
+                if hasattr(model.region_extractor.encoder, "patch_embed"):
+                    if hasattr(model.region_extractor.encoder.patch_embed, "proj"):
                         return model.region_extractor.encoder.patch_embed.proj
 
         # Fallback: look for any Conv2d layer
@@ -235,10 +243,10 @@ class ModelExplainer:
 
         return None
 
-    def explain_gradcam(self, image, target_classes=None, method='GradCAM'):
+    def explain_gradcam(self, image, target_classes=None, method="GradCAM"):
         """Generate Grad-CAM visualizations"""
         if not GRADCAM_AVAILABLE or self.target_layer is None:
-            return {'error': 'GradCAM not available'}
+            return {"error": "GradCAM not available"}
 
         with torch.no_grad():
             output = self.model(image)
@@ -253,8 +261,11 @@ class ModelExplainer:
         img_np = image.cpu().numpy()[0].transpose(1, 2, 0)
         img_np = (img_np - img_np.min()) / (img_np.max() - img_np.min())
 
-        cam_method = {'GradCAM': GradCAM, 'GradCAMPlusPlus': GradCAMPlusPlus,
-                     'ScoreCAM': ScoreCAM}.get(method, GradCAM)
+        cam_method = {
+            "GradCAM": GradCAM,
+            "GradCAMPlusPlus": GradCAMPlusPlus,
+            "ScoreCAM": ScoreCAM,
+        }.get(method, GradCAM)
 
         try:
             # Note: use_cuda parameter removed in pytorch-grad-cam >= 1.4.0
@@ -273,18 +284,18 @@ class ModelExplainer:
                 show_cam_on_image(img_np, grayscale_cam, use_rgb=True)
 
                 results[self.disease_names[class_idx]] = {
-                    'cam': grayscale_cam.tolist(),
-                    'prediction': float(predictions[class_idx])
+                    "cam": grayscale_cam.tolist(),
+                    "prediction": float(predictions[class_idx]),
                 }
 
             return results
         except Exception as e:
-            return {'error': str(e)}
+            return {"error": str(e)}
 
     def explain_integrated_gradients(self, image, target_classes=None, n_steps=25):
         """Generate Integrated Gradients explanations"""
         if not CAPTUM_AVAILABLE:
-            return {'error': 'Captum not available'}
+            return {"error": "Captum not available"}
 
         with torch.no_grad():
             output = self.model(image)
@@ -305,12 +316,12 @@ class ModelExplainer:
             attr_map = np.abs(attr_map).sum(axis=2)
 
             results[self.disease_names[class_idx]] = {
-                'attribution_summary': {
-                    'mean': float(attr_map.mean()),
-                    'max': float(attr_map.max()),
-                    'min': float(attr_map.min())
+                "attribution_summary": {
+                    "mean": float(attr_map.mean()),
+                    "max": float(attr_map.max()),
+                    "min": float(attr_map.min()),
                 },
-                'prediction': float(predictions[class_idx])
+                "prediction": float(predictions[class_idx]),
             }
 
         return results
@@ -318,7 +329,7 @@ class ModelExplainer:
     def explain_shap(self, image, target_classes=None):
         """Generate SHAP explanations using GradientExplainer"""
         if not SHAP_AVAILABLE:
-            return {'error': 'SHAP not available - install shap package'}
+            return {"error": "SHAP not available - install shap package"}
 
         try:
             # For PyTorch models, use KernelExplainer which is model-agnostic
@@ -407,58 +418,60 @@ class ModelExplainer:
 
                     # Normalize to [0, 1] for visualization
                     if shap_magnitude.max() > shap_magnitude.min():
-                        shap_normalized = (shap_magnitude - shap_magnitude.min()) / (shap_magnitude.max() - shap_magnitude.min())
+                        shap_normalized = (shap_magnitude - shap_magnitude.min()) / (
+                            shap_magnitude.max() - shap_magnitude.min()
+                        )
                     else:
                         shap_normalized = np.zeros_like(shap_magnitude)
 
                     results[self.disease_names[class_idx]] = {
-                        'shap_values': class_shap.tolist(),
-                        'shap_magnitude': shap_magnitude.tolist(),
-                        'shap_normalized': shap_normalized.tolist(),
-                        'prediction': float(predictions[class_idx]),
-                        'feature_importance': {
-                            'mean_abs_shap': float(np.abs(class_shap).mean()),
-                            'max_abs_shap': float(np.abs(class_shap).max()),
-                            'std_shap': float(np.abs(class_shap).std())
-                        }
+                        "shap_values": class_shap.tolist(),
+                        "shap_magnitude": shap_magnitude.tolist(),
+                        "shap_normalized": shap_normalized.tolist(),
+                        "prediction": float(predictions[class_idx]),
+                        "feature_importance": {
+                            "mean_abs_shap": float(np.abs(class_shap).mean()),
+                            "max_abs_shap": float(np.abs(class_shap).max()),
+                            "std_shap": float(np.abs(class_shap).std()),
+                        },
                     }
 
             return results
 
         except Exception as e:
-            return {'error': f'SHAP explanation failed: {str(e)}'}
+            return {"error": f"SHAP explanation failed: {str(e)}"}
 
     def _assess_confidence_level(self, confidence_score):
         """Categorize confidence level with clinical interpretation"""
         if confidence_score >= 0.90:
             return {
-                'level': 'Very High',
-                'interpretation': 'Strong evidence for diagnosis',
-                'reliability': 'High reliability - consider as primary diagnosis'
+                "level": "Very High",
+                "interpretation": "Strong evidence for diagnosis",
+                "reliability": "High reliability - consider as primary diagnosis",
             }
         elif confidence_score >= 0.75:
             return {
-                'level': 'High',
-                'interpretation': 'Likely diagnosis with good evidence',
-                'reliability': 'Good reliability - recommend clinical confirmation'
+                "level": "High",
+                "interpretation": "Likely diagnosis with good evidence",
+                "reliability": "Good reliability - recommend clinical confirmation",
             }
         elif confidence_score >= 0.60:
             return {
-                'level': 'Moderate',
-                'interpretation': 'Possible diagnosis requiring review',
-                'reliability': 'Moderate reliability - additional tests recommended'
+                "level": "Moderate",
+                "interpretation": "Possible diagnosis requiring review",
+                "reliability": "Moderate reliability - additional tests recommended",
             }
         elif confidence_score >= 0.45:
             return {
-                'level': 'Low-Moderate',
-                'interpretation': 'Weak evidence, consider differential diagnosis',
-                'reliability': 'Lower confidence - clinical correlation essential'
+                "level": "Low-Moderate",
+                "interpretation": "Weak evidence, consider differential diagnosis",
+                "reliability": "Lower confidence - clinical correlation essential",
             }
         else:
             return {
-                'level': 'Low',
-                'interpretation': 'Minimal evidence for this diagnosis',
-                'reliability': 'Low confidence - likely not present'
+                "level": "Low",
+                "interpretation": "Minimal evidence for this diagnosis",
+                "reliability": "Low confidence - likely not present",
             }
 
     def _generate_clinical_recommendations(self, predictions, top_indices):
@@ -468,54 +481,75 @@ class ModelExplainer:
 
         # High confidence - single disease
         if top_confidence >= 0.85 and (len(top_indices) < 2 or predictions[top_indices[1]] < 0.50):
-            recommendations.append({
-                'priority': 'High',
-                'type': 'Primary Diagnosis',
-                'recommendation': f'Strong evidence for {self.disease_names[top_indices[0]]}. Recommend confirmatory clinical examination and appropriate treatment protocol.',
-                'action': 'Immediate clinical review and treatment planning'
-            })
+            recommendations.append(
+                {
+                    "priority": "High",
+                    "type": "Primary Diagnosis",
+                    "recommendation": f"Strong evidence for {self.disease_names[top_indices[0]]}. Recommend confirmatory clinical examination and appropriate treatment protocol.",
+                    "action": "Immediate clinical review and treatment planning",
+                }
+            )
 
         # Multiple high confidence diseases
         elif len([i for i in top_indices if predictions[i] >= 0.60]) >= 2:
-            high_conf_diseases = [self.disease_names[i] for i in top_indices if predictions[i] >= 0.60]
-            recommendations.append({
-                'priority': 'High',
-                'type': 'Multiple Findings',
-                'recommendation': f'Multiple retinal pathologies detected: {", ".join(high_conf_diseases[:3])}. Comprehensive ophthalmic evaluation recommended.',
-                'action': 'Detailed examination for co-existing conditions'
-            })
+            high_conf_diseases = [
+                self.disease_names[i] for i in top_indices if predictions[i] >= 0.60
+            ]
+            recommendations.append(
+                {
+                    "priority": "High",
+                    "type": "Multiple Findings",
+                    "recommendation": f'Multiple retinal pathologies detected: {", ".join(high_conf_diseases[:3])}. Comprehensive ophthalmic evaluation recommended.',
+                    "action": "Detailed examination for co-existing conditions",
+                }
+            )
 
         # Moderate confidence
         elif 0.60 <= top_confidence < 0.85:
-            recommendations.append({
-                'priority': 'Moderate',
-                'type': 'Probable Diagnosis',
-                'recommendation': f'{self.disease_names[top_indices[0]]} likely present. Additional imaging or functional tests may improve diagnostic certainty.',
-                'action': 'Consider OCT, fluorescein angiography, or visual field testing'
-            })
+            recommendations.append(
+                {
+                    "priority": "Moderate",
+                    "type": "Probable Diagnosis",
+                    "recommendation": f"{self.disease_names[top_indices[0]]} likely present. Additional imaging or functional tests may improve diagnostic certainty.",
+                    "action": "Consider OCT, fluorescein angiography, or visual field testing",
+                }
+            )
 
         # Low confidence - normal or early stage
         else:
-            recommendations.append({
-                'priority': 'Low',
-                'type': 'Monitoring',
-                'recommendation': 'No significant pathology detected with high confidence. Consider routine follow-up or early-stage disease monitoring.',
-                'action': 'Schedule regular screening, especially if risk factors present'
-            })
+            recommendations.append(
+                {
+                    "priority": "Low",
+                    "type": "Monitoring",
+                    "recommendation": "No significant pathology detected with high confidence. Consider routine follow-up or early-stage disease monitoring.",
+                    "action": "Schedule regular screening, especially if risk factors present",
+                }
+            )
 
         # Urgent findings detection
-        urgent_conditions = ['Diabetic Retinopathy', 'Glaucoma', 'Retinal Detachment', 'Macular Degeneration']
-        urgent_detected = [(i, predictions[i]) for i in top_indices[:3]
-                          if any(urgent in self.disease_names[i] for urgent in urgent_conditions)
-                          and predictions[i] >= 0.60]
+        urgent_conditions = [
+            "Diabetic Retinopathy",
+            "Glaucoma",
+            "Retinal Detachment",
+            "Macular Degeneration",
+        ]
+        urgent_detected = [
+            (i, predictions[i])
+            for i in top_indices[:3]
+            if any(urgent in self.disease_names[i] for urgent in urgent_conditions)
+            and predictions[i] >= 0.60
+        ]
 
         if urgent_detected:
-            recommendations.insert(0, {
-                'priority': 'Urgent',
-                'type': 'Sight-Threatening Condition',
-                'recommendation': 'Potential sight-threatening condition detected. Immediate ophthalmology referral recommended.',
-                'action': 'Urgent specialist consultation within 24-48 hours'
-            })
+            recommendations.insert(
+                0,
+                {
+                    "priority": "Urgent",
+                    "type": "Sight-Threatening Condition",
+                    "recommendation": "Potential sight-threatening condition detected. Immediate ophthalmology referral recommended.",
+                    "action": "Urgent specialist consultation within 24-48 hours",
+                },
+            )
 
         return recommendations
 
@@ -523,8 +557,10 @@ class ModelExplainer:
         """Calculate uncertainty and reliability metrics"""
         # Entropy-based uncertainty
         epsilon = 1e-10
-        entropy = -np.sum(predictions * np.log(predictions + epsilon) +
-                         (1 - predictions) * np.log(1 - predictions + epsilon))
+        entropy = -np.sum(
+            predictions * np.log(predictions + epsilon)
+            + (1 - predictions) * np.log(1 - predictions + epsilon)
+        )
         max_entropy = len(predictions) * np.log(2)
         normalized_entropy = entropy / max_entropy
 
@@ -533,26 +569,37 @@ class ModelExplainer:
 
         # Confidence gap (difference between top 2 predictions)
         sorted_preds = np.sort(predictions)[::-1]
-        confidence_gap = sorted_preds[0] - sorted_preds[1] if len(sorted_preds) > 1 else sorted_preds[0]
+        confidence_gap = (
+            sorted_preds[0] - sorted_preds[1] if len(sorted_preds) > 1 else sorted_preds[0]
+        )
 
         # Overall reliability score (0-100)
         reliability_score = (1 - normalized_entropy) * 50 + confidence_gap * 50
 
         return {
-            'entropy': float(normalized_entropy),
-            'variance': float(prediction_variance),
-            'confidence_gap': float(confidence_gap),
-            'reliability_score': float(reliability_score),
-            'interpretation': {
-                'entropy': 'Low' if normalized_entropy < 0.3 else ('Moderate' if normalized_entropy < 0.6 else 'High'),
-                'reliability': 'High' if reliability_score >= 70 else ('Moderate' if reliability_score >= 50 else 'Low')
-            }
+            "entropy": float(normalized_entropy),
+            "variance": float(prediction_variance),
+            "confidence_gap": float(confidence_gap),
+            "reliability_score": float(reliability_score),
+            "interpretation": {
+                "entropy": (
+                    "Low"
+                    if normalized_entropy < 0.3
+                    else ("Moderate" if normalized_entropy < 0.6 else "High")
+                ),
+                "reliability": (
+                    "High"
+                    if reliability_score >= 70
+                    else ("Moderate" if reliability_score >= 50 else "Low")
+                ),
+            },
         }
 
     def _detect_multi_disease_interactions(self, predictions, top_indices, threshold=0.50):
         """Detect and warn about co-existing conditions"""
-        positive_diseases = [(i, predictions[i]) for i in range(len(predictions))
-                            if predictions[i] >= threshold]
+        positive_diseases = [
+            (i, predictions[i]) for i in range(len(predictions)) if predictions[i] >= threshold
+        ]
 
         interactions = []
 
@@ -560,21 +607,27 @@ class ModelExplainer:
             disease_names = [self.disease_names[idx] for idx, _ in positive_diseases]
 
             # Common co-occurrences
-            if any('Diabetic' in d for d in disease_names) and any('Macular' in d for d in disease_names):
-                interactions.append({
-                    'type': 'Common Co-occurrence',
-                    'diseases': 'Diabetic Retinopathy + Macular Edema',
-                    'note': 'Commonly co-exist. Macular edema is a frequent complication of diabetic retinopathy.',
-                    'clinical_significance': 'Monitor both conditions closely'
-                })
+            if any("Diabetic" in d for d in disease_names) and any(
+                "Macular" in d for d in disease_names
+            ):
+                interactions.append(
+                    {
+                        "type": "Common Co-occurrence",
+                        "diseases": "Diabetic Retinopathy + Macular Edema",
+                        "note": "Commonly co-exist. Macular edema is a frequent complication of diabetic retinopathy.",
+                        "clinical_significance": "Monitor both conditions closely",
+                    }
+                )
 
             if len(positive_diseases) >= 3:
-                interactions.append({
-                    'type': 'Multiple Pathologies',
-                    'diseases': f'{len(positive_diseases)} conditions detected',
-                    'note': f'Multiple retinal pathologies present: {", ".join([self.disease_names[i] for i, _ in positive_diseases[:3]])}',
-                    'clinical_significance': 'Comprehensive evaluation needed for treatment prioritization'
-                })
+                interactions.append(
+                    {
+                        "type": "Multiple Pathologies",
+                        "diseases": f"{len(positive_diseases)} conditions detected",
+                        "note": f'Multiple retinal pathologies present: {", ".join([self.disease_names[i] for i, _ in positive_diseases[:3]])}',
+                        "clinical_significance": "Comprehensive evaluation needed for treatment prioritization",
+                    }
+                )
 
         return interactions
 
@@ -605,15 +658,17 @@ class ModelExplainer:
             confidence_score = float(predictions[idx])
             confidence_assessment = self._assess_confidence_level(confidence_score)
 
-            detailed_predictions.append({
-                'disease': self.disease_names[idx],
-                'confidence_score': confidence_score,
-                'confidence_percentage': f'{confidence_score * 100:.1f}%',
-                'rank': int(rank + 1),
-                'confidence_level': confidence_assessment['level'],
-                'clinical_interpretation': confidence_assessment['interpretation'],
-                'reliability': confidence_assessment['reliability']
-            })
+            detailed_predictions.append(
+                {
+                    "disease": self.disease_names[idx],
+                    "confidence_score": confidence_score,
+                    "confidence_percentage": f"{confidence_score * 100:.1f}%",
+                    "rank": int(rank + 1),
+                    "confidence_level": confidence_assessment["level"],
+                    "clinical_interpretation": confidence_assessment["interpretation"],
+                    "reliability": confidence_assessment["reliability"],
+                }
+            )
 
         # Generate clinical recommendations
         recommendations = self._generate_clinical_recommendations(predictions, top_indices)
@@ -626,58 +681,63 @@ class ModelExplainer:
 
         # Build comprehensive results
         results = {
-            'predictions': detailed_predictions,
-            'clinical_insights': {
-                'recommendations': recommendations,
-                'uncertainty_metrics': uncertainty_metrics,
-                'multi_disease_interactions': interactions if interactions else None,
-                'overall_assessment': {
-                    'top_diagnosis': self.disease_names[top_indices[0]],
-                    'confidence': float(predictions[top_indices[0]]),
-                    'reliability_score': uncertainty_metrics['reliability_score'],
-                    'clinical_action_required': recommendations[0]['priority'] if recommendations else 'Review'
-                }
+            "predictions": detailed_predictions,
+            "clinical_insights": {
+                "recommendations": recommendations,
+                "uncertainty_metrics": uncertainty_metrics,
+                "multi_disease_interactions": interactions if interactions else None,
+                "overall_assessment": {
+                    "top_diagnosis": self.disease_names[top_indices[0]],
+                    "confidence": float(predictions[top_indices[0]]),
+                    "reliability_score": uncertainty_metrics["reliability_score"],
+                    "clinical_action_required": (
+                        recommendations[0]["priority"] if recommendations else "Review"
+                    ),
+                },
             },
-            'explainability': {},
-            'metadata': {
-                'total_diseases_evaluated': len(predictions),
-                'diseases_above_threshold': int(np.sum(predictions >= 0.50)),
-                'analysis_timestamp': 'runtime',
-                'mobile_mode': self.mobile_mode
-            }
+            "explainability": {},
+            "metadata": {
+                "total_diseases_evaluated": len(predictions),
+                "diseases_above_threshold": int(np.sum(predictions >= 0.50)),
+                "analysis_timestamp": "runtime",
+                "mobile_mode": self.mobile_mode,
+            },
         }
 
         # Add GradCAM if available
         if GRADCAM_AVAILABLE and self.target_layer is not None:
-            results['explainability']['gradcam'] = self.explain_gradcam(
-                image, target_classes=top_indices[:2], method='GradCAM'
+            results["explainability"]["gradcam"] = self.explain_gradcam(
+                image, target_classes=top_indices[:2], method="GradCAM"
             )
 
         # Add Integrated Gradients if available and not in mobile mode
         if CAPTUM_AVAILABLE and not self.mobile_mode:
-            results['explainability']['integrated_gradients'] = self.explain_integrated_gradients(
+            results["explainability"]["integrated_gradients"] = self.explain_integrated_gradients(
                 image, target_classes=top_indices[:2], n_steps=15
             )
 
         # Add SHAP if available and not in mobile mode (SHAP can be computationally expensive)
         if SHAP_AVAILABLE and not self.mobile_mode:
-            results['explainability']['shap'] = self.explain_shap(
+            results["explainability"]["shap"] = self.explain_shap(
                 image, target_classes=top_indices[:2]
             )
 
         # Add LIME if available and not in mobile mode (LIME can be computationally expensive)
         if LIME_AVAILABLE and not self.mobile_mode:
-            results['explainability']['lime'] = self.explain_lime(
-                image, target_classes=top_indices[:2], num_samples=500, num_features=10  # Reduced for mobile performance
+            results["explainability"]["lime"] = self.explain_lime(
+                image,
+                target_classes=top_indices[:2],
+                num_samples=500,
+                num_features=10,  # Reduced for mobile performance
             )
 
         # Add ELI5 if available (ELI5 is lightweight and fast)
         if ELI5_AVAILABLE:
-            results['explainability']['eli5'] = self.explain_eli5(
+            results["explainability"]["eli5"] = self.explain_eli5(
                 image, target_classes=top_indices[:2], top_features=10
             )
 
-        results['explainability']['methods_used'] = list(results['explainability'].keys())
+        results["explainability"]["methods_used"] = list(results["explainability"].keys())
 
         return results
 
@@ -738,10 +798,7 @@ class ModelExplainer:
 
             # Create GradCAM with the wrapped model
             # Note: use_cuda parameter removed in pytorch-grad-cam >= 1.4.0
-            cam = GradCAM(
-                model=gradcam_model,
-                target_layers=[self.target_layer]
-            )
+            cam = GradCAM(model=gradcam_model, target_layers=[self.target_layer])
 
             # Generate CAM
             targets = [ClassifierOutputTarget(target_class)]
@@ -798,7 +855,7 @@ class ModelExplainer:
             Dictionary with LIME explanations for each target class
         """
         if not LIME_AVAILABLE:
-            return {'error': 'LIME not available'}
+            return {"error": "LIME not available"}
 
         try:
             from lime import lime_image
@@ -832,7 +889,9 @@ class ModelExplainer:
                         Must return 2D array [batch, num_classes] for LIME."""
                         batch_images = []
                         for img in images:
-                            img_tensor = torch.from_numpy(img.transpose(2, 0, 1)).float().unsqueeze(0)
+                            img_tensor = (
+                                torch.from_numpy(img.transpose(2, 0, 1)).float().unsqueeze(0)
+                            )
                             img_tensor = img_tensor.to(self.device)
                             batch_images.append(img_tensor)
 
@@ -857,16 +916,17 @@ class ModelExplainer:
                         labels=(int(class_idx),),
                         hide_color=0,
                         num_samples=num_samples,
-                        segmentation_fn=lambda x: segments
+                        segmentation_fn=lambda x: segments,
                     )
 
                     # Get the explanation for this class
-                    label_key = class_idx if class_idx in explanation.local_exp else list(explanation.local_exp.keys())[0]
+                    label_key = (
+                        class_idx
+                        if class_idx in explanation.local_exp
+                        else list(explanation.local_exp.keys())[0]
+                    )
                     temp, mask = explanation.get_image_and_mask(
-                        label_key,
-                        positive_only=True,
-                        num_features=num_features,
-                        hide_rest=True
+                        label_key, positive_only=True, num_features=num_features, hide_rest=True
                     )
 
                     # Create explanation image
@@ -877,29 +937,33 @@ class ModelExplainer:
                     feature_weights = dict(explanation.local_exp[label_key])
 
                     results[self.disease_names[class_idx]] = {
-                        'explained_image': explained_image.tolist(),
-                        'mask': mask.tolist(),
-                        'feature_weights': feature_weights,
-                        'prediction': float(predictions[class_idx]),
-                        'lime_segments': num_features,
-                        'samples_used': num_samples,
-                        'explanation_summary': {
-                            'top_positive_features': len([w for w in feature_weights.values() if w > 0]),
-                            'top_negative_features': len([w for w in feature_weights.values() if w < 0]),
-                            'max_weight': max(feature_weights.values()) if feature_weights else 0,
-                            'min_weight': min(feature_weights.values()) if feature_weights else 0
-                        }
+                        "explained_image": explained_image.tolist(),
+                        "mask": mask.tolist(),
+                        "feature_weights": feature_weights,
+                        "prediction": float(predictions[class_idx]),
+                        "lime_segments": num_features,
+                        "samples_used": num_samples,
+                        "explanation_summary": {
+                            "top_positive_features": len(
+                                [w for w in feature_weights.values() if w > 0]
+                            ),
+                            "top_negative_features": len(
+                                [w for w in feature_weights.values() if w < 0]
+                            ),
+                            "max_weight": max(feature_weights.values()) if feature_weights else 0,
+                            "min_weight": min(feature_weights.values()) if feature_weights else 0,
+                        },
                     }
 
                 except Exception as e:
                     results[self.disease_names[class_idx]] = {
-                        'error': f'LIME explanation failed for class {class_idx}: {str(e)}'
+                        "error": f"LIME explanation failed for class {class_idx}: {str(e)}"
                     }
 
             return results
 
         except Exception as e:
-            return {'error': f'LIME explanation failed: {str(e)}'}
+            return {"error": f"LIME explanation failed: {str(e)}"}
 
     def explain_eli5(self, image, target_classes=None, top_features=10):
         """
@@ -914,7 +978,7 @@ class ModelExplainer:
             Dictionary with ELI5-style explanations for each target class
         """
         if not ELI5_AVAILABLE:
-            return {'error': 'ELI5 not available'}
+            return {"error": "ELI5 not available"}
 
         try:
             # For deep learning models, ELI5 has limited support
@@ -938,7 +1002,11 @@ class ModelExplainer:
                     disease_name = self.disease_names[class_idx]
 
                     # Create a simplified explanation
-                    confidence_level = "High" if prediction_score > 0.7 else "Medium" if prediction_score > 0.4 else "Low"
+                    confidence_level = (
+                        "High"
+                        if prediction_score > 0.7
+                        else "Medium" if prediction_score > 0.4 else "Low"
+                    )
 
                     # Generate feature importance based on prediction confidence
                     # For deep learning models, we'll create a proxy feature importance
@@ -946,10 +1014,16 @@ class ModelExplainer:
 
                     # Create mock features representing different aspects of the retinal image
                     retinal_features = [
-                        "optic_disc_visibility", "macular_reflex", "vascular_pattern",
-                        "retinal_pigmentation", "lesion_presence", "hemorrhage_detection",
-                        "exudate_patterns", "microaneurysm_count", "neovascularization",
-                        "retinal_thickness_variation"
+                        "optic_disc_visibility",
+                        "macular_reflex",
+                        "vascular_pattern",
+                        "retinal_pigmentation",
+                        "lesion_presence",
+                        "hemorrhage_detection",
+                        "exudate_patterns",
+                        "microaneurysm_count",
+                        "neovascularization",
+                        "retinal_thickness_variation",
                     ]
 
                     # Generate synthetic feature weights based on prediction score
@@ -968,8 +1042,9 @@ class ModelExplainer:
                         feature_importance[feature] = float(weights[i])
 
                     # Sort by absolute importance
-                    sorted_features = sorted(feature_importance.items(),
-                                           key=lambda x: abs(x[1]), reverse=True)[:top_features]
+                    sorted_features = sorted(
+                        feature_importance.items(), key=lambda x: abs(x[1]), reverse=True
+                    )[:top_features]
 
                     # Generate human-readable explanation
                     explanation_text = self._generate_eli5_text_explanation(
@@ -977,69 +1052,91 @@ class ModelExplainer:
                     )
 
                     results[disease_name] = {
-                        'prediction': float(prediction_score),
-                        'confidence_level': confidence_level,
-                        'feature_importance': dict(sorted_features),
-                        'explanation_text': explanation_text,
-                        'top_contributing_features': [
-                            {'feature': feat, 'weight': weight, 'direction': 'positive' if weight > 0 else 'negative'}
+                        "prediction": float(prediction_score),
+                        "confidence_level": confidence_level,
+                        "feature_importance": dict(sorted_features),
+                        "explanation_text": explanation_text,
+                        "top_contributing_features": [
+                            {
+                                "feature": feat,
+                                "weight": weight,
+                                "direction": "positive" if weight > 0 else "negative",
+                            }
                             for feat, weight in sorted_features[:5]
                         ],
-                        'eli5_summary': {
-                            'model_type': 'Deep Neural Network (PyTorch)',
-                            'explanation_method': 'Feature Importance Approximation',
-                            'feature_count': len(sorted_features),
-                            'prediction_threshold': 0.5
-                        }
+                        "eli5_summary": {
+                            "model_type": "Deep Neural Network (PyTorch)",
+                            "explanation_method": "Feature Importance Approximation",
+                            "feature_count": len(sorted_features),
+                            "prediction_threshold": 0.5,
+                        },
                     }
 
                 except Exception as e:
                     results[self.disease_names[class_idx]] = {
-                        'error': f'ELI5 explanation failed for class {class_idx}: {str(e)}'
+                        "error": f"ELI5 explanation failed for class {class_idx}: {str(e)}"
                     }
 
             return results
 
         except Exception as e:
-            return {'error': f'ELI5 explanation failed: {str(e)}'}
+            return {"error": f"ELI5 explanation failed: {str(e)}"}
 
-    def _generate_eli5_text_explanation(self, disease_name, prediction_score, top_features, confidence_level):
+    def _generate_eli5_text_explanation(
+        self, disease_name, prediction_score, top_features, confidence_level
+    ):
         """Generate human-readable text explanation for ELI5"""
 
         # Create explanation based on prediction score and top features
         explanation_parts = []
 
         if prediction_score > 0.7:
-            explanation_parts.append(f"The model predicts **{disease_name}** with high confidence ({prediction_score:.1%}).")
+            explanation_parts.append(
+                f"The model predicts **{disease_name}** with high confidence ({prediction_score:.1%})."
+            )
         elif prediction_score > 0.4:
-            explanation_parts.append(f"The model predicts **{disease_name}** with moderate confidence ({prediction_score:.1%}).")
+            explanation_parts.append(
+                f"The model predicts **{disease_name}** with moderate confidence ({prediction_score:.1%})."
+            )
         else:
-            explanation_parts.append(f"The model predicts **{disease_name}** with low confidence ({prediction_score:.1%}).")
+            explanation_parts.append(
+                f"The model predicts **{disease_name}** with low confidence ({prediction_score:.1%})."
+            )
 
         # Add feature importance explanation
         explanation_parts.append("\n**Key contributing factors:**")
 
         for feature, weight in top_features[:3]:
-            feature_name = feature.replace('_', ' ').title()
+            feature_name = feature.replace("_", " ").title()
             if weight > 0:
-                explanation_parts.append(f"- **{feature_name}**: Contributes positively to the prediction")
+                explanation_parts.append(
+                    f"- **{feature_name}**: Contributes positively to the prediction"
+                )
             else:
-                explanation_parts.append(f"- **{feature_name}**: Contributes negatively to the prediction")
+                explanation_parts.append(
+                    f"- **{feature_name}**: Contributes negatively to the prediction"
+                )
 
         # Add interpretation guidance
         if confidence_level == "High":
-            explanation_parts.append("\n**Interpretation**: Strong evidence detected for this condition. Clinical correlation recommended.")
+            explanation_parts.append(
+                "\n**Interpretation**: Strong evidence detected for this condition. Clinical correlation recommended."
+            )
         elif confidence_level == "Medium":
-            explanation_parts.append("\n**Interpretation**: Moderate evidence detected. Additional testing may be needed.")
+            explanation_parts.append(
+                "\n**Interpretation**: Moderate evidence detected. Additional testing may be needed."
+            )
         else:
-            explanation_parts.append("\n**Interpretation**: Limited evidence detected. May represent normal variation or early changes.")
+            explanation_parts.append(
+                "\n**Interpretation**: Limited evidence detected. May represent normal variation or early changes."
+            )
 
         return "\n".join(explanation_parts)
 
-    def save_explanation_report(self, image, save_path='explanation.json'):
+    def save_explanation_report(self, image, save_path="explanation.json"):
         """Generate and save lightweight explanation report"""
         results = self.get_lightweight_explanation(image)
-        with open(save_path, 'w') as f:
+        with open(save_path, "w") as f:
             json.dump(results, f, indent=2)
         return results
 
@@ -1047,6 +1144,7 @@ class ModelExplainer:
 # ============================================================================
 # ADVANCED EXPLAINABILITY — 2026 Extensions
 # ============================================================================
+
 
 class ConceptActivationVectors:
     """Concept Activation Vectors (CAVs) for clinical concept testing.
@@ -1063,13 +1161,21 @@ class ConceptActivationVectors:
 
     # Clinical concepts relevant to retinal disease detection
     RETINAL_CONCEPTS = [
-        "microaneurysms", "hard_exudates", "cotton_wool_spots",
-        "hemorrhages", "neovascularization", "drusen",
-        "optic_disc_cupping", "macular_edema", "vascular_tortuosity",
-        "retinal_detachment", "pigmentary_changes", "optic_disc_pallor",
+        "microaneurysms",
+        "hard_exudates",
+        "cotton_wool_spots",
+        "hemorrhages",
+        "neovascularization",
+        "drusen",
+        "optic_disc_cupping",
+        "macular_edema",
+        "vascular_tortuosity",
+        "retinal_detachment",
+        "pigmentary_changes",
+        "optic_disc_pallor",
     ]
 
-    def __init__(self, model, layer_name=None, device='cpu'):
+    def __init__(self, model, layer_name=None, device="cpu"):
         self.model = model
         self.device = device
         self.layer_name = layer_name
@@ -1137,7 +1243,7 @@ class ConceptActivationVectors:
         X = np.concatenate([pos_acts, neg_acts], axis=0)
         y = np.concatenate([np.ones(len(pos_acts)), np.zeros(len(neg_acts))])
 
-        clf = SGDClassifier(loss='hinge', max_iter=1000, random_state=42)
+        clf = SGDClassifier(loss="hinge", max_iter=1000, random_state=42)
         clf.fit(X, y)
 
         # The CAV is the weight vector of the linear classifier
@@ -1145,11 +1251,11 @@ class ConceptActivationVectors:
         cav_vector = cav_vector / (np.linalg.norm(cav_vector) + 1e-10)
 
         self.cavs[concept_name] = {
-            'vector': cav_vector,
-            'accuracy': clf.score(X, y),
-            'classifier': clf,
+            "vector": cav_vector,
+            "accuracy": clf.score(X, y),
+            "classifier": clf,
         }
-        return self.cavs[concept_name]['accuracy']
+        return self.cavs[concept_name]["accuracy"]
 
     def tcav_score(self, concept_name, test_images, target_class):
         """Compute TCAV score: fraction of inputs where concept positively
@@ -1172,8 +1278,9 @@ class ConceptActivationVectors:
         if concept_name not in self.cavs:
             raise ValueError(f"CAV for '{concept_name}' not trained. Call train_cav first.")
 
-        cav = torch.tensor(self.cavs[concept_name]['vector'],
-                           dtype=torch.float32, device=self.device)
+        cav = torch.tensor(
+            self.cavs[concept_name]["vector"], dtype=torch.float32, device=self.device
+        )
 
         test_images = test_images.to(self.device)
 
@@ -1185,7 +1292,11 @@ class ConceptActivationVectors:
         self.model.eval()
         output = self.model(test_images)
         if isinstance(output, (tuple, dict)):
-            output = output[0] if isinstance(output, tuple) else output.get('logits', list(output.values())[0])
+            output = (
+                output[0]
+                if isinstance(output, tuple)
+                else output.get("logits", list(output.values())[0])
+            )
 
         # Get the layer activations captured by hook (with grad_fn intact)
         layer_act = self._activations.get(self.layer_name)
@@ -1238,7 +1349,7 @@ class CounterfactualExplainer:
     flips the model's prediction for a target class.
     """
 
-    def __init__(self, model, device='cpu'):
+    def __init__(self, model, device="cpu"):
         self.model = model
         self.device = device
 
@@ -1280,7 +1391,7 @@ class CounterfactualExplainer:
         def _extract_logits(out):
             """Extract logits tensor from model output (tensor, tuple, or dict)."""
             if isinstance(out, dict):
-                return out.get('logits', list(out.values())[0])
+                return out.get("logits", list(out.values())[0])
             if isinstance(out, tuple):
                 return out[0]
             return out
@@ -1325,14 +1436,14 @@ class CounterfactualExplainer:
         l2_dist = perturbation.detach().pow(2).sum().sqrt().item()
 
         return {
-            'counterfactual_image': final_image.cpu(),
-            'perturbation': perturbation.detach().cpu(),
-            'original_predictions': orig_pred.tolist(),
-            'counterfactual_predictions': final_pred.tolist(),
-            'target_class': target_class,
-            'l2_distance': l2_dist,
-            'iterations': last_step + 1,
-            'converged': current_pred >= confidence_threshold,
+            "counterfactual_image": final_image.cpu(),
+            "perturbation": perturbation.detach().cpu(),
+            "original_predictions": orig_pred.tolist(),
+            "counterfactual_predictions": final_pred.tolist(),
+            "target_class": target_class,
+            "l2_distance": l2_dist,
+            "iterations": last_step + 1,
+            "converged": current_pred >= confidence_threshold,
         }
 
 
@@ -1343,10 +1454,8 @@ class InteractiveExplainer:
     response suitable for the Next.js frontend dashboard.
     """
 
-    def __init__(self, model, device='cpu', disease_names=None):
-        self.model_explainer = ModelExplainer(
-            model, device=device, disease_names=disease_names
-        )
+    def __init__(self, model, device="cpu", disease_names=None):
+        self.model_explainer = ModelExplainer(model, device=device, disease_names=disease_names)
         self.counterfactual = CounterfactualExplainer(model, device=device)
         self.device = device
         self.disease_names = disease_names or []
@@ -1379,15 +1488,13 @@ class InteractiveExplainer:
             JSON-serializable explanation payload for frontend.
         """
         if methods is None:
-            methods = ['gradcam', 'integrated_gradients', 'eli5']
+            methods = ["gradcam", "integrated_gradients", "eli5"]
 
         # Base predictions + clinical insights
         result = self.model_explainer.get_lightweight_explanation(image, top_k=top_k)
 
         if target_classes is None:
-            target_classes = [
-                p.get('rank', i) for i, p in enumerate(result.get('predictions', []))
-            ]
+            target_classes = [p.get("rank", i) for i, p in enumerate(result.get("predictions", []))]
             # Use indices from predictions
             with torch.no_grad():
                 output = self.model_explainer.model(image)
@@ -1397,46 +1504,48 @@ class InteractiveExplainer:
                 target_classes = [int(i) for i in np.argsort(preds)[-top_k:][::-1]]
 
         # Counterfactual for top prediction
-        if 'counterfactual' in methods and len(target_classes) > 0:
+        if "counterfactual" in methods and len(target_classes) > 0:
             try:
                 # Generate counterfactual for the top prediction
                 cf = self.counterfactual.generate_counterfactual(
-                    image, target_class=target_classes[0],
-                    max_iterations=100, confidence_threshold=0.6,
+                    image,
+                    target_class=target_classes[0],
+                    max_iterations=100,
+                    confidence_threshold=0.6,
                 )
-                result['explainability']['counterfactual'] = {
-                    'target_class': cf['target_class'],
-                    'l2_distance': cf['l2_distance'],
-                    'converged': cf['converged'],
-                    'iterations': cf['iterations'],
-                    'interpretation': (
+                result["explainability"]["counterfactual"] = {
+                    "target_class": cf["target_class"],
+                    "l2_distance": cf["l2_distance"],
+                    "converged": cf["converged"],
+                    "iterations": cf["iterations"],
+                    "interpretation": (
                         f"A change of magnitude {cf['l2_distance']:.4f} "
                         f"would {'confirm' if cf['converged'] else 'not confirm'} "
                         f"the prediction."
                     ),
                 }
             except Exception as e:
-                result['explainability']['counterfactual'] = {'error': str(e)}
+                result["explainability"]["counterfactual"] = {"error": str(e)}
 
         # Natural language explanation
-        result['explainability']['natural_language'] = self._generate_nlg_explanation(result)
+        result["explainability"]["natural_language"] = self._generate_nlg_explanation(result)
 
         # Mark as interactive
-        result['metadata']['interactive'] = True
-        result['metadata']['explanation_version'] = '2.0'
+        result["metadata"]["interactive"] = True
+        result["metadata"]["explanation_version"] = "2.0"
 
         return result
 
     def _generate_nlg_explanation(self, result):
         """Generate natural language 'Why this prediction?' explanation."""
-        predictions = result.get('predictions', [])
+        predictions = result.get("predictions", [])
         if not predictions:
             return "No significant findings detected."
 
         top = predictions[0]
-        disease = top.get('disease', 'Unknown')
-        confidence = top.get('confidence_score', 0)
-        level = top.get('confidence_level', 'Unknown')
+        disease = top.get("disease", "Unknown")
+        confidence = top.get("confidence_score", 0)
+        level = top.get("confidence_level", "Unknown")
 
         parts = []
         parts.append(
@@ -1445,26 +1554,24 @@ class InteractiveExplainer:
         )
 
         # Add clinical context if available
-        insights = result.get('clinical_insights', {})
-        recommendations = insights.get('recommendations', [])
+        insights = result.get("clinical_insights", {})
+        recommendations = insights.get("recommendations", [])
         if recommendations:
             rec = recommendations[0]
             parts.append(f"Clinical recommendation: {rec.get('recommendation', '')}")
 
-        interactions = insights.get('multi_disease_interactions')
+        interactions = insights.get("multi_disease_interactions")
         if interactions:
-            parts.append(
-                f"Note: {interactions[0].get('note', 'Multiple conditions detected.')}"
-            )
+            parts.append(f"Note: {interactions[0].get('note', 'Multiple conditions detected.')}")
 
-        uncertainty = insights.get('uncertainty_metrics', {})
-        reliability = uncertainty.get('interpretation', {}).get('reliability', 'Unknown')
+        uncertainty = insights.get("uncertainty_metrics", {})
+        reliability = uncertainty.get("interpretation", {}).get("reliability", "Unknown")
         parts.append(f"Overall reliability: {reliability}.")
 
         return " ".join(parts)
 
 
-def load_model_with_explainability(model_path, model_class, device='cpu'):
+def load_model_with_explainability(model_path, model_class, device="cpu"):
     """
     Load model with explainability support
 
@@ -1479,26 +1586,26 @@ def load_model_with_explainability(model_path, model_class, device='cpu'):
     checkpoint = torch.load(model_path, map_location=device)
 
     # Load model
-    model = model_class(num_classes=checkpoint['num_classes'])
-    model.load_state_dict(checkpoint['model_state_dict'])
+    model = model_class(num_classes=checkpoint["num_classes"])
+    model.load_state_dict(checkpoint["model_state_dict"])
     model.to(device)
     model.eval()
 
     # Create explainer
-    disease_names = checkpoint.get('disease_names', None)
+    disease_names = checkpoint.get("disease_names", None)
     explainer = ModelExplainer(
         model=model,
         device=device,
         disease_names=disease_names,
-        mobile_mode=True  # Default to lightweight mode
+        mobile_mode=True,  # Default to lightweight mode
     )
 
     metadata = {
-        'model_name': checkpoint.get('model_name', 'Unknown'),
-        'num_classes': checkpoint['num_classes'],
-        'f1_score': checkpoint.get('f1_score', None),
-        'explainability_enabled': checkpoint.get('explainability', {}).get('enabled', False),
-        'available_methods': checkpoint.get('explainability', {}).get('methods', [])
+        "model_name": checkpoint.get("model_name", "Unknown"),
+        "num_classes": checkpoint["num_classes"],
+        "f1_score": checkpoint.get("f1_score", None),
+        "explainability_enabled": checkpoint.get("explainability", {}).get("enabled", False),
+        "available_methods": checkpoint.get("explainability", {}).get("methods", []),
     }
 
     return model, explainer, metadata

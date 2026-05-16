@@ -53,8 +53,7 @@ def plot_roc_curves(
         colors = plt.cm.tab10(np.linspace(0, 1, len(top_indices)))
         for idx, (i, c) in enumerate(zip(top_indices, colors)):
             fpr, tpr, _ = roc_curve(y_true[:, i], y_prob[:, i])
-            axes[0].plot(fpr, tpr, color=c, lw=1.2,
-                        label=f"{disease_names[i]} ({aucs[i]:.3f})")
+            axes[0].plot(fpr, tpr, color=c, lw=1.2, label=f"{disease_names[i]} ({aucs[i]:.3f})")
         axes[0].plot([0, 1], [0, 1], "k--", lw=0.8, alpha=0.4)
         axes[0].set_xlabel("False Positive Rate")
         axes[0].set_ylabel("True Positive Rate")
@@ -64,9 +63,13 @@ def plot_roc_curves(
         # (b) AUC bar chart
         names = [disease_names[i] for i in top_indices]
         vals = [aucs[i] for i in top_indices]
-        bars = axes[1].barh(range(len(names)), vals,
-                           color=plt.cm.viridis(np.linspace(0.3, 0.9, len(names))),
-                           edgecolor="black", lw=0.3)
+        bars = axes[1].barh(
+            range(len(names)),
+            vals,
+            color=plt.cm.viridis(np.linspace(0.3, 0.9, len(names))),
+            edgecolor="black",
+            lw=0.3,
+        )
         axes[1].set_yticks(range(len(names)))
         axes[1].set_yticklabels(names, fontsize=7)
         axes[1].invert_yaxis()
@@ -77,8 +80,13 @@ def plot_roc_curves(
 
         # Annotate bars
         for bar, val in zip(bars, vals):
-            axes[1].text(val + 0.005, bar.get_y() + bar.get_height() / 2,
-                        f"{val:.3f}", va="center", fontsize=6)
+            axes[1].text(
+                val + 0.005,
+                bar.get_y() + bar.get_height() / 2,
+                f"{val:.3f}",
+                va="center",
+                fontsize=6,
+            )
 
         add_watermark(fig)
         save_ieee(fig, save_dir / "fig_roc_curves")
@@ -104,8 +112,9 @@ def plot_precision_recall_curves(
         colors = plt.cm.tab10(np.linspace(0, 1, len(top_indices)))
         for i, c in zip(top_indices, colors):
             precision, recall, _ = precision_recall_curve(y_true[:, i], y_prob[:, i])
-            axes[0].plot(recall, precision, color=c, lw=1.2,
-                        label=f"{disease_names[i]} ({aps[i]:.3f})")
+            axes[0].plot(
+                recall, precision, color=c, lw=1.2, label=f"{disease_names[i]} ({aps[i]:.3f})"
+            )
         axes[0].set_xlabel("Recall")
         axes[0].set_ylabel("Precision")
         axes[0].set_title(f"(a) PR Curves (Top-{top_k} by AP)")
@@ -114,9 +123,13 @@ def plot_precision_recall_curves(
         # (b) AP bar chart
         names = [disease_names[i] for i in top_indices]
         vals = [aps[i] for i in top_indices]
-        axes[1].barh(range(len(names)), vals,
-                    color=plt.cm.viridis(np.linspace(0.3, 0.9, len(names))),
-                    edgecolor="black", lw=0.3)
+        axes[1].barh(
+            range(len(names)),
+            vals,
+            color=plt.cm.viridis(np.linspace(0.3, 0.9, len(names))),
+            edgecolor="black",
+            lw=0.3,
+        )
         axes[1].set_yticks(range(len(names)))
         axes[1].set_yticklabels(names, fontsize=7)
         axes[1].invert_yaxis()
@@ -152,10 +165,25 @@ def plot_confusion_matrix_multilabel(
         names = [disease_names[i] for i in top_idx]
         x = np.arange(len(names))
         w = 0.2
-        axes[0].bar(x - 1.5*w, tp, w, label="TP", color=IEEE_COLORS["green"], edgecolor="black", lw=0.3)
-        axes[0].bar(x - 0.5*w, fp, w, label="FP", color=IEEE_COLORS["orange"], edgecolor="black", lw=0.3)
-        axes[0].bar(x + 0.5*w, fn, w, label="FN", color=IEEE_COLORS["red"], edgecolor="black", lw=0.3)
-        axes[0].bar(x + 1.5*w, tn, w, label="TN", color=IEEE_COLORS["blue"], edgecolor="black", lw=0.3, alpha=0.3)
+        axes[0].bar(
+            x - 1.5 * w, tp, w, label="TP", color=IEEE_COLORS["green"], edgecolor="black", lw=0.3
+        )
+        axes[0].bar(
+            x - 0.5 * w, fp, w, label="FP", color=IEEE_COLORS["orange"], edgecolor="black", lw=0.3
+        )
+        axes[0].bar(
+            x + 0.5 * w, fn, w, label="FN", color=IEEE_COLORS["red"], edgecolor="black", lw=0.3
+        )
+        axes[0].bar(
+            x + 1.5 * w,
+            tn,
+            w,
+            label="TN",
+            color=IEEE_COLORS["blue"],
+            edgecolor="black",
+            lw=0.3,
+            alpha=0.3,
+        )
         axes[0].set_xticks(x)
         axes[0].set_xticklabels(names, rotation=45, ha="right", fontsize=6)
         axes[0].set_ylabel("Count")
@@ -173,17 +201,25 @@ def plot_confusion_matrix_multilabel(
 
         metrics_arr = np.array(metrics_data)
         sns.heatmap(
-            metrics_arr, ax=axes[1],
+            metrics_arr,
+            ax=axes[1],
             xticklabels=["Precision", "Recall", "F1"],
             yticklabels=names,
-            annot=True, fmt=".3f", annot_kws={"size": 6},
-            cmap="YlGn", vmin=0, vmax=1,
-            linewidths=0.3, linecolor="white",
+            annot=True,
+            fmt=".3f",
+            annot_kws={"size": 6},
+            cmap="YlGn",
+            vmin=0,
+            vmax=1,
+            linewidths=0.3,
+            linecolor="white",
         )
         axes[1].set_title("(b) Per-Class Metrics Heatmap")
         axes[1].tick_params(labelsize=6)
 
-        fig.suptitle(f"{model_name} - Multi-Label Confusion Analysis", fontsize=11, fontweight="bold", y=1.02)
+        fig.suptitle(
+            f"{model_name} - Multi-Label Confusion Analysis", fontsize=11, fontweight="bold", y=1.02
+        )
         add_watermark(fig)
         save_ieee(fig, save_dir / "fig_confusion_matrix")
 
@@ -209,14 +245,20 @@ def plot_threshold_analysis(
             hamming.append(hl(y_true, preds))
 
         # (a) F1 vs threshold
-        axes[0].plot(thresholds, f1_macros, "o-", ms=3, color=METRIC_COLORS["f1_macro"], label="F1 Macro")
-        axes[0].plot(thresholds, f1_micros, "s-", ms=3, color=METRIC_COLORS["f1_micro"], label="F1 Micro")
+        axes[0].plot(
+            thresholds, f1_macros, "o-", ms=3, color=METRIC_COLORS["f1_macro"], label="F1 Macro"
+        )
+        axes[0].plot(
+            thresholds, f1_micros, "s-", ms=3, color=METRIC_COLORS["f1_micro"], label="F1 Micro"
+        )
         best_idx = np.argmax(f1_macros)
         axes[0].axvline(thresholds[best_idx], ls="--", color="red", lw=0.8)
         axes[0].annotate(
             f"Optimal: {thresholds[best_idx]:.2f}\nF1: {f1_macros[best_idx]:.4f}",
             xy=(thresholds[best_idx], f1_macros[best_idx]),
-            xytext=(10, -20), textcoords="offset points", fontsize=7,
+            xytext=(10, -20),
+            textcoords="offset points",
+            fontsize=7,
             arrowprops=dict(arrowstyle="->", color="red"),
         )
         axes[0].set_xlabel("Threshold")
@@ -230,7 +272,9 @@ def plot_threshold_analysis(
         axes[1].set_ylabel("Hamming Loss")
         axes[1].set_title("(b) Hamming Loss vs Threshold")
 
-        fig.suptitle(f"{model_name} - Threshold Optimization", fontsize=11, fontweight="bold", y=1.02)
+        fig.suptitle(
+            f"{model_name} - Threshold Optimization", fontsize=11, fontweight="bold", y=1.02
+        )
         add_watermark(fig)
         save_ieee(fig, save_dir / "fig_threshold_analysis")
 
@@ -264,8 +308,10 @@ def plot_metrics_summary_table(
         ]
 
         table = ax.table(
-            cellText=rows, colLabels=headers,
-            cellLoc="center", loc="center",
+            cellText=rows,
+            colLabels=headers,
+            cellLoc="center",
+            loc="center",
             colColours=["#E8E8E8", "#E8E8E8"],
         )
         table.auto_set_font_size(False)
@@ -315,7 +361,9 @@ def plot_precision_floor_threshold_analysis(
         ax.plot(thresholds, prec_macros, "o-", ms=2, color=IEEE_COLORS["green"], label="Precision")
         ax.plot(thresholds, rec_macros, "s-", ms=2, color=IEEE_COLORS["purple"], label="Recall")
         ax.plot(thresholds, f1_macros, "^-", ms=2, color=IEEE_COLORS["blue"], label="F1")
-        ax.axhline(min_precision, ls="--", color="red", lw=1.2, label=f"Precision floor ({min_precision})")
+        ax.axhline(
+            min_precision, ls="--", color="red", lw=1.2, label=f"Precision floor ({min_precision})"
+        )
 
         # Find threshold where precision first meets floor
         for i, p in enumerate(prec_macros):
@@ -323,8 +371,10 @@ def plot_precision_floor_threshold_analysis(
                 ax.axvline(thresholds[i], ls=":", color="green", lw=0.8, alpha=0.5)
                 ax.annotate(
                     f"Floor met at t={thresholds[i]:.2f}",
-                    xy=(thresholds[i], p), xytext=(15, -15),
-                    textcoords="offset points", fontsize=6,
+                    xy=(thresholds[i], p),
+                    xytext=(15, -15),
+                    textcoords="offset points",
+                    fontsize=6,
                     arrowprops=dict(arrowstyle="->", color="green"),
                 )
                 break
@@ -360,10 +410,24 @@ def plot_precision_floor_threshold_analysis(
         if valid_names:
             x = np.arange(len(valid_names))
             w = 0.35
-            ax.barh(x - w/2, per_class_prec_05, w, label="Fixed t=0.5",
-                    color=IEEE_COLORS["gray"], edgecolor="black", lw=0.2)
-            ax.barh(x + w/2, per_class_prec_opt, w, label="Precision-floor optimized",
-                    color=IEEE_COLORS["green"], edgecolor="black", lw=0.2)
+            ax.barh(
+                x - w / 2,
+                per_class_prec_05,
+                w,
+                label="Fixed t=0.5",
+                color=IEEE_COLORS["gray"],
+                edgecolor="black",
+                lw=0.2,
+            )
+            ax.barh(
+                x + w / 2,
+                per_class_prec_opt,
+                w,
+                label="Precision-floor optimized",
+                color=IEEE_COLORS["green"],
+                edgecolor="black",
+                lw=0.2,
+            )
             ax.axvline(min_precision, ls="--", color="red", lw=1.0, label=f"Floor={min_precision}")
             ax.set_yticks(x)
             ax.set_yticklabels(valid_names, fontsize=5)
@@ -372,8 +436,12 @@ def plot_precision_floor_threshold_analysis(
             ax.set_title("(b) Per-Class Precision Improvement")
             ax.legend(fontsize=6, loc="lower right")
 
-        fig.suptitle(f"{model_name} — Precision-Floor Threshold Analysis",
-                     fontsize=11, fontweight="bold", y=1.02)
+        fig.suptitle(
+            f"{model_name} — Precision-Floor Threshold Analysis",
+            fontsize=11,
+            fontweight="bold",
+            y=1.02,
+        )
         add_watermark(fig)
         save_ieee(fig, save_dir / "fig_precision_floor_analysis")
 
@@ -422,8 +490,12 @@ def generate_all_evaluation_plots(
 
     if precision_floor is not None:
         plot_precision_floor_threshold_analysis(
-            y_true, y_prob, disease_names, save_dir,
-            min_precision=precision_floor, model_name=model_name,
+            y_true,
+            y_prob,
+            disease_names,
+            save_dir,
+            min_precision=precision_floor,
+            model_name=model_name,
         )
         print(f"  [6/6] Precision-floor threshold analysis (floor={precision_floor})")
 

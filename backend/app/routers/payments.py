@@ -1,4 +1,5 @@
 """Payments router — MTN MoMo subscription checkout + referral transport."""
+
 from __future__ import annotations
 
 import logging
@@ -179,11 +180,14 @@ async def mtn_subscription_callback(
 
     body_bytes = await request.body()
     if settings.mobile_money.mtn_callback_secret and not verify_hmac_signature(
-        body_bytes, x_callback_signature, settings.mobile_money.mtn_callback_secret,
+        body_bytes,
+        x_callback_signature,
+        settings.mobile_money.mtn_callback_secret,
     ):
         raise HTTPException(status_code=401, detail="Invalid signature")
 
     import json
+
     try:
         payload = json.loads(body_bytes.decode())
     except Exception:
@@ -206,7 +210,10 @@ async def mtn_subscription_callback(
 
     if status_str in {"successful", "completed"}:
         await confirm_by_provider_id(
-            db, provider="mtn", provider_intent_id=tx_id, raw=payload,
+            db,
+            provider="mtn",
+            provider_intent_id=tx_id,
+            raw=payload,
         )
 
     await _record_webhook(
@@ -248,16 +255,24 @@ async def request_payment(body: PaymentRequestBody):
         airtel_client_id=mm.airtel_client_id,
     )
     result = await client.request_payment(
-        phone=body.phone, amount=body.amount,
-        currency=body.currency, reason=body.reason, provider=body.provider,
+        phone=body.phone,
+        amount=body.amount,
+        currency=body.currency,
+        reason=body.reason,
+        provider=body.provider,
     )
-    return {"transaction_id": result.transaction_id, "status": result.status, "provider": result.provider}
+    return {
+        "transaction_id": result.transaction_id,
+        "status": result.status,
+        "provider": result.provider,
+    }
 
 
 @router.get("/status/{tx_id}")
 async def payment_status(tx_id: str, provider: str = "mtn"):
     """Check payment status."""
     from backend.app.integrations.mobile_money.client import MobileMoneyClient
+
     client = MobileMoneyClient()
     status_ = await client.check_payment_status(tx_id, provider)
     return {"transaction_id": status_.transaction_id, "status": status_.status}

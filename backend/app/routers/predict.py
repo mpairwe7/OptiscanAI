@@ -1,4 +1,5 @@
 """Prediction router - image upload, fundus gating, and inference."""
+
 import io
 import logging
 import uuid
@@ -38,13 +39,15 @@ async def predict(
 
     contents = await file.read()
     if len(contents) > settings.max_upload_size:
-        raise HTTPException(413, f"File too large (max {settings.max_upload_size // 1024 // 1024}MB)")
+        raise HTTPException(
+            413, f"File too large (max {settings.max_upload_size // 1024 // 1024}MB)"
+        )
 
     # Validate image magic bytes (JPEG: FFD8FF, PNG: 89504E47)
     if len(contents) < 4:
         raise HTTPException(400, "File too small to be a valid image")
     header = contents[:4]
-    if not (header[:2] == b'\xff\xd8' or header[:4] == b'\x89PNG'):
+    if not (header[:2] == b"\xff\xd8" or header[:4] == b"\x89PNG"):
         raise HTTPException(400, "Unsupported image format. Only JPEG and PNG are accepted.")
 
     try:
@@ -72,7 +75,11 @@ async def predict(
             gate_result.reason,
         )
         # Log rejection for audit trail
-        request_id = getattr(request.state, "request_id", str(uuid.uuid4())) if request else str(uuid.uuid4())
+        request_id = (
+            getattr(request.state, "request_id", str(uuid.uuid4()))
+            if request
+            else str(uuid.uuid4())
+        )
         prediction_logger.log_gate_rejection(
             request_id=request_id,
             user=user.sub if user else "anonymous",
@@ -81,6 +88,7 @@ async def predict(
         )
         # Record in gate monitor
         from src.monitoring.gate_monitor import gate_monitor
+
         gate_monitor.record(
             passed=False,
             layer=gate_result.layer,
@@ -132,7 +140,9 @@ async def predict(
     if hasattr(gate_result, "gate_version"):
         result["fundus_gate"]["version"] = gate_result.gate_version
         result["fundus_gate"]["latency_ms"] = round(gate_result.latency_ms, 2)
-        result["fundus_gate"]["statistical_confidence"] = round(gate_result.statistical_confidence, 4)
+        result["fundus_gate"]["statistical_confidence"] = round(
+            gate_result.statistical_confidence, 4
+        )
         result["fundus_gate"]["learned_confidence"] = (
             round(gate_result.learned_confidence, 4)
             if gate_result.learned_confidence is not None
@@ -142,6 +152,7 @@ async def predict(
 
     # Record gate pass in monitor
     from src.monitoring.gate_monitor import gate_monitor
+
     gate_monitor.record(
         passed=True,
         layer=gate_result.layer,
@@ -149,12 +160,15 @@ async def predict(
         statistical_passed=True,
         learned_passed=(
             gate_result.learned_confidence > 0.5
-            if hasattr(gate_result, "learned_confidence") and gate_result.learned_confidence is not None
+            if hasattr(gate_result, "learned_confidence")
+            and gate_result.learned_confidence is not None
             else None
         ),
     )
 
-    request_id = getattr(request.state, "request_id", str(uuid.uuid4())) if request else str(uuid.uuid4())
+    request_id = (
+        getattr(request.state, "request_id", str(uuid.uuid4())) if request else str(uuid.uuid4())
+    )
 
     prediction_logger.log(
         request_id=request_id,
@@ -176,17 +190,20 @@ async def predict(
     # Notify agents of the new scan
     try:
         from src.agents.event_bus import Event, EventType, event_bus
-        await event_bus.emit(Event(
-            type=EventType.SCAN_ANALYZED,
-            source="predict_endpoint",
-            data={
-                "scan_id": request_id,
-                "diseases_detected": result.get("total_detected", 0),
-                "referral_priority": result.get("clinical", {}).get("referral_priority", ""),
-                "inference_ms": result.get("inference_ms", 0),
-                "needs_review": result.get("total_detected", 0) > 5,
-            },
-        ))
+
+        await event_bus.emit(
+            Event(
+                type=EventType.SCAN_ANALYZED,
+                source="predict_endpoint",
+                data={
+                    "scan_id": request_id,
+                    "diseases_detected": result.get("total_detected", 0),
+                    "referral_priority": result.get("clinical", {}).get("referral_priority", ""),
+                    "inference_ms": result.get("inference_ms", 0),
+                    "needs_review": result.get("total_detected", 0) > 5,
+                },
+            )
+        )
     except Exception:
         pass  # agents are optional
 
@@ -204,6 +221,7 @@ async def predict(
 async def list_diseases():
     """List all detectable diseases."""
     from backend.app.core.model_service import DISEASE_NAMES
+
     return {
         "total": len(model_service.disease_codes),
         "diseases": [

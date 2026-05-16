@@ -33,6 +33,7 @@ from src.visualization.ieee_style import (
 # 1. Before/After Precision Comparison
 # ---------------------------------------------------------------------------
 
+
 def plot_before_after_comparison(
     before_metrics: dict[str, dict],
     after_metrics: dict[str, dict],
@@ -51,7 +52,13 @@ def plot_before_after_comparison(
     """
     with ieee_style():
         fig, axes = ieee_figure(1, 2, width="double", height_ratio=0.55)
-        metrics_to_plot = ["precision_macro", "recall_macro", "f1_macro", "auc_roc", "accuracy_macro"]
+        metrics_to_plot = [
+            "precision_macro",
+            "recall_macro",
+            "f1_macro",
+            "auc_roc",
+            "accuracy_macro",
+        ]
         labels = ["Precision", "Recall", "F1", "AUC", "Accuracy"]
 
         # (a) Before (v1)
@@ -60,9 +67,15 @@ def plot_before_after_comparison(
         w = 0.8 / max(len(before_metrics), 1)
         for i, (model, vals) in enumerate(before_metrics.items()):
             bar_vals = [vals.get(m, 0) for m in metrics_to_plot]
-            ax.bar(x + i * w, bar_vals, w, label=model,
-                   color=CB_PALETTE[i % len(CB_PALETTE)],
-                   edgecolor="black", lw=0.3)
+            ax.bar(
+                x + i * w,
+                bar_vals,
+                w,
+                label=model,
+                color=CB_PALETTE[i % len(CB_PALETTE)],
+                edgecolor="black",
+                lw=0.3,
+            )
         ax.set_xticks(x + w * len(before_metrics) / 2)
         ax.set_xticklabels(labels)
         ax.set_ylim(0, 1.0)
@@ -75,9 +88,15 @@ def plot_before_after_comparison(
         ax = axes[1]
         for i, (model, vals) in enumerate(after_metrics.items()):
             bar_vals = [vals.get(m, 0) for m in metrics_to_plot]
-            ax.bar(x + i * w, bar_vals, w, label=model,
-                   color=CB_PALETTE[i % len(CB_PALETTE)],
-                   edgecolor="black", lw=0.3)
+            ax.bar(
+                x + i * w,
+                bar_vals,
+                w,
+                label=model,
+                color=CB_PALETTE[i % len(CB_PALETTE)],
+                edgecolor="black",
+                lw=0.3,
+            )
         ax.set_xticks(x + w * max(len(after_metrics), 1) / 2)
         ax.set_xticklabels(labels)
         ax.set_ylim(0, 1.0)
@@ -94,6 +113,7 @@ def plot_before_after_comparison(
 # ---------------------------------------------------------------------------
 # 2. Per-Class Threshold Heatmap
 # ---------------------------------------------------------------------------
+
 
 def plot_threshold_heatmap(
     threshold_report: dict,
@@ -135,15 +155,24 @@ def plot_threshold_heatmap(
         for i in range(len(names)):
             for j in range(3):
                 color = "white" if data[i, j] > 0.6 else "black"
-                ax.text(j, i, f"{data[i, j]:.2f}", ha="center", va="center",
-                        fontsize=5, color=color, fontweight="bold")
+                ax.text(
+                    j,
+                    i,
+                    f"{data[i, j]:.2f}",
+                    ha="center",
+                    va="center",
+                    fontsize=5,
+                    color=color,
+                    fontweight="bold",
+                )
         ax.set_title("(a) Per-Class Optimized Thresholds")
         fig.colorbar(im, ax=ax, fraction=0.03)
 
         # (b) Samples + status bar chart
         ax = axes[1]
-        colors = [IEEE_COLORS["green"] if s == "optimized" else IEEE_COLORS["red"]
-                  for s in statuses]
+        colors = [
+            IEEE_COLORS["green"] if s == "optimized" else IEEE_COLORS["red"] for s in statuses
+        ]
         ax.barh(range(len(names)), n_positive, color=colors, edgecolor="black", lw=0.3)
         ax.set_yticks(range(len(names)))
         ax.set_yticklabels(names, fontsize=6)
@@ -157,7 +186,9 @@ def plot_threshold_heatmap(
         ]
         ax.legend(handles=legend_elements, fontsize=6, loc="lower right")
 
-        fig.suptitle("Precision-Floor Threshold Optimization", fontsize=11, fontweight="bold", y=1.02)
+        fig.suptitle(
+            "Precision-Floor Threshold Optimization", fontsize=11, fontweight="bold", y=1.02
+        )
         add_watermark(fig)
         save_ieee(fig, save_dir / "fig_threshold_heatmap")
 
@@ -165,6 +196,7 @@ def plot_threshold_heatmap(
 # ---------------------------------------------------------------------------
 # 3. ASL vs Focal Loss Comparison
 # ---------------------------------------------------------------------------
+
 
 def plot_asl_vs_focal_loss(
     save_dir: Path,
@@ -184,33 +216,67 @@ def plot_asl_vs_focal_loss(
 
         # (a) Loss weight for NEGATIVE examples (false positives)
         ax = axes[0]
-        focal_weight_neg = (p ** focal_gamma)  # (1 - (1-p))^gamma = p^gamma
-        asl_weight_neg = (p ** gamma_neg)
-        ax.plot(p, focal_weight_neg, "-", color=IEEE_COLORS["blue"], lw=1.5,
-                label=f"Focal (gamma={focal_gamma})")
-        ax.plot(p, asl_weight_neg, "-", color=IEEE_COLORS["red"], lw=1.5,
-                label=f"ASL (gamma_neg={gamma_neg})")
+        focal_weight_neg = p**focal_gamma  # (1 - (1-p))^gamma = p^gamma
+        asl_weight_neg = p**gamma_neg
+        ax.plot(
+            p,
+            focal_weight_neg,
+            "-",
+            color=IEEE_COLORS["blue"],
+            lw=1.5,
+            label=f"Focal (gamma={focal_gamma})",
+        )
+        ax.plot(
+            p,
+            asl_weight_neg,
+            "-",
+            color=IEEE_COLORS["red"],
+            lw=1.5,
+            label=f"ASL (gamma_neg={gamma_neg})",
+        )
         ax.set_xlabel("Model Confidence (for negative class)")
         ax.set_ylabel("Loss Weight")
         ax.set_title("(a) False Positive Penalty")
         ax.legend(fontsize=7)
-        ax.annotate("ASL suppresses FP\nmuch harder", xy=(0.7, 0.15),
-                    fontsize=7, color=IEEE_COLORS["red"], fontweight="bold")
+        ax.annotate(
+            "ASL suppresses FP\nmuch harder",
+            xy=(0.7, 0.15),
+            fontsize=7,
+            color=IEEE_COLORS["red"],
+            fontweight="bold",
+        )
 
         # (b) Loss weight for POSITIVE examples (true positives)
         ax = axes[1]
-        focal_weight_pos = ((1 - p) ** focal_gamma)
-        asl_weight_pos = ((1 - p) ** gamma_pos)  # gamma_pos=0 means weight=1 always
-        ax.plot(p, focal_weight_pos, "-", color=IEEE_COLORS["blue"], lw=1.5,
-                label=f"Focal (gamma={focal_gamma})")
-        ax.plot(p, asl_weight_pos, "-", color=IEEE_COLORS["green"], lw=1.5,
-                label=f"ASL (gamma_pos={gamma_pos})")
+        focal_weight_pos = (1 - p) ** focal_gamma
+        asl_weight_pos = (1 - p) ** gamma_pos  # gamma_pos=0 means weight=1 always
+        ax.plot(
+            p,
+            focal_weight_pos,
+            "-",
+            color=IEEE_COLORS["blue"],
+            lw=1.5,
+            label=f"Focal (gamma={focal_gamma})",
+        )
+        ax.plot(
+            p,
+            asl_weight_pos,
+            "-",
+            color=IEEE_COLORS["green"],
+            lw=1.5,
+            label=f"ASL (gamma_pos={gamma_pos})",
+        )
         ax.set_xlabel("Model Confidence (for positive class)")
         ax.set_ylabel("Loss Weight")
         ax.set_title("(b) True Positive Weighting")
         ax.legend(fontsize=7)
-        ax.annotate("ASL keeps weight=1\nfor ALL positives", xy=(0.5, 0.8),
-                    fontsize=7, color=IEEE_COLORS["green"], fontweight="bold")
+        ax.annotate(
+            "ASL keeps weight=1\nfor ALL positives",
+            xy=(0.5, 0.8),
+            fontsize=7,
+            color=IEEE_COLORS["green"],
+            fontweight="bold",
+        )
 
         fig.suptitle("Asymmetric Loss vs Focal Loss", fontsize=11, fontweight="bold", y=1.02)
         add_watermark(fig)
@@ -220,6 +286,7 @@ def plot_asl_vs_focal_loss(
 # ---------------------------------------------------------------------------
 # 4. Class Filtering Impact
 # ---------------------------------------------------------------------------
+
 
 def plot_class_filtering_impact(
     all_classes: list[str],
@@ -247,8 +314,7 @@ def plot_class_filtering_impact(
         sorted_classes = sorted(all_classes, key=lambda c: class_counts.get(c, 0), reverse=True)
         counts = [class_counts.get(c, 0) for c in sorted_classes]
         colors = [
-            IEEE_COLORS["green"] if class_counts.get(c, 0) >= min_samples
-            else IEEE_COLORS["red"]
+            IEEE_COLORS["green"] if class_counts.get(c, 0) >= min_samples else IEEE_COLORS["red"]
             for c in sorted_classes
         ]
 
@@ -286,6 +352,7 @@ def plot_class_filtering_impact(
 # 5. Staged Unfreezing Learning Dynamics
 # ---------------------------------------------------------------------------
 
+
 def plot_staged_unfreezing(
     history: list[dict],
     unfreeze_epoch: int,
@@ -311,10 +378,22 @@ def plot_staged_unfreezing(
 
         # (a) Loss with unfreeze marker
         ax = axes[0, 0]
-        ax.plot(epochs, [h["train_loss"] for h in history], "o-", ms=2,
-                color=IEEE_COLORS["blue"], label="Train")
-        ax.plot(epochs, [h["val_loss"] for h in history], "s-", ms=2,
-                color=IEEE_COLORS["red"], label="Val")
+        ax.plot(
+            epochs,
+            [h["train_loss"] for h in history],
+            "o-",
+            ms=2,
+            color=IEEE_COLORS["blue"],
+            label="Train",
+        )
+        ax.plot(
+            epochs,
+            [h["val_loss"] for h in history],
+            "s-",
+            ms=2,
+            color=IEEE_COLORS["red"],
+            label="Val",
+        )
         ax.axvline(unfreeze_epoch, ls="--", color="green", lw=1.2, label="Backbone unfreeze")
         ax.set_xlabel("Epoch")
         ax.set_ylabel("Loss")
@@ -324,11 +403,23 @@ def plot_staged_unfreezing(
         # (b) Precision tracking
         ax = axes[0, 1]
         if any("val/precision_macro" in h for h in history):
-            ax.plot(epochs, [h.get("val/precision_macro", 0) for h in history],
-                    "o-", ms=2, color=IEEE_COLORS["green"], label="Val Precision")
+            ax.plot(
+                epochs,
+                [h.get("val/precision_macro", 0) for h in history],
+                "o-",
+                ms=2,
+                color=IEEE_COLORS["green"],
+                label="Val Precision",
+            )
         if any("val/recall_macro" in h for h in history):
-            ax.plot(epochs, [h.get("val/recall_macro", 0) for h in history],
-                    "s-", ms=2, color=IEEE_COLORS["purple"], label="Val Recall")
+            ax.plot(
+                epochs,
+                [h.get("val/recall_macro", 0) for h in history],
+                "s-",
+                ms=2,
+                color=IEEE_COLORS["purple"],
+                label="Val Recall",
+            )
         ax.axvline(unfreeze_epoch, ls="--", color="green", lw=1.2)
         ax.axhline(0.10, ls=":", color="red", lw=0.8, alpha=0.5, label="Precision floor")
         ax.set_xlabel("Epoch")
@@ -339,14 +430,32 @@ def plot_staged_unfreezing(
         # (c) F1 + AUC + Accuracy
         ax = axes[1, 0]
         if any("val/f1_macro" in h for h in history):
-            ax.plot(epochs, [h.get("val/f1_macro", 0) for h in history],
-                    "o-", ms=2, color=METRIC_COLORS["f1_macro"], label="F1 Macro")
+            ax.plot(
+                epochs,
+                [h.get("val/f1_macro", 0) for h in history],
+                "o-",
+                ms=2,
+                color=METRIC_COLORS["f1_macro"],
+                label="F1 Macro",
+            )
         if any("val/auc_roc" in h for h in history):
-            ax.plot(epochs, [h.get("val/auc_roc", 0) for h in history],
-                    "s-", ms=2, color=METRIC_COLORS["auc_roc"], label="AUC-ROC")
+            ax.plot(
+                epochs,
+                [h.get("val/auc_roc", 0) for h in history],
+                "s-",
+                ms=2,
+                color=METRIC_COLORS["auc_roc"],
+                label="AUC-ROC",
+            )
         if any("val/accuracy_macro" in h for h in history):
-            ax.plot(epochs, [h.get("val/accuracy_macro", 0) for h in history],
-                    "^-", ms=2, color=METRIC_COLORS["accuracy_macro"], label="Accuracy")
+            ax.plot(
+                epochs,
+                [h.get("val/accuracy_macro", 0) for h in history],
+                "^-",
+                ms=2,
+                color=METRIC_COLORS["accuracy_macro"],
+                label="Accuracy",
+            )
         ax.axvline(unfreeze_epoch, ls="--", color="green", lw=1.2)
         ax.set_xlabel("Epoch")
         ax.set_ylabel("Score")
@@ -356,12 +465,24 @@ def plot_staged_unfreezing(
         # (d) Learning rate schedule (dual axis)
         ax = axes[1, 1]
         if any("lr" in h for h in history):
-            ax.plot(epochs, [h.get("lr", 0) for h in history],
-                    "-", color=IEEE_COLORS["blue"], lw=1.5, label="Head LR")
+            ax.plot(
+                epochs,
+                [h.get("lr", 0) for h in history],
+                "-",
+                color=IEEE_COLORS["blue"],
+                lw=1.5,
+                label="Head LR",
+            )
         if any("backbone_lr" in h for h in history):
             ax2 = ax.twinx()
-            ax2.plot(epochs, [h.get("backbone_lr", 0) for h in history],
-                     "-", color=IEEE_COLORS["orange"], lw=1.5, label="Backbone LR")
+            ax2.plot(
+                epochs,
+                [h.get("backbone_lr", 0) for h in history],
+                "-",
+                color=IEEE_COLORS["orange"],
+                lw=1.5,
+                label="Backbone LR",
+            )
             ax2.set_ylabel("Backbone LR", color=IEEE_COLORS["orange"], fontsize=7)
             ax2.tick_params(axis="y", labelcolor=IEEE_COLORS["orange"])
         ax.axvline(unfreeze_epoch, ls="--", color="green", lw=1.2, label="Unfreeze")
@@ -378,6 +499,7 @@ def plot_staged_unfreezing(
 # ---------------------------------------------------------------------------
 # 6. Precision-Recall Trade-off Surface
 # ---------------------------------------------------------------------------
+
 
 def plot_precision_recall_tradeoff(
     y_true: np.ndarray,
@@ -427,12 +549,16 @@ def plot_precision_recall_tradeoff(
         ax.annotate(
             f"Best F1={f1s[best_idx]:.3f}\nP={precisions[best_idx]:.3f}\nR={recalls[best_idx]:.3f}",
             xy=(recalls[best_idx], precisions[best_idx]),
-            xytext=(20, 20), textcoords="offset points", fontsize=6,
+            xytext=(20, 20),
+            textcoords="offset points",
+            fontsize=6,
             arrowprops=dict(arrowstyle="->", color="red"),
             bbox=dict(boxstyle="round,pad=0.3", facecolor="lightyellow", edgecolor="orange"),
         )
 
-        fig.suptitle("Precision-Recall Operating Point Analysis", fontsize=11, fontweight="bold", y=1.02)
+        fig.suptitle(
+            "Precision-Recall Operating Point Analysis", fontsize=11, fontweight="bold", y=1.02
+        )
         add_watermark(fig)
         save_ieee(fig, save_dir / "fig_precision_recall_tradeoff")
 
@@ -440,6 +566,7 @@ def plot_precision_recall_tradeoff(
 # ---------------------------------------------------------------------------
 # 7. TTA Improvement Analysis
 # ---------------------------------------------------------------------------
+
 
 def plot_tta_improvement(
     metrics_no_tta: dict,
@@ -466,10 +593,24 @@ def plot_tta_improvement(
         with_tta = [metrics_with_tta.get(m, 0) for m in metrics_list]
 
         w = 0.35
-        ax.bar(x - w/2, no_tta, w, label="No TTA", color=IEEE_COLORS["gray"],
-                       edgecolor="black", lw=0.3)
-        ax.bar(x + w/2, with_tta, w, label="TTA (6 views)", color=IEEE_COLORS["green"],
-                       edgecolor="black", lw=0.3)
+        ax.bar(
+            x - w / 2,
+            no_tta,
+            w,
+            label="No TTA",
+            color=IEEE_COLORS["gray"],
+            edgecolor="black",
+            lw=0.3,
+        )
+        ax.bar(
+            x + w / 2,
+            with_tta,
+            w,
+            label="TTA (6 views)",
+            color=IEEE_COLORS["green"],
+            edgecolor="black",
+            lw=0.3,
+        )
 
         ax.set_xticks(x)
         ax.set_xticklabels(labels)
@@ -482,9 +623,15 @@ def plot_tta_improvement(
         for i, (v1, v2) in enumerate(zip(no_tta, with_tta)):
             delta = v2 - v1
             sign = "+" if delta >= 0 else ""
-            ax.text(i + w/2, v2 + 0.01, f"{sign}{delta:.3f}", ha="center", fontsize=6,
-                    color=IEEE_COLORS["green"] if delta > 0 else IEEE_COLORS["red"],
-                    fontweight="bold")
+            ax.text(
+                i + w / 2,
+                v2 + 0.01,
+                f"{sign}{delta:.3f}",
+                ha="center",
+                fontsize=6,
+                color=IEEE_COLORS["green"] if delta > 0 else IEEE_COLORS["red"],
+                fontweight="bold",
+            )
 
         add_watermark(fig)
         save_ieee(fig, save_dir / "fig_tta_improvement")
@@ -493,6 +640,7 @@ def plot_tta_improvement(
 # ---------------------------------------------------------------------------
 # 8. HybridV2 Architecture Diagram
 # ---------------------------------------------------------------------------
+
 
 def plot_hybrid_v2_architecture(save_dir: Path):
     """Architecture diagram for RetinalFoundationHybridV2."""
@@ -503,20 +651,37 @@ def plot_hybrid_v2_architecture(save_dir: Path):
         ax.set_axis_off()
 
         colors = {
-            "input": "#E8F4F8", "backbone": "#B8E0F6", "graph": "#D4F1D4",
-            "classifier": "#FFE5B4", "output": "#FADADD", "gate": "#F5F5DC",
+            "input": "#E8F4F8",
+            "backbone": "#B8E0F6",
+            "graph": "#D4F1D4",
+            "classifier": "#FFE5B4",
+            "output": "#FADADD",
+            "gate": "#F5F5DC",
         }
 
         def box(x, y, w, h, text, color, fontsize=7):
-            rect = plt.Rectangle((x, y), w, h, facecolor=color, edgecolor="black",
-                                 lw=1.0, zorder=2, clip_on=False)
+            rect = plt.Rectangle(
+                (x, y), w, h, facecolor=color, edgecolor="black", lw=1.0, zorder=2, clip_on=False
+            )
             ax.add_patch(rect)
-            ax.text(x + w/2, y + h/2, text, ha="center", va="center",
-                    fontsize=fontsize, fontweight="bold", zorder=3)
+            ax.text(
+                x + w / 2,
+                y + h / 2,
+                text,
+                ha="center",
+                va="center",
+                fontsize=fontsize,
+                fontweight="bold",
+                zorder=3,
+            )
 
         def arrow(x1, y1, x2, y2):
-            ax.annotate("", xy=(x2, y2), xytext=(x1, y1),
-                        arrowprops=dict(arrowstyle="->", lw=1.2, color="#333333"))
+            ax.annotate(
+                "",
+                xy=(x2, y2),
+                xytext=(x1, y1),
+                arrowprops=dict(arrowstyle="->", lw=1.2, color="#333333"),
+            )
 
         # Fundus Gate
         box(0.5, 8.5, 2.5, 0.8, "Fundus Gate\n(MobileNetV3)", colors["gate"], 6)
@@ -527,7 +692,15 @@ def plot_hybrid_v2_architecture(save_dir: Path):
         arrow(1.75, 7.0, 1.75, 6.3)
 
         # RETFound backbone
-        box(0.2, 5.0, 3.2, 1.2, "RETFound ViT-Large\n304M params (frozen)\n+ LoRA rank=16", colors["backbone"], 6)
+        box(
+            0.2,
+            5.0,
+            3.2,
+            1.2,
+            "RETFound ViT-Large\n304M params (frozen)\n+ LoRA rank=16",
+            colors["backbone"],
+            6,
+        )
         arrow(1.75, 5.0, 1.75, 4.3)
 
         # Graph reasoning
@@ -535,7 +708,15 @@ def plot_hybrid_v2_architecture(save_dir: Path):
         arrow(1.75, 3.5, 1.75, 2.8)
 
         # Bottleneck classifier
-        box(0.2, 1.5, 3.2, 1.2, "Bottleneck Classifier\n512 (drop 0.5)\n128 (drop 0.3)\nN classes", colors["classifier"], 6)
+        box(
+            0.2,
+            1.5,
+            3.2,
+            1.2,
+            "Bottleneck Classifier\n512 (drop 0.5)\n128 (drop 0.3)\nN classes",
+            colors["classifier"],
+            6,
+        )
         arrow(1.75, 1.5, 1.75, 0.8)
 
         # Output
@@ -553,8 +734,12 @@ def plot_hybrid_v2_architecture(save_dir: Path):
         for text, detail, y in features:
             box(5.0, y, 4.5, 0.7, f"{text}\n{detail}", "#F0F0F0", 6)
 
-        ax.set_title("RetinalFoundationHybridV2 — Precision Rescue Architecture",
-                      fontsize=10, fontweight="bold", pad=10)
+        ax.set_title(
+            "RetinalFoundationHybridV2 — Precision Rescue Architecture",
+            fontsize=10,
+            fontweight="bold",
+            pad=10,
+        )
         add_watermark(fig)
         save_ieee(fig, save_dir / "fig_hybrid_v2_architecture")
 
@@ -562,6 +747,7 @@ def plot_hybrid_v2_architecture(save_dir: Path):
 # ---------------------------------------------------------------------------
 # Master Generator
 # ---------------------------------------------------------------------------
+
 
 def generate_all_precision_rescue_plots(
     save_dir: str | Path = "outputs/plots/precision_rescue",

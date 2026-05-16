@@ -90,13 +90,22 @@ def plot_clinical_knowledge_graph(
 
         # (a) Adjacency heatmap
         import seaborn as sns
+
         mask = np.eye(len(sub_names), dtype=bool)
         sns.heatmap(
-            sub_adj, ax=axes[0], mask=mask,
-            xticklabels=sub_names, yticklabels=sub_names,
-            cmap="YlOrRd", vmin=0, vmax=0.8,
-            annot=True, fmt=".2f", annot_kws={"size": 5},
-            linewidths=0.3, linecolor="white",
+            sub_adj,
+            ax=axes[0],
+            mask=mask,
+            xticklabels=sub_names,
+            yticklabels=sub_names,
+            cmap="YlOrRd",
+            vmin=0,
+            vmax=0.8,
+            annot=True,
+            fmt=".2f",
+            annot_kws={"size": 5},
+            linewidths=0.3,
+            linecolor="white",
             cbar_kws={"label": "Edge Weight", "shrink": 0.8},
         )
         axes[0].set_title("(a) Clinical Relationship Weights")
@@ -116,7 +125,9 @@ def plot_clinical_knowledge_graph(
                     axes[1].plot(
                         [positions[i, 0], positions[j, 0]],
                         [positions[i, 1], positions[j, 1]],
-                        color="gray", alpha=min(w * 1.5, 0.8), lw=w * 3,
+                        color="gray",
+                        alpha=min(w * 1.5, 0.8),
+                        lw=w * 3,
                     )
 
         # Draw nodes
@@ -125,8 +136,15 @@ def plot_clinical_knowledge_graph(
         colors = plt.cm.viridis(norm_sizes * 0.8 + 0.1)
 
         for i, (pos, name, c) in enumerate(zip(positions, sub_names, colors)):
-            axes[1].scatter(pos[0], pos[1], s=200 + norm_sizes[i] * 400,
-                           c=[c], edgecolors="black", linewidth=0.5, zorder=3)
+            axes[1].scatter(
+                pos[0],
+                pos[1],
+                s=200 + norm_sizes[i] * 400,
+                c=[c],
+                edgecolors="black",
+                linewidth=0.5,
+                zorder=3,
+            )
             axes[1].annotate(name, pos, fontsize=6, ha="center", va="center", fontweight="bold")
 
         axes[1].set_xlim(-1.5, 1.5)
@@ -135,7 +153,9 @@ def plot_clinical_knowledge_graph(
         axes[1].axis("off")
         axes[1].set_title("(b) Clinical Knowledge Graph")
 
-        fig.suptitle("Clinical Knowledge Graph - Disease Relationships", fontsize=10, fontweight="bold")
+        fig.suptitle(
+            "Clinical Knowledge Graph - Disease Relationships", fontsize=10, fontweight="bold"
+        )
         add_watermark(fig)
         save_ieee(fig, save_dir / "fig_clinical_knowledge_graph")
 
@@ -149,15 +169,18 @@ def plot_knowledge_graph_comprehensive(
     (a) Adjacency heatmap, (b) Uganda prevalence, (c) Category distribution, (d) Most connected diseases.
     """
     import seaborn as sns
+
     with ieee_style():
         fig, axes = plt.subplots(2, 2, figsize=(14, 12), dpi=100)
 
         # (a) Adjacency Matrix
         adj = kg.get_adjacency_matrix()
-        sns.heatmap(adj, cmap='YlOrRd', ax=axes[0, 0], cbar_kws={'label': 'Relationship Strength'})
-        axes[0, 0].set_title('(a) Disease Relationship Adjacency Matrix', fontsize=11, fontweight='bold')
-        axes[0, 0].set_xlabel('Disease Index', fontsize=9)
-        axes[0, 0].set_ylabel('Disease Index', fontsize=9)
+        sns.heatmap(adj, cmap="YlOrRd", ax=axes[0, 0], cbar_kws={"label": "Relationship Strength"})
+        axes[0, 0].set_title(
+            "(a) Disease Relationship Adjacency Matrix", fontsize=11, fontweight="bold"
+        )
+        axes[0, 0].set_xlabel("Disease Index", fontsize=9)
+        axes[0, 0].set_ylabel("Disease Index", fontsize=9)
 
         # (b) Uganda Prevalence
         prev = kg.uganda_prevalence
@@ -165,15 +188,24 @@ def plot_knowledge_graph_comprehensive(
             diseases_p = list(prev.keys())
             vals_p = list(prev.values())
             colors_p = plt.cm.RdYlGn_r([p for p in vals_p])
-            axes[0, 1].barh(diseases_p, vals_p, color=colors_p, edgecolor='black', linewidth=0.5)
-            axes[0, 1].set_xlabel('Prevalence Weight', fontsize=9)
-            axes[0, 1].set_title('(b) Uganda-Specific Disease Prevalence', fontsize=11, fontweight='bold')
+            axes[0, 1].barh(diseases_p, vals_p, color=colors_p, edgecolor="black", linewidth=0.5)
+            axes[0, 1].set_xlabel("Prevalence Weight", fontsize=9)
+            axes[0, 1].set_title(
+                "(b) Uganda-Specific Disease Prevalence", fontsize=11, fontweight="bold"
+            )
             axes[0, 1].set_xlim(0, 1)
-            axes[0, 1].grid(axis='x', alpha=0.3, linestyle='--')
+            axes[0, 1].grid(axis="x", alpha=0.3, linestyle="--")
             for i, v in enumerate(vals_p):
-                axes[0, 1].text(v + 0.02, i, f'{v:.2f}', va='center', fontsize=7, fontweight='bold')
+                axes[0, 1].text(v + 0.02, i, f"{v:.2f}", va="center", fontsize=7, fontweight="bold")
         else:
-            axes[0, 1].text(0.5, 0.5, 'No prevalence data', ha='center', va='center', transform=axes[0, 1].transAxes)
+            axes[0, 1].text(
+                0.5,
+                0.5,
+                "No prevalence data",
+                ha="center",
+                va="center",
+                transform=axes[0, 1].transAxes,
+            )
 
         # (c) Disease Categories
         cat_counts = {cat: len(ds) for cat, ds in kg.categories.items()}
@@ -182,12 +214,16 @@ def plot_knowledge_graph_comprehensive(
             cnts = list(cat_counts.values())
             colors_c = plt.cm.Set3(range(len(cats)))
             wedges, texts, autotexts = axes[1, 0].pie(
-                cnts, labels=cats, autopct='%1.0f%%', colors=colors_c, startangle=90,
-                textprops={'fontsize': 7, 'fontweight': 'bold'}
+                cnts,
+                labels=cats,
+                autopct="%1.0f%%",
+                colors=colors_c,
+                startangle=90,
+                textprops={"fontsize": 7, "fontweight": "bold"},
             )
             for at in autotexts:
                 at.set_fontsize(7)
-            axes[1, 0].set_title('(c) Disease Categories', fontsize=11, fontweight='bold')
+            axes[1, 0].set_title("(c) Disease Categories", fontsize=11, fontweight="bold")
 
         # (d) Most Connected Diseases
         cooc = kg.cooccurrence
@@ -197,15 +233,20 @@ def plot_knowledge_graph_comprehensive(
             names_d = [d[0] for d in top_d]
             cnts_d = [d[1] for d in top_d]
             colors_d = plt.cm.viridis([c / max(cnts_d) for c in cnts_d])
-            axes[1, 1].barh(names_d, cnts_d, color=colors_d, edgecolor='black', linewidth=0.5)
-            axes[1, 1].set_xlabel('Related Diseases', fontsize=9)
-            axes[1, 1].set_title('(d) Most Connected Diseases', fontsize=11, fontweight='bold')
+            axes[1, 1].barh(names_d, cnts_d, color=colors_d, edgecolor="black", linewidth=0.5)
+            axes[1, 1].set_xlabel("Related Diseases", fontsize=9)
+            axes[1, 1].set_title("(d) Most Connected Diseases", fontsize=11, fontweight="bold")
             axes[1, 1].invert_yaxis()
-            axes[1, 1].grid(axis='x', alpha=0.3, linestyle='--')
+            axes[1, 1].grid(axis="x", alpha=0.3, linestyle="--")
             for i, v in enumerate(cnts_d):
-                axes[1, 1].text(v + 0.1, i, str(v), va='center', fontsize=7, fontweight='bold')
+                axes[1, 1].text(v + 0.1, i, str(v), va="center", fontsize=7, fontweight="bold")
 
-        fig.suptitle('Clinical Knowledge Graph - Advanced Reasoning Analysis', fontsize=13, fontweight='bold', y=1.01)
+        fig.suptitle(
+            "Clinical Knowledge Graph - Advanced Reasoning Analysis",
+            fontsize=13,
+            fontweight="bold",
+            y=1.01,
+        )
         plt.tight_layout()
         add_watermark(fig)
         save_ieee(fig, save_dir / "fig_knowledge_graph_comprehensive")
@@ -225,27 +266,27 @@ def plot_severity_and_risk(
             sorted_sev = sorted(sev.items(), key=lambda x: x[1], reverse=True)
             names_s = [s[0] for s in sorted_sev[:20]]
             vals_s = [s[1] for s in sorted_sev[:20]]
-            color_map = {0: '#4CAF50', 1: '#FFC107', 2: '#FF9800', 3: '#F44336'}
-            colors_s = [color_map.get(v, '#999') for v in vals_s]
-            axes[0].barh(names_s, vals_s, color=colors_s, edgecolor='black', lw=0.3)
-            axes[0].set_xlabel('Severity (0=None, 3=Severe)')
-            axes[0].set_title('(a) Disease Severity Levels')
+            color_map = {0: "#4CAF50", 1: "#FFC107", 2: "#FF9800", 3: "#F44336"}
+            colors_s = [color_map.get(v, "#999") for v in vals_s]
+            axes[0].barh(names_s, vals_s, color=colors_s, edgecolor="black", lw=0.3)
+            axes[0].set_xlabel("Severity (0=None, 3=Severe)")
+            axes[0].set_title("(a) Disease Severity Levels")
             axes[0].invert_yaxis()
             axes[0].set_xticks([0, 1, 2, 3])
-            axes[0].set_xticklabels(['None', 'Mild', 'Moderate', 'Severe'], fontsize=7)
+            axes[0].set_xticklabels(["None", "Mild", "Moderate", "Severe"], fontsize=7)
 
         # (b) Age risk factors
         age_rf = kg.age_risk_factors
         if age_rf:
             names_a = list(age_rf.keys())
             vals_a = list(age_rf.values())
-            axes[1].barh(names_a, vals_a, color=IEEE_COLORS["orange"], edgecolor='black', lw=0.3)
-            axes[1].set_xlabel('Age Risk Factor')
-            axes[1].set_title('(b) Age-Adjusted Risk Factors')
+            axes[1].barh(names_a, vals_a, color=IEEE_COLORS["orange"], edgecolor="black", lw=0.3)
+            axes[1].set_xlabel("Age Risk Factor")
+            axes[1].set_title("(b) Age-Adjusted Risk Factors")
             axes[1].invert_yaxis()
             axes[1].set_xlim(0, 1)
             for i, v in enumerate(vals_a):
-                axes[1].text(v + 0.01, i, f'{v:.2f}', va='center', fontsize=7)
+                axes[1].text(v + 0.01, i, f"{v:.2f}", va="center", fontsize=7)
 
         add_watermark(fig)
         save_ieee(fig, save_dir / "fig_severity_and_risk")
@@ -276,8 +317,15 @@ def plot_feature_attribution(
             axes[i + 1].axis("off")
 
         # First panel: original image placeholder
-        axes[0].text(0.5, 0.5, "Original\nImage", ha="center", va="center",
-                    fontsize=9, transform=axes[0].transAxes)
+        axes[0].text(
+            0.5,
+            0.5,
+            "Original\nImage",
+            ha="center",
+            va="center",
+            fontsize=9,
+            transform=axes[0].transAxes,
+        )
         axes[0].set_axis_off()
 
         fig.suptitle(f"{model_name} - Feature Attribution Methods", fontsize=10, fontweight="bold")
@@ -308,11 +356,23 @@ def plot_prediction_confidence_distribution(
 
             bins = np.linspace(0, 1, 25)
             if len(neg_probs) > 0:
-                ax.hist(neg_probs, bins=bins, alpha=0.6, color=IEEE_COLORS["blue"],
-                       label=f"Neg (n={len(neg_probs)})", density=True)
+                ax.hist(
+                    neg_probs,
+                    bins=bins,
+                    alpha=0.6,
+                    color=IEEE_COLORS["blue"],
+                    label=f"Neg (n={len(neg_probs)})",
+                    density=True,
+                )
             if len(pos_probs) > 0:
-                ax.hist(pos_probs, bins=bins, alpha=0.6, color=IEEE_COLORS["red"],
-                       label=f"Pos (n={len(pos_probs)})", density=True)
+                ax.hist(
+                    pos_probs,
+                    bins=bins,
+                    alpha=0.6,
+                    color=IEEE_COLORS["red"],
+                    label=f"Pos (n={len(pos_probs)})",
+                    density=True,
+                )
             ax.axvline(0.5, ls="--", color="black", lw=0.8, alpha=0.5)
             ax.set_title(disease_names[class_idx], fontsize=8)
             ax.legend(fontsize=5)
@@ -363,9 +423,12 @@ def generate_all_explainability_plots(
 
     if gradcam_data:
         plot_gradcam_grid(
-            gradcam_data["images"], gradcam_data["heatmaps"],
-            gradcam_data["predictions"], gradcam_data["confidences"],
-            save_dir, model_name,
+            gradcam_data["images"],
+            gradcam_data["heatmaps"],
+            gradcam_data["predictions"],
+            gradcam_data["confidences"],
+            save_dir,
+            model_name,
         )
         print("  [5/5] GradCAM grid")
     else:

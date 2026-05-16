@@ -3,6 +3,7 @@ Model Architecture Visualizations - IEEE Publication Quality.
 Extracted from notebook cell 43 (ModelArchitectureExplainer).
 Generates architecture diagrams for all 4 models.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -26,16 +27,26 @@ COLORS = {
 
 
 def _draw_box(ax, x, y, w, h, text, color, fontsize=7):
-    box = FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.02",
-                          facecolor=color, edgecolor="black", linewidth=0.8)
+    box = FancyBboxPatch(
+        (x, y), w, h, boxstyle="round,pad=0.02", facecolor=color, edgecolor="black", linewidth=0.8
+    )
     ax.add_patch(box)
-    ax.text(x + w / 2, y + h / 2, text, ha="center", va="center",
-            fontsize=fontsize, fontweight="bold", wrap=True)
+    ax.text(
+        x + w / 2,
+        y + h / 2,
+        text,
+        ha="center",
+        va="center",
+        fontsize=fontsize,
+        fontweight="bold",
+        wrap=True,
+    )
 
 
 def _draw_arrow(ax, x1, y1, x2, y2):
-    ax.annotate("", xy=(x2, y2), xytext=(x1, y1),
-                arrowprops=dict(arrowstyle="->", color="gray", lw=1.2))
+    ax.annotate(
+        "", xy=(x2, y2), xytext=(x1, y1), arrowprops=dict(arrowstyle="->", color="gray", lw=1.2)
+    )
 
 
 def plot_graphclip_architecture(save_dir: Path):
@@ -54,18 +65,29 @@ def plot_graphclip_architecture(save_dir: Path):
         _draw_box(ax, 2.8, 2.8, 1.8, 0.8, "Dynamic Graph\nAdjacency\nGeneration", COLORS["graph"])
         _draw_arrow(ax, 3.7, 4.5, 3.7, 3.6)
 
-        _draw_box(ax, 2.8, 1.2, 1.8, 0.8, "Graph Sparse\nAttention\n(top-k=16)", COLORS["attention"])
+        _draw_box(
+            ax, 2.8, 1.2, 1.8, 0.8, "Graph Sparse\nAttention\n(top-k=16)", COLORS["attention"]
+        )
         _draw_arrow(ax, 3.7, 2.8, 3.7, 2.0)
 
-        _draw_box(ax, 5.4, 2.8, 1.8, 0.8, "Cross-Modal\nSparse Attention\n(top-k=24)", COLORS["fusion"])
+        _draw_box(
+            ax, 5.4, 2.8, 1.8, 0.8, "Cross-Modal\nSparse Attention\n(top-k=24)", COLORS["fusion"]
+        )
         _draw_arrow(ax, 2.0, 3.2, 5.4, 3.2)
         _draw_arrow(ax, 4.6, 1.6, 5.4, 3.0)
 
         _draw_box(ax, 7.6, 2.8, 1.8, 0.8, "Classifier\n384→256→45", COLORS["output"])
         _draw_arrow(ax, 7.2, 3.2, 7.6, 3.2)
 
-        ax.text(5, 0.5, "~45M params | Sparse Attention | Dynamic KG",
-                ha="center", fontsize=8, style="italic", color="gray")
+        ax.text(
+            5,
+            0.5,
+            "~45M params | Sparse Attention | Dynamic KG",
+            ha="center",
+            fontsize=8,
+            style="italic",
+            color="gray",
+        )
         ax.set_title("GraphCLIP Architecture", fontsize=11, fontweight="bold", pad=10)
         add_watermark(fig)
         save_ieee(fig, save_dir / "fig_arch_graphclip")
@@ -94,8 +116,15 @@ def plot_vlgnn_architecture(save_dir: Path):
         _draw_box(ax, 7.4, 2.5, 1.6, 0.8, "Classifier\n768→256→45", COLORS["output"])
         _draw_arrow(ax, 6.6, 2.9, 7.4, 2.9)
 
-        ax.text(5, 0.5, "~48M params | Cross-Modal Fusion | Region Selection",
-                ha="center", fontsize=8, style="italic", color="gray")
+        ax.text(
+            5,
+            0.5,
+            "~48M params | Cross-Modal Fusion | Region Selection",
+            ha="center",
+            fontsize=8,
+            style="italic",
+            color="gray",
+        )
         ax.set_title("VisualLanguageGNN Architecture", fontsize=11, fontweight="bold", pad=10)
         add_watermark(fig)
         save_ieee(fig, save_dir / "fig_arch_vlgnn")
@@ -131,8 +160,15 @@ def plot_sgt_architecture(save_dir: Path):
         _draw_box(ax, 6.8, 0.5, 1.6, 0.7, "Calibrated\nOutput (45)", COLORS["output"])
         _draw_arrow(ax, 7.6, 2.0, 7.6, 1.2)
 
-        ax.text(5, 0.1, "~52M params | 3-Branch Ensemble | Uncertainty Estimation",
-                ha="center", fontsize=8, style="italic", color="gray")
+        ax.text(
+            5,
+            0.1,
+            "~52M params | 3-Branch Ensemble | Uncertainty Estimation",
+            ha="center",
+            fontsize=8,
+            style="italic",
+            color="gray",
+        )
         ax.set_title("SceneGraphTransformer Architecture", fontsize=11, fontweight="bold", pad=10)
         add_watermark(fig)
         save_ieee(fig, save_dir / "fig_arch_sgt")
@@ -159,14 +195,25 @@ def plot_vignn_architecture(save_dir: Path):
         _draw_box(ax, 4.8, 3.3, 1.6, 0.8, "Graph\nMessage\nPassing (x3)", COLORS["graph"])
         _draw_arrow(ax, 4.1, 2.9, 4.8, 3.7)
 
-        _draw_box(ax, 4.8, 1.5, 1.6, 0.8, "Disease-Aware\nAttention\n(top-k=64)", COLORS["attention"])
+        _draw_box(
+            ax, 4.8, 1.5, 1.6, 0.8, "Disease-Aware\nAttention\n(top-k=64)", COLORS["attention"]
+        )
 
-        _draw_box(ax, 7.0, 2.5, 1.8, 0.8, "Global + Disease\nClassifier\n768→512→256→45", COLORS["output"])
+        _draw_box(
+            ax, 7.0, 2.5, 1.8, 0.8, "Global + Disease\nClassifier\n768→512→256→45", COLORS["output"]
+        )
         _draw_arrow(ax, 6.4, 3.7, 7.0, 2.9)
         _draw_arrow(ax, 6.4, 1.9, 7.0, 2.9)
 
-        ax.text(5, 0.4, "~26M params | Graph Message Passing | Disease Prototypes",
-                ha="center", fontsize=8, style="italic", color="gray")
+        ax.text(
+            5,
+            0.4,
+            "~26M params | Graph Message Passing | Disease Prototypes",
+            ha="center",
+            fontsize=8,
+            style="italic",
+            color="gray",
+        )
         ax.set_title("ViGNN Architecture", fontsize=11, fontweight="bold", pad=10)
         add_watermark(fig)
         save_ieee(fig, save_dir / "fig_arch_vignn")
@@ -190,9 +237,16 @@ def plot_all_architectures_comparison(save_dir: Path):
             _draw_box(ax, x, 1.8, 2.0, 1.2, f"{name}\n{params}\n\n{desc}", color, fontsize=7)
 
         # Common base
-        _draw_box(ax, 1.5, 0.3, 5.5, 0.7,
-                  "Shared: Multi-Resolution ViT-Small Encoder + ClinicalKnowledgeGraph + SparseTopKAttention",
-                  "#F0F0F0", fontsize=7)
+        _draw_box(
+            ax,
+            1.5,
+            0.3,
+            5.5,
+            0.7,
+            "Shared: Multi-Resolution ViT-Small Encoder + ClinicalKnowledgeGraph + SparseTopKAttention",
+            "#F0F0F0",
+            fontsize=7,
+        )
         for i in range(4):
             x = 1.5 + i * 2.3
             _draw_arrow(ax, x, 1.8, 4.25, 1.0)

@@ -226,13 +226,9 @@ class ProductionAuditLogger:
         list[dict]
         """
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(
-            None, self._query_sync, event_type, limit
-        )
+        return await loop.run_in_executor(None, self._query_sync, event_type, limit)
 
-    def _query_sync(
-        self, event_type: Optional[str], limit: int
-    ) -> List[Dict[str, Any]]:
+    def _query_sync(self, event_type: Optional[str], limit: int) -> List[Dict[str, Any]]:
         """Synchronous implementation of ``query``."""
         entries: List[Dict[str, Any]] = []
         log_files = sorted(self.log_dir.glob("audit_*.jsonl"), reverse=True)
@@ -465,9 +461,7 @@ class ProductionAuditLogger:
             "log_files": len(log_files),
             "total_size_mb": round(total_size / (1024 * 1024), 2),
             "chain_head": (
-                self._previous_hash[:16] + "..."
-                if self._previous_hash != "genesis"
-                else "genesis"
+                self._previous_hash[:16] + "..." if self._previous_hash != "genesis" else "genesis"
             ),
             "kafka_enabled": self._kafka_available,
             "iceberg_enabled": self._iceberg_enabled,

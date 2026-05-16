@@ -98,7 +98,11 @@ def main():
             num_rounds=args.rounds,
             min_clients=min(args.clients, 2),
         )
-        logger.info("Flower available — simulation would run %d rounds with %d clients", args.rounds, args.clients)
+        logger.info(
+            "Flower available — simulation would run %d rounds with %d clients",
+            args.rounds,
+            args.clients,
+        )
         report["flower_available"] = True
     except Exception as e:
         report["flower_available"] = False

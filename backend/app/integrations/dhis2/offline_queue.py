@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class DHIS2Operation:
     """A queued DHIS2 API operation."""
+
     operation_id: str
     operation_type: str  # create_referral | create_patient | submit_aggregate
     payload: dict
@@ -30,6 +31,7 @@ class DHIS2Operation:
 @dataclass
 class FlushResult:
     """Result of flushing the offline queue."""
+
     total: int = 0
     succeeded: int = 0
     failed: int = 0
@@ -56,7 +58,9 @@ class DHIS2OfflineQueue:
         with open(self._queue_file, "a") as f:
             f.write(json.dumps(entry) + "\n")
 
-        logger.info("Queued DHIS2 operation: %s (%s)", operation.operation_id, operation.operation_type)
+        logger.info(
+            "Queued DHIS2 operation: %s (%s)", operation.operation_id, operation.operation_type
+        )
         return operation.operation_id
 
     async def flush(self, client: Any) -> FlushResult:
@@ -94,7 +98,7 @@ class DHIS2OfflineQueue:
 
                 # Exponential backoff: stop after 3 consecutive failures
                 if result.failed >= 3:
-                    remaining.extend(operations[operations.index(op) + 1:])
+                    remaining.extend(operations[operations.index(op) + 1 :])
                     break
 
         # Rewrite queue with remaining items
@@ -105,7 +109,9 @@ class DHIS2OfflineQueue:
 
         logger.info(
             "DHIS2 queue flush: %d/%d succeeded, %d remaining",
-            result.succeeded, result.total, result.remaining,
+            result.succeeded,
+            result.total,
+            result.remaining,
         )
         return result
 

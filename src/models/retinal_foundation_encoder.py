@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 # LoRA Adapter
 # ---------------------------------------------------------------------------
 
+
 class LoRALinear(nn.Module):
     """Low-Rank Adaptation layer for efficient fine-tuning (Hu et al., 2021).
 
@@ -40,8 +41,9 @@ class LoRALinear(nn.Module):
     Only A and B are trainable.
     """
 
-    def __init__(self, original: nn.Linear, rank: int = 16, alpha: float = 16.0,
-                 dropout: float = 0.05):
+    def __init__(
+        self, original: nn.Linear, rank: int = 16, alpha: float = 16.0, dropout: float = 0.05
+    ):
         super().__init__()
         self.original = original
         self.rank = rank
@@ -74,9 +76,11 @@ class LoRALinear(nn.Module):
         dtype = self.original.weight.dtype
         with torch.no_grad():
             merged = nn.Linear(
-                self.original.in_features, self.original.out_features,
+                self.original.in_features,
+                self.original.out_features,
                 bias=self.original.bias is not None,
-                device=device, dtype=dtype,
+                device=device,
+                dtype=dtype,
             )
             merged.weight.copy_(
                 self.original.weight + self.scaling * (self.lora_B.weight @ self.lora_A.weight)
@@ -86,8 +90,13 @@ class LoRALinear(nn.Module):
         return merged
 
 
-def apply_lora_to_vit(model: nn.Module, rank: int = 16, alpha: float = 16.0,
-                      dropout: float = 0.05, target_modules: Optional[list[str]] = None):
+def apply_lora_to_vit(
+    model: nn.Module,
+    rank: int = 16,
+    alpha: float = 16.0,
+    dropout: float = 0.05,
+    target_modules: Optional[list[str]] = None,
+):
     """Inject LoRA adapters into a ViT's QKV projection layers.
 
     By default targets ``qkv`` projections in every attention block.  Pass
@@ -199,20 +208,25 @@ class RetinalFoundationEncoder(nn.Module):
         # ---- LoRA adapters ----
         if use_lora:
             apply_lora_to_vit(
-                self.encoder, rank=lora_rank, alpha=lora_alpha,
-                dropout=lora_dropout, target_modules=lora_targets,
+                self.encoder,
+                rank=lora_rank,
+                alpha=lora_alpha,
+                dropout=lora_dropout,
+                target_modules=lora_targets,
             )
 
         # ---- Resolution projection & fusion ----
         n_res = len(self.resolutions)
-        self.resolution_projections = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(self.backbone_dim, output_dim),
-                nn.LayerNorm(output_dim),
-                nn.GELU(),
-            )
-            for _ in range(n_res)
-        ])
+        self.resolution_projections = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Linear(self.backbone_dim, output_dim),
+                    nn.LayerNorm(output_dim),
+                    nn.GELU(),
+                )
+                for _ in range(n_res)
+            ]
+        )
 
         if n_res > 1:
             self.fusion = nn.Sequential(
@@ -249,7 +263,8 @@ class RetinalFoundationEncoder(nn.Module):
                         state = state["model"]
                     # Filter MAE decoder keys
                     state = {
-                        k: v for k, v in state.items()
+                        k: v
+                        for k, v in state.items()
                         if not k.startswith("decoder") and "mask_token" not in k
                     }
                     missing, unexpected = encoder.load_state_dict(state, strict=False)
@@ -263,8 +278,9 @@ class RetinalFoundationEncoder(nn.Module):
 
         # Priority 2: HuggingFace Hub
         try:
-            encoder = timm.create_model(backbone_name, pretrained=True, num_classes=0,
-                                        dynamic_img_size=True)
+            encoder = timm.create_model(
+                backbone_name, pretrained=True, num_classes=0, dynamic_img_size=True
+            )
             logger.info("Loaded backbone from HuggingFace Hub / timm registry")
             return encoder
         except Exception as e:
@@ -272,7 +288,9 @@ class RetinalFoundationEncoder(nn.Module):
 
         # Priority 3: Random init fallback
         encoder = timm.create_model(backbone_name, **timm_kwargs)
-        logger.warning(f"Using random initialization for {backbone_name} (no pretrained weights found)")
+        logger.warning(
+            f"Using random initialization for {backbone_name} (no pretrained weights found)"
+        )
         return encoder
 
     # ------------------------------------------------------------------
@@ -293,18 +311,20 @@ class RetinalFoundationEncoder(nn.Module):
 
         for resolution, proj in zip(self.resolutions, self.resolution_projections):
             if x.size(-1) != resolution or x.size(-2) != resolution:
-                x_r = F.interpolate(x, size=(resolution, resolution),
-                                    mode="bilinear", align_corners=False)
+                x_r = F.interpolate(
+                    x, size=(resolution, resolution), mode="bilinear", align_corners=False
+                )
             else:
                 x_r = x
 
             # Resize back to primary for uniform patch count
             if resolution != primary_size:
-                x_r = F.interpolate(x_r, size=(primary_size, primary_size),
-                                    mode="bilinear", align_corners=False)
+                x_r = F.interpolate(
+                    x_r, size=(primary_size, primary_size), mode="bilinear", align_corners=False
+                )
 
             tokens = self.encoder.forward_features(x_r)  # [B, N+1, D]
-            patch_tokens = tokens[:, 1:, :]               # drop CLS
+            patch_tokens = tokens[:, 1:, :]  # drop CLS
             features.append(proj(patch_tokens))
 
         if len(features) == 1:

@@ -2,15 +2,14 @@
 Statistical significance tests for model comparison.
 McNemar's test, paired bootstrap, Wilcoxon signed-rank.
 """
+
 from __future__ import annotations
 
 import numpy as np
 from scipy import stats as scipy_stats
 
 
-def mcnemar_test(
-    y_pred_a: np.ndarray, y_pred_b: np.ndarray, y_true: np.ndarray
-) -> dict:
+def mcnemar_test(y_pred_a: np.ndarray, y_pred_b: np.ndarray, y_true: np.ndarray) -> dict:
     """McNemar's test: are two models' errors significantly different?"""
     correct_a = (y_pred_a == y_true).all(axis=1)
     correct_b = (y_pred_b == y_true).all(axis=1)

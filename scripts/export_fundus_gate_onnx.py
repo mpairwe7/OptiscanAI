@@ -36,9 +36,7 @@ def build_gate_model(weights_path: str | None = None) -> nn.Module:
     """Build the MobileNetV3-Small binary classifier for fundus gating."""
     import timm
 
-    model = timm.create_model(
-        "mobilenetv3_small_100", pretrained=True, num_classes=1
-    )
+    model = timm.create_model("mobilenetv3_small_100", pretrained=True, num_classes=1)
 
     if weights_path and Path(weights_path).exists():
         state = torch.load(weights_path, map_location="cpu", weights_only=False)
@@ -61,9 +59,7 @@ def build_gate_model(weights_path: str | None = None) -> nn.Module:
     return model
 
 
-def export_gate_onnx(
-    model: nn.Module, output_path: Path, img_size: int = 224
-) -> Path:
+def export_gate_onnx(model: nn.Module, output_path: Path, img_size: int = 224) -> Path:
     """Export gate model to ONNX."""
     dummy = torch.randn(1, 3, img_size, img_size)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -145,12 +141,8 @@ def validate_gate_parity(
 
 def main():
     parser = argparse.ArgumentParser(description="Export Fundus Gate to ONNX")
-    parser.add_argument(
-        "--weights", type=str, default="weights/fundus_gate.pth"
-    )
-    parser.add_argument(
-        "--output-dir", type=str, default="outputs/mobile_export"
-    )
+    parser.add_argument("--weights", type=str, default="weights/fundus_gate.pth")
+    parser.add_argument("--output-dir", type=str, default="outputs/mobile_export")
     args = parser.parse_args()
 
     logging.basicConfig(

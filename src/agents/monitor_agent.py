@@ -7,6 +7,7 @@ Runs on a periodic tick (configurable, default 60s) and:
 4. Evaluates retraining triggers and emits events when thresholds are crossed
 5. Tracks confidence distribution shifts over time
 """
+
 import json
 import logging
 from collections import deque
@@ -86,13 +87,26 @@ class MonitorAgent(BaseAgent):
         retrain_result = await self.use_tool("evaluate_retraining")
 
         # Emit heartbeat with status
-        await self.emit(EventType.HEARTBEAT, {
-            "agent": self.name,
-            "predictions_tracked": len(self._confidence_window),
-            "drift_detected": drift_result.data.get("drift_detected", False) if drift_result.success else False,
-            "sla_compliant": sla_result.data.get("compliant", True) if sla_result.success else True,
-            "retrain_needed": retrain_result.data.get("should_retrain", False) if retrain_result.success else False,
-        })
+        await self.emit(
+            EventType.HEARTBEAT,
+            {
+                "agent": self.name,
+                "predictions_tracked": len(self._confidence_window),
+                "drift_detected": (
+                    drift_result.data.get("drift_detected", False)
+                    if drift_result.success
+                    else False
+                ),
+                "sla_compliant": (
+                    sla_result.data.get("compliant", True) if sla_result.success else True
+                ),
+                "retrain_needed": (
+                    retrain_result.data.get("should_retrain", False)
+                    if retrain_result.success
+                    else False
+                ),
+            },
+        )
 
     async def _on_scan_analyzed(self, event):
         """Track metrics from each analyzed scan."""
@@ -103,11 +117,15 @@ class MonitorAgent(BaseAgent):
     async def _check_drift(self) -> ToolResult:
         """Analyze confidence distribution for drift signals."""
         if len(self._confidence_window) < 20:
-            return ToolResult(tool="check_drift", success=True, data={"drift_detected": False, "reason": "insufficient data"})
+            return ToolResult(
+                tool="check_drift",
+                success=True,
+                data={"drift_detected": False, "reason": "insufficient data"},
+            )
 
         window = list(self._confidence_window)
-        first_half = np.array(window[:len(window)//2])
-        second_half = np.array(window[len(window)//2:])
+        first_half = np.array(window[: len(window) // 2])
+        second_half = np.array(window[len(window) // 2 :])
 
         mean_shift = abs(float(np.mean(second_half) - np.mean(first_half)))
         drift_detected = mean_shift > CONFIDENCE_DROP_THRESHOLD
@@ -119,11 +137,14 @@ class MonitorAgent(BaseAgent):
                 details=f"Confidence mean shifted by {mean_shift:.4f}",
             )
             self.retraining.record_drift(drift_report)
-            await self.emit(EventType.DRIFT_DETECTED, {
-                "severity": drift_report.severity,
-                "mean_shift": round(mean_shift, 4),
-                "window_size": len(window),
-            })
+            await self.emit(
+                EventType.DRIFT_DETECTED,
+                {
+                    "severity": drift_report.severity,
+                    "mean_shift": round(mean_shift, 4),
+                    "window_size": len(window),
+                },
+            )
 
         return ToolResult(
             tool="check_drift",
@@ -140,7 +161,9 @@ class MonitorAgent(BaseAgent):
     async def _check_sla(self) -> ToolResult:
         """Verify latency and error rate against SLA targets."""
         if not self._latency_window:
-            return ToolResult(tool="check_sla", success=True, data={"compliant": True, "reason": "no data"})
+            return ToolResult(
+                tool="check_sla", success=True, data={"compliant": True, "reason": "no data"}
+            )
 
         latencies = np.array(list(self._latency_window))
         p50 = float(np.percentile(latencies, 50))
@@ -151,11 +174,14 @@ class MonitorAgent(BaseAgent):
         compliant = p99 < 100.0
 
         if not compliant:
-            await self.emit(EventType.SLA_VIOLATED, {
-                "p99_ms": round(p99, 2),
-                "threshold_ms": 100.0,
-                "p95_ms": round(p95, 2),
-            })
+            await self.emit(
+                EventType.SLA_VIOLATED,
+                {
+                    "p99_ms": round(p99, 2),
+                    "threshold_ms": 100.0,
+                    "p95_ms": round(p95, 2),
+                },
+            )
 
         return ToolResult(
             tool="check_sla",
@@ -175,10 +201,13 @@ class MonitorAgent(BaseAgent):
         decision: RetrainingDecision = self.retraining.evaluate()
 
         if decision.should_retrain:
-            await self.emit(EventType.RETRAIN_TRIGGERED, {
-                "reason": decision.reason,
-                "priority": decision.priority,
-            })
+            await self.emit(
+                EventType.RETRAIN_TRIGGERED,
+                {
+                    "reason": decision.reason,
+                    "priority": decision.priority,
+                },
+            )
 
         return ToolResult(
             tool="evaluate_retraining",
@@ -197,12 +226,15 @@ class MonitorAgent(BaseAgent):
         anomaly = avg > 0 and latest > avg * ANOMALY_VOLUME_FACTOR
 
         if anomaly:
-            await self.emit(EventType.ANOMALY_DETECTED, {
-                "type": "volume_spike",
-                "latest": latest,
-                "average": round(float(avg), 1),
-                "factor": round(latest / avg, 1) if avg > 0 else 0,
-            })
+            await self.emit(
+                EventType.ANOMALY_DETECTED,
+                {
+                    "type": "volume_spike",
+                    "latest": latest,
+                    "average": round(float(avg), 1),
+                    "factor": round(latest / avg, 1) if avg > 0 else 0,
+                },
+            )
 
         return ToolResult(
             tool="check_volume_anomaly",
@@ -224,12 +256,14 @@ class MonitorAgent(BaseAgent):
         bucket_size = max(1, len(window) // 10)
         trend = []
         for i in range(0, len(window), bucket_size):
-            bucket = window[i:i+bucket_size]
-            trend.append({
-                "index": i,
-                "mean_confidence": round(float(np.mean(bucket)), 4),
-                "count": len(bucket),
-            })
+            bucket = window[i : i + bucket_size]
+            trend.append(
+                {
+                    "index": i,
+                    "mean_confidence": round(float(np.mean(bucket)), 4),
+                    "count": len(bucket),
+                }
+            )
 
         return ToolResult(
             tool="get_confidence_trend",

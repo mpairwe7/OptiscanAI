@@ -10,6 +10,7 @@ All HTTP providers retry once on a 5xx response or transient network error to
 keep transactional flows resilient. Failures are logged but do not raise to the
 caller — auth/registration flows shouldn't 500 because email is down.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -82,6 +83,7 @@ async def send_rendered(*, to: str, email: RenderedEmail) -> None:
 
 # ── Retry helper ──
 
+
 async def _retry(fn, *args, attempts: int = 2, backoff_s: float = 1.5) -> None:
     last_exc: Optional[BaseException] = None
     for i in range(attempts):
@@ -97,6 +99,7 @@ async def _retry(fn, *args, attempts: int = 2, backoff_s: float = 1.5) -> None:
 
 
 # ── Provider implementations ──
+
 
 def _from_header() -> str:
     return f"{settings.email.from_name} <{settings.email.from_address}>"

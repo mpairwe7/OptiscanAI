@@ -2,6 +2,7 @@
 MixUp and CutMix augmentation for multi-label classification.
 Applied at the batch level after collation.
 """
+
 from __future__ import annotations
 
 import numpy as np

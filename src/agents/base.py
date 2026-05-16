@@ -1,4 +1,5 @@
 """Base agent class with lifecycle management, tool execution, and event integration."""
+
 import asyncio
 import logging
 from abc import ABC, abstractmethod
@@ -14,6 +15,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ToolResult:
     """Result from a tool invocation."""
+
     tool: str
     success: bool
     data: dict[str, Any] = field(default_factory=dict)
@@ -24,6 +26,7 @@ class ToolResult:
 @dataclass
 class AgentState:
     """Observable state of an agent."""
+
     name: str
     status: str = "idle"  # idle | running | error | stopped
     last_action: str = ""
@@ -79,6 +82,7 @@ class BaseAgent(ABC):
             return ToolResult(tool=name, success=False, error=f"Unknown tool: {name}")
 
         import time
+
         t0 = time.perf_counter()
         try:
             result = await tool_fn(**kwargs)
@@ -105,11 +109,13 @@ class BaseAgent(ABC):
 
     async def emit(self, event_type: EventType, data: dict | None = None):
         """Emit an event from this agent."""
-        await self.bus.emit(Event(
-            type=event_type,
-            source=self.name,
-            data=data or {},
-        ))
+        await self.bus.emit(
+            Event(
+                type=event_type,
+                source=self.name,
+                data=data or {},
+            )
+        )
 
     # ── Lifecycle ──
 
@@ -147,10 +153,13 @@ class BaseAgent(ABC):
                 self.state.errors += 1
                 self.state.status = "error"
                 logger.error(f"Agent {self.name} tick failed: {e}", exc_info=True)
-                await self.emit(EventType.AGENT_ERROR, {
-                    "agent": self.name,
-                    "error": str(e),
-                })
+                await self.emit(
+                    EventType.AGENT_ERROR,
+                    {
+                        "agent": self.name,
+                        "error": str(e),
+                    },
+                )
                 self.state.status = "running"
 
             await asyncio.sleep(interval)

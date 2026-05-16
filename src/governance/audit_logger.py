@@ -46,6 +46,7 @@ class AuditEventType(str, Enum):
 @dataclass
 class AuditEntry:
     """A single immutable audit log entry."""
+
     event_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     event_type: str = ""
     timestamp: float = field(default_factory=time.time)
@@ -257,9 +258,7 @@ class ImmutableAuditLogger:
                             first_invalid = entry_data.get("event_id")
 
                     # Verify self-hash
-                    entry = AuditEntry(**{
-                        k: v for k, v in entry_data.items() if k != "entry_hash"
-                    })
+                    entry = AuditEntry(**{k: v for k, v in entry_data.items() if k != "entry_hash"})
                     entry.previous_hash = entry_data.get("previous_hash", "")
                     computed = entry.compute_hash()
 
@@ -300,7 +299,9 @@ class ImmutableAuditLogger:
         """
         with self._write_lock:
             entry = AuditEntry(
-                event_type=event_type.value if isinstance(event_type, AuditEventType) else event_type,
+                event_type=(
+                    event_type.value if isinstance(event_type, AuditEventType) else event_type
+                ),
                 model_version=model_version,
                 user_id=user_id,
                 patient_id_hash=patient_id_hash,
@@ -378,6 +379,7 @@ class ImmutableAuditLogger:
         try:
             if self._kafka_producer is None:
                 from kafka import KafkaProducer
+
                 self._kafka_producer = KafkaProducer(
                     bootstrap_servers=self.kafka_config.get("bootstrap_servers", "localhost:9092"),
                     value_serializer=lambda v: json.dumps(v, default=str).encode(),

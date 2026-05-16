@@ -115,7 +115,9 @@ class TTSEngine:
                 yield audio_data[offset:end]
                 offset = end
                 # Small delay to simulate streaming and allow barge-in checks
-                await asyncio.sleep(len(audio_data[offset - chunk_size:end]) / (self._sample_rate * 2))
+                await asyncio.sleep(
+                    len(audio_data[offset - chunk_size : end]) / (self._sample_rate * 2)
+                )
 
         finally:
             self._is_speaking = False

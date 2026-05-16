@@ -33,12 +33,16 @@ class ReferralSMSRequest(BaseModel):
 async def send_referral_sms(body: ReferralSMSRequest, _gate=Depends(_sms_gate)):
     """Send screening result + referral as SMS."""
     from backend.app.integrations.africastalking.sms import SMSService
+
     sms = SMSService()
     sms.initialize()
     result = await sms.send_referral_sms(
-        phone=body.phone, patient_name=body.patient_name,
-        diseases=body.diseases, priority=body.priority,
-        facility=body.facility, language=body.language,
+        phone=body.phone,
+        patient_name=body.patient_name,
+        diseases=body.diseases,
+        priority=body.priority,
+        facility=body.facility,
+        language=body.language,
     )
     return {"message_id": result.message_id, "status": result.status}
 
@@ -58,6 +62,7 @@ async def ussd_callback(
 ):
     """USSD session callback from Africa's Talking."""
     from backend.app.integrations.africastalking.ussd import USSDService
+
     ussd = USSDService()
     response = ussd.handle_callback(sessionId, phoneNumber, text)
     return response  # Plain text response (CON or END prefix)
@@ -67,6 +72,7 @@ async def ussd_callback(
 async def check_delivery(msg_id: str, _gate=Depends(_sms_gate)):
     """Check SMS delivery status."""
     from backend.app.integrations.africastalking.sms import SMSService
+
     sms = SMSService()
     status = await sms.check_delivery(msg_id)
     return {"message_id": status.message_id, "status": status.status}

@@ -71,34 +71,46 @@ def detect_language_segments(text: str) -> list[dict]:
     current_words = []
 
     luganda_prefixes = (
-        "oku", "obu", "emu", "aba", "ama", "eby", "eki", "omu",
-        "enk", "ens", "ebb", "ekk", "enn",
+        "oku",
+        "obu",
+        "emu",
+        "aba",
+        "ama",
+        "eby",
+        "eki",
+        "omu",
+        "enk",
+        "ens",
+        "ebb",
+        "ekk",
+        "enn",
     )
 
     for word in words:
         lower = word.lower().strip(".,!?")
-        is_luganda = (
-            any(lower.startswith(p) for p in luganda_prefixes)
-            or lower in LUGANDA_TERM_MAP
-        )
+        is_luganda = any(lower.startswith(p) for p in luganda_prefixes) or lower in LUGANDA_TERM_MAP
 
         detected = "lg" if is_luganda else "en"
 
         if detected != current_lang and current_words:
-            segments.append({
-                "language": current_lang,
-                "text": " ".join(current_words),
-            })
+            segments.append(
+                {
+                    "language": current_lang,
+                    "text": " ".join(current_words),
+                }
+            )
             current_words = []
             current_lang = detected
 
         current_words.append(word)
 
     if current_words:
-        segments.append({
-            "language": current_lang,
-            "text": " ".join(current_words),
-        })
+        segments.append(
+            {
+                "language": current_lang,
+                "text": " ".join(current_words),
+            }
+        )
 
     return segments
 
@@ -114,22 +126,26 @@ def extract_medical_terms(text: str) -> list[dict]:
     # Check Ugandan English patterns
     for pattern, canonical in UGANDAN_ENGLISH_MAP.items():
         if pattern in lower:
-            found.append({
-                "term": canonical,
-                "source": pattern,
-                "language": "en",
-                "disease_codes": TERM_TO_DISEASE.get(canonical, []),
-            })
+            found.append(
+                {
+                    "term": canonical,
+                    "source": pattern,
+                    "language": "en",
+                    "disease_codes": TERM_TO_DISEASE.get(canonical, []),
+                }
+            )
 
     # Check Luganda terms
     for pattern, canonical in LUGANDA_TERM_MAP.items():
         if pattern in lower:
-            found.append({
-                "term": canonical,
-                "source": pattern,
-                "language": "lg",
-                "disease_codes": TERM_TO_DISEASE.get(canonical, []),
-            })
+            found.append(
+                {
+                    "term": canonical,
+                    "source": pattern,
+                    "language": "lg",
+                    "disease_codes": TERM_TO_DISEASE.get(canonical, []),
+                }
+            )
 
     # Deduplicate by canonical term
     seen = set()

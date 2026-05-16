@@ -92,7 +92,9 @@ class ASREngine:
             )
             logger.info(
                 "Whisper ASR loaded: model=%s, device=%s, compute=%s",
-                model_source, self._device, self._compute_type,
+                model_source,
+                self._device,
+                self._compute_type,
             )
         except Exception as e:
             logger.error("Failed to load Whisper model: %s", e)
@@ -128,9 +130,7 @@ class ASREngine:
 
         return self._transcribe(audio, is_partial=False)
 
-    def _transcribe(
-        self, audio: np.ndarray, is_partial: bool = False
-    ) -> TranscriptionResult:
+    def _transcribe(self, audio: np.ndarray, is_partial: bool = False) -> TranscriptionResult:
         """Internal transcription method."""
         t0 = time.perf_counter()
 
@@ -162,12 +162,14 @@ class ASREngine:
 
             for seg in segments:
                 text_parts.append(seg.text.strip())
-                segment_data.append({
-                    "start": seg.start,
-                    "end": seg.end,
-                    "text": seg.text.strip(),
-                    "avg_logprob": seg.avg_logprob,
-                })
+                segment_data.append(
+                    {
+                        "start": seg.start,
+                        "end": seg.end,
+                        "text": seg.text.strip(),
+                        "avg_logprob": seg.avg_logprob,
+                    }
+                )
                 total_confidence += np.exp(seg.avg_logprob)
                 count += 1
 

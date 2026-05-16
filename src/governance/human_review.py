@@ -1,4 +1,5 @@
 """Human-in-the-loop review system for low-confidence and high-risk predictions."""
+
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -50,7 +51,13 @@ class HumanReviewGate:
         self.confidence_threshold = confidence_threshold
         self.max_confidence = max_confidence_for_review
         self.urgent_diseases = urgent_referral_diseases or [
-            "DR", "ARMD", "CRVO", "CRAO", "AION", "VH", "RS",  # sight-threatening
+            "DR",
+            "ARMD",
+            "CRVO",
+            "CRAO",
+            "AION",
+            "VH",
+            "RS",  # sight-threatening
         ]
         self._pending_reviews: list[ReviewRequest] = []
 
@@ -73,10 +80,9 @@ class HumanReviewGate:
         threshold = prediction_result.get("threshold", 0.5)
         per_class_thresholds = prediction_result.get("per_class_thresholds", {})
         borderline = [
-            p for p in predictions
-            if abs(
-                p["probability"] - per_class_thresholds.get(p["code"], threshold)
-            ) < 0.1
+            p
+            for p in predictions
+            if abs(p["probability"] - per_class_thresholds.get(p["code"], threshold)) < 0.1
         ]
         if len(borderline) > 2:
             reasons.append(ReviewReason.CONFLICTING_PREDICTIONS)
@@ -102,7 +108,8 @@ class HumanReviewGate:
                 and abs(
                     value.get("probability", 0)
                     - value.get("threshold", per_class_thresholds.get(code, threshold))
-                ) < 0.15
+                )
+                < 0.15
             )
             if near_threshold > 5:
                 reasons.append(ReviewReason.LOW_CONFIDENCE)
@@ -118,20 +125,26 @@ class HumanReviewGate:
             priority=priority,
             prediction_summary={
                 "num_detected": prediction_result.get("total_detected", 0),
-                "top_predictions": [{"code": p["code"], "probability": p["probability"]} for p in predictions[:5]],
+                "top_predictions": [
+                    {"code": p["code"], "probability": p["probability"]} for p in predictions[:5]
+                ],
                 "referral": prediction_result.get("clinical", {}).get("referral_priority", ""),
             },
         )
 
         self._pending_reviews.append(request)
-        logger.info(f"Human review requested: {request.request_id} priority={priority} reasons={request.reason}")
+        logger.info(
+            f"Human review requested: {request.request_id} priority={priority} reasons={request.reason}"
+        )
         return request
 
     @property
     def pending_count(self) -> int:
         return len([r for r in self._pending_reviews if r.decision is None])
 
-    def resolve(self, request_id: str, reviewer: str, decision: ReviewDecision, notes: str = "") -> bool:
+    def resolve(
+        self, request_id: str, reviewer: str, decision: ReviewDecision, notes: str = ""
+    ) -> bool:
         """Mark a review request as resolved."""
         for req in self._pending_reviews:
             if req.request_id == request_id:
@@ -148,4 +161,7 @@ class HumanReviewGate:
         pending = [r for r in self._pending_reviews if r.decision is None]
         if priority:
             pending = [r for r in pending if r.priority == priority]
-        return sorted(pending, key=lambda r: {"urgent": 0, "high": 1, "medium": 2, "low": 3}.get(r.priority, 4))
+        return sorted(
+            pending,
+            key=lambda r: {"urgent": 0, "high": 1, "medium": 2, "low": 3}.get(r.priority, 4),
+        )

@@ -118,11 +118,13 @@ class VADEngine:
             if elapsed_ms >= self.min_speech_ms:
                 self._is_speaking = True
                 self._silence_start_time = 0
-                events.append(VADEvent(
-                    event_type="speech_start",
-                    timestamp=now,
-                    confidence=speech_prob,
-                ))
+                events.append(
+                    VADEvent(
+                        event_type="speech_start",
+                        timestamp=now,
+                        confidence=speech_prob,
+                    )
+                )
 
         elif not is_speech and self._is_speaking:
             # Potential speech end
@@ -135,12 +137,14 @@ class VADEngine:
                 self._is_speaking = False
                 self._speech_start_time = 0
                 self._silence_start_time = 0
-                events.append(VADEvent(
-                    event_type="speech_end",
-                    timestamp=now,
-                    confidence=speech_prob,
-                    duration_ms=duration_ms,
-                ))
+                events.append(
+                    VADEvent(
+                        event_type="speech_end",
+                        timestamp=now,
+                        confidence=speech_prob,
+                        duration_ms=duration_ms,
+                    )
+                )
 
         elif is_speech and self._is_speaking:
             # Reset silence counter if speech resumes
@@ -166,7 +170,7 @@ class VADEngine:
             return prob
 
         # Energy-based fallback
-        energy = np.sqrt(np.mean(audio ** 2))
+        energy = np.sqrt(np.mean(audio**2))
         return min(energy * 10, 1.0)
 
     def reset(self) -> None:

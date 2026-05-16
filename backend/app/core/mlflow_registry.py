@@ -5,6 +5,7 @@ shadow deployments, A/B test logging, and lineage tracking.
 All operations are no-op when ``settings.mlflow.enabled`` is False or
 when the ``mlflow`` package is not installed.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -56,9 +57,7 @@ class MLflowRegistry:
         self._shadow_deployments: dict[str, dict[str, Any]] = {}
 
         if not _MLFLOW_AVAILABLE:
-            logger.warning(
-                "MLflowRegistry created but mlflow package is not installed"
-            )
+            logger.warning("MLflowRegistry created but mlflow package is not installed")
             return
 
         if not self._cfg.enabled:
@@ -80,9 +79,7 @@ class MLflowRegistry:
             exp = self._client.get_experiment_by_name(self._cfg.experiment_name)
             if exp is None:
                 self._client.create_experiment(self._cfg.experiment_name)
-                logger.info(
-                    "Created MLflow experiment %s", self._cfg.experiment_name
-                )
+                logger.info("Created MLflow experiment %s", self._cfg.experiment_name)
 
             self._enabled = True
             logger.info(
@@ -277,9 +274,7 @@ class MLflowRegistry:
             return True
 
         except Exception:
-            logger.exception(
-                "promote_model failed for version %d", model_version
-            )
+            logger.exception("promote_model failed for version %d", model_version)
             return False
 
     # ── Shadow Deployment ─────────────────────────────────────────────
@@ -330,9 +325,7 @@ class MLflowRegistry:
         """
         deployment = self._shadow_deployments.get(shadow_id)
         if deployment is None:
-            logger.warning(
-                "record_shadow_result: unknown shadow_id=%s", shadow_id
-            )
+            logger.warning("record_shadow_result: unknown shadow_id=%s", shadow_id)
             return
 
         deployment["results"].append(
@@ -364,9 +357,7 @@ class MLflowRegistry:
         """
         deployment = self._shadow_deployments.pop(shadow_id, None)
         if deployment is None:
-            logger.warning(
-                "end_shadow_deployment: unknown shadow_id=%s", shadow_id
-            )
+            logger.warning("end_shadow_deployment: unknown shadow_id=%s", shadow_id)
             return {
                 "staging_count": 0,
                 "production_count": 0,
@@ -422,15 +413,11 @@ class MLflowRegistry:
             The integer version, or ``None`` when disabled / not found.
         """
         if not self._enabled:
-            logger.debug(
-                "get_production_model_version skipped – registry disabled"
-            )
+            logger.debug("get_production_model_version skipped – registry disabled")
             return None
 
         try:
-            versions = self._client.get_latest_versions(
-                self._cfg.model_name, stages=["Production"]
-            )
+            versions = self._client.get_latest_versions(self._cfg.model_name, stages=["Production"])
             if versions:
                 version_num = int(versions[0].version)
                 logger.debug("Production model version: %d", version_num)
@@ -570,9 +557,7 @@ class MLflowRegistry:
             staging_versions = self._client.get_latest_versions(
                 self._cfg.model_name, stages=["Staging"]
             )
-            status["staging_versions"] = [
-                int(v.version) for v in staging_versions
-            ]
+            status["staging_versions"] = [int(v.version) for v in staging_versions]
         except Exception:
             logger.exception("Failed to query staging versions")
 
@@ -610,18 +595,15 @@ class MLflowRegistry:
                 # No running event loop – create a new one for this emit.
                 asyncio.run(event_bus.emit(event))
 
-            logger.debug(
-                "Emitted %s event: %s", event_type_name, data
-            )
+            logger.debug("Emitted %s event: %s", event_type_name, data)
         except Exception:
-            logger.exception(
-                "Failed to emit %s event", event_type_name
-            )
+            logger.exception("Failed to emit %s event", event_type_name)
 
 
 # ---------------------------------------------------------------------------
 # Utility
 # ---------------------------------------------------------------------------
+
 
 def _flatten_dict(
     d: dict,

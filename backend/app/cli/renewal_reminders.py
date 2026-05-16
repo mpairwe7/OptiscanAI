@@ -12,6 +12,7 @@ errors so cron logs surface them.
 The runner is idempotent — re-running the same day is a no-op because each
 reminder row has a unique constraint on ``(subscription_id, period_end, kind)``.
 """
+
 from __future__ import annotations
 
 import asyncio

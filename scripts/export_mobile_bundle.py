@@ -44,13 +44,13 @@ logger = logging.getLogger(__name__)
 
 MAX_BUNDLE_SIZE_MB = 800  # Hard limit for mobile bundle
 COMPONENT_BUDGETS_MB = {
-    "quantized_llm": 400,       # Gemma-2-2B Q4_K_M or distilled 3B
-    "embedder_onnx": 80,        # bge-m3 4-bit ONNX
-    "faiss_index": 80,          # FAISS vector index
-    "voice_asr": 75,            # Whisper-tiny
-    "voice_tts": 60,            # Piper/Sherpa TTS
-    "assets": 30,               # Passage data, configs, metadata
-    "flutter_app": 75,          # Flutter app overhead
+    "quantized_llm": 400,  # Gemma-2-2B Q4_K_M or distilled 3B
+    "embedder_onnx": 80,  # bge-m3 4-bit ONNX
+    "faiss_index": 80,  # FAISS vector index
+    "voice_asr": 75,  # Whisper-tiny
+    "voice_tts": 60,  # Piper/Sherpa TTS
+    "assets": 30,  # Passage data, configs, metadata
+    "flutter_app": 75,  # Flutter app overhead
 }
 
 
@@ -89,6 +89,7 @@ class BundleManifest:
 # File utilities
 # ---------------------------------------------------------------------------
 
+
 def file_size_mb(path: str | Path) -> float:
     """Get file or directory size in MB."""
     path = Path(path)
@@ -122,6 +123,7 @@ def sha256_directory(path: str | Path) -> str:
 # Component discovery
 # ---------------------------------------------------------------------------
 
+
 def discover_components(
     include_voice: bool = False,
 ) -> list[BundleComponent]:
@@ -137,21 +139,25 @@ def discover_components(
     ]
     for candidate in llm_candidates:
         if candidate.exists():
-            components.append(BundleComponent(
-                name="quantized_llm",
-                source_path=str(candidate),
-                size_mb=file_size_mb(candidate),
-                budget_mb=COMPONENT_BUDGETS_MB["quantized_llm"],
-                included=True,
-                sha256=sha256_file(candidate),
-            ))
+            components.append(
+                BundleComponent(
+                    name="quantized_llm",
+                    source_path=str(candidate),
+                    size_mb=file_size_mb(candidate),
+                    budget_mb=COMPONENT_BUDGETS_MB["quantized_llm"],
+                    included=True,
+                    sha256=sha256_file(candidate),
+                )
+            )
             break
     else:
-        components.append(BundleComponent(
-            name="quantized_llm",
-            budget_mb=COMPONENT_BUDGETS_MB["quantized_llm"],
-            included=False,
-        ))
+        components.append(
+            BundleComponent(
+                name="quantized_llm",
+                budget_mb=COMPONENT_BUDGETS_MB["quantized_llm"],
+                included=False,
+            )
+        )
 
     # ONNX embedder
     embedder_candidates = [
@@ -161,21 +167,25 @@ def discover_components(
     ]
     for candidate in embedder_candidates:
         if candidate.exists():
-            components.append(BundleComponent(
-                name="embedder_onnx",
-                source_path=str(candidate),
-                size_mb=file_size_mb(candidate),
-                budget_mb=COMPONENT_BUDGETS_MB["embedder_onnx"],
-                included=True,
-                sha256=sha256_file(candidate),
-            ))
+            components.append(
+                BundleComponent(
+                    name="embedder_onnx",
+                    source_path=str(candidate),
+                    size_mb=file_size_mb(candidate),
+                    budget_mb=COMPONENT_BUDGETS_MB["embedder_onnx"],
+                    included=True,
+                    sha256=sha256_file(candidate),
+                )
+            )
             break
     else:
-        components.append(BundleComponent(
-            name="embedder_onnx",
-            budget_mb=COMPONENT_BUDGETS_MB["embedder_onnx"],
-            included=False,
-        ))
+        components.append(
+            BundleComponent(
+                name="embedder_onnx",
+                budget_mb=COMPONENT_BUDGETS_MB["embedder_onnx"],
+                included=False,
+            )
+        )
 
     # FAISS index
     faiss_candidates = [
@@ -184,21 +194,25 @@ def discover_components(
     ]
     for candidate in faiss_candidates:
         if candidate.exists():
-            components.append(BundleComponent(
-                name="faiss_index",
-                source_path=str(candidate),
-                size_mb=file_size_mb(candidate),
-                budget_mb=COMPONENT_BUDGETS_MB["faiss_index"],
-                included=True,
-                sha256=sha256_file(candidate),
-            ))
+            components.append(
+                BundleComponent(
+                    name="faiss_index",
+                    source_path=str(candidate),
+                    size_mb=file_size_mb(candidate),
+                    budget_mb=COMPONENT_BUDGETS_MB["faiss_index"],
+                    included=True,
+                    sha256=sha256_file(candidate),
+                )
+            )
             break
     else:
-        components.append(BundleComponent(
-            name="faiss_index",
-            budget_mb=COMPONENT_BUDGETS_MB["faiss_index"],
-            included=False,
-        ))
+        components.append(
+            BundleComponent(
+                name="faiss_index",
+                budget_mb=COMPONENT_BUDGETS_MB["faiss_index"],
+                included=False,
+            )
+        )
 
     # Voice models (optional)
     if include_voice:
@@ -209,21 +223,25 @@ def discover_components(
         ]
         for candidate in asr_candidates:
             if candidate.exists():
-                components.append(BundleComponent(
-                    name="voice_asr",
-                    source_path=str(candidate),
-                    size_mb=file_size_mb(candidate),
-                    budget_mb=COMPONENT_BUDGETS_MB["voice_asr"],
-                    included=True,
-                    sha256=sha256_file(candidate),
-                ))
+                components.append(
+                    BundleComponent(
+                        name="voice_asr",
+                        source_path=str(candidate),
+                        size_mb=file_size_mb(candidate),
+                        budget_mb=COMPONENT_BUDGETS_MB["voice_asr"],
+                        included=True,
+                        sha256=sha256_file(candidate),
+                    )
+                )
                 break
         else:
-            components.append(BundleComponent(
-                name="voice_asr",
-                budget_mb=COMPONENT_BUDGETS_MB["voice_asr"],
-                included=False,
-            ))
+            components.append(
+                BundleComponent(
+                    name="voice_asr",
+                    budget_mb=COMPONENT_BUDGETS_MB["voice_asr"],
+                    included=False,
+                )
+            )
 
         # TTS (Piper/Sherpa)
         tts_candidates = [
@@ -232,39 +250,47 @@ def discover_components(
         ]
         for candidate in tts_candidates:
             if candidate.exists():
-                components.append(BundleComponent(
-                    name="voice_tts",
-                    source_path=str(candidate),
-                    size_mb=file_size_mb(candidate),
-                    budget_mb=COMPONENT_BUDGETS_MB["voice_tts"],
-                    included=True,
-                    sha256=sha256_file(candidate),
-                ))
+                components.append(
+                    BundleComponent(
+                        name="voice_tts",
+                        source_path=str(candidate),
+                        size_mb=file_size_mb(candidate),
+                        budget_mb=COMPONENT_BUDGETS_MB["voice_tts"],
+                        included=True,
+                        sha256=sha256_file(candidate),
+                    )
+                )
                 break
         else:
-            components.append(BundleComponent(
-                name="voice_tts",
-                budget_mb=COMPONENT_BUDGETS_MB["voice_tts"],
-                included=False,
-            ))
+            components.append(
+                BundleComponent(
+                    name="voice_tts",
+                    budget_mb=COMPONENT_BUDGETS_MB["voice_tts"],
+                    included=False,
+                )
+            )
 
     # Assets (passages, configs)
     assets_dir = _PROJECT_ROOT / "data" / "offline_rag"
     if assets_dir.exists():
-        components.append(BundleComponent(
-            name="assets",
-            source_path=str(assets_dir),
-            size_mb=file_size_mb(assets_dir),
-            budget_mb=COMPONENT_BUDGETS_MB["assets"],
-            included=True,
-            sha256=sha256_directory(assets_dir),
-        ))
+        components.append(
+            BundleComponent(
+                name="assets",
+                source_path=str(assets_dir),
+                size_mb=file_size_mb(assets_dir),
+                budget_mb=COMPONENT_BUDGETS_MB["assets"],
+                included=True,
+                sha256=sha256_directory(assets_dir),
+            )
+        )
     else:
-        components.append(BundleComponent(
-            name="assets",
-            budget_mb=COMPONENT_BUDGETS_MB["assets"],
-            included=False,
-        ))
+        components.append(
+            BundleComponent(
+                name="assets",
+                budget_mb=COMPONENT_BUDGETS_MB["assets"],
+                included=False,
+            )
+        )
 
     return components
 
@@ -272,6 +298,7 @@ def discover_components(
 # ---------------------------------------------------------------------------
 # Bundle builder
 # ---------------------------------------------------------------------------
+
 
 def build_bundle(
     components: list[BundleComponent],
@@ -315,7 +342,9 @@ def build_bundle(
         if comp.size_mb > comp.budget_mb:
             logger.warning(
                 "Component %s (%.1f MB) exceeds budget (%.1f MB) — including anyway",
-                comp.name, comp.size_mb, comp.budget_mb,
+                comp.name,
+                comp.size_mb,
+                comp.budget_mb,
             )
 
         dest = flutter_assets / comp.name
@@ -384,6 +413,7 @@ def build_bundle(
 # Summary printer
 # ---------------------------------------------------------------------------
 
+
 def print_summary(manifest: BundleManifest) -> None:
     """Print formatted summary of the mobile bundle."""
     sep = "-" * 78
@@ -404,7 +434,9 @@ def print_summary(manifest: BundleManifest) -> None:
     budget_w = 12
     status_w = 10
 
-    print(f"\n  {'Component':<{name_w}} {'Size (MB)':<{size_w}} {'Budget (MB)':<{budget_w}} {'Status':<{status_w}}")
+    print(
+        f"\n  {'Component':<{name_w}} {'Size (MB)':<{size_w}} {'Budget (MB)':<{budget_w}} {'Status':<{status_w}}"
+    )
     print(f"  {'-'*name_w} {'-'*size_w} {'-'*budget_w} {'-'*status_w}")
 
     for comp_dict in manifest.components:
@@ -420,7 +452,9 @@ def print_summary(manifest: BundleManifest) -> None:
         else:
             status = "OK"
 
-        print(f"  {name:<{name_w}} {size:<{size_w}.1f} {budget:<{budget_w}.1f} {status:<{status_w}}")
+        print(
+            f"  {name:<{name_w}} {size:<{size_w}.1f} {budget:<{budget_w}.1f} {status:<{status_w}}"
+        )
 
     print(sep)
 
@@ -438,6 +472,7 @@ def print_summary(manifest: BundleManifest) -> None:
 # ---------------------------------------------------------------------------
 # Flutter project scaffold generator
 # ---------------------------------------------------------------------------
+
 
 def generate_flutter_scaffold(output_dir: Path) -> None:
     """Generate Flutter project directory structure for offline-first mobile app.
@@ -464,7 +499,7 @@ def generate_flutter_scaffold(output_dir: Path) -> None:
 
     # Offline RAG service
     (flutter_root / "lib" / "offline" / "offline_rag_service.dart").write_text(
-        '''import 'dart:convert';
+        """import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 
@@ -536,12 +571,12 @@ class OfflineRAGService {
     return totalBytes / (1024 * 1024);
   }
 }
-'''
+"""
     )
 
     # Bundle manager
     (flutter_root / "lib" / "offline" / "bundle_manager.dart").write_text(
-        '''import 'dart:convert';
+        """import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:path_provider/path_provider.dart';
@@ -632,12 +667,12 @@ class DeltaSyncResult {
     required this.success,
   });
 }
-'''
+"""
     )
 
     # Sync service
     (flutter_root / "lib" / "offline" / "sync_service.dart").write_text(
-        '''import 'dart:async';
+        """import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'bundle_manager.dart';
 
@@ -700,12 +735,12 @@ class SyncService {
     return _lastSyncTime != null;
   }
 }
-'''
+"""
     )
 
     # Voice service
     (flutter_root / "lib" / "voice" / "voice_service.dart").write_text(
-        '''import 'dart:async';
+        """import 'dart:async';
 import 'dart:typed_data';
 
 /// Voice-first interface service for offline ASR + TTS.
@@ -763,12 +798,12 @@ class VoiceService {
     // TODO: Yield partial transcriptions as they arrive
   }
 }
-'''
+"""
     )
 
     # Voice chat screen
     (flutter_root / "lib" / "screens" / "voice_chat_screen.dart").write_text(
-        '''import 'package:flutter/material.dart';
+        """import 'package:flutter/material.dart';
 
 /// Full-screen voice-first chat interface.
 ///
@@ -924,12 +959,12 @@ class _VoiceChatScreenState extends State<VoiceChatScreen>
     });
   }
 }
-'''
+"""
     )
 
     # Waveform widget
     (flutter_root / "lib" / "widgets" / "waveform_widget.dart").write_text(
-        '''import 'dart:math';
+        """import 'dart:math';
 import 'package:flutter/material.dart';
 
 /// Animated waveform visualization for voice-first interface.
@@ -1007,17 +1042,20 @@ class _WaveformPainter extends CustomPainter {
         oldDelegate.isActive != isActive;
   }
 }
-'''
+"""
     )
 
     logger.info("Flutter scaffold generated at %s", flutter_root)
     logger.info("  Directories: %s", ", ".join(dirs))
-    logger.info("  Files: 6 Dart files (offline RAG, bundle manager, sync, voice, screens, widgets)")
+    logger.info(
+        "  Files: 6 Dart files (offline RAG, bundle manager, sync, voice, screens, widgets)"
+    )
 
 
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -1068,8 +1106,12 @@ def main() -> None:
 
     included = [c for c in components if c.included]
     missing = [c for c in components if not c.included]
-    logger.info("Found %d components (%d included, %d missing)",
-                len(components), len(included), len(missing))
+    logger.info(
+        "Found %d components (%d included, %d missing)",
+        len(components),
+        len(included),
+        len(missing),
+    )
 
     for c in missing:
         logger.warning("Missing component: %s (budget: %.0f MB)", c.name, c.budget_mb)
@@ -1077,8 +1119,9 @@ def main() -> None:
     # 2. Validate sizes
     print("[2/4] Validating component sizes ...")
     total_size = sum(c.size_mb for c in included)
-    logger.info("Total uncompressed size: %.1f MB (budget: %.0f MB)",
-                total_size, args.max_bundle_mb)
+    logger.info(
+        "Total uncompressed size: %.1f MB (budget: %.0f MB)", total_size, args.max_bundle_mb
+    )
 
     # 3. Build bundle
     if not args.no_archive and included:
@@ -1094,7 +1137,8 @@ def main() -> None:
         if not manifest.within_budget:
             logger.error(
                 "BUNDLE SIZE EXCEEDED: %.1f MB > %.0f MB limit",
-                manifest.total_size_mb, manifest.max_size_mb,
+                manifest.total_size_mb,
+                manifest.max_size_mb,
             )
             sys.exit(1)
     else:

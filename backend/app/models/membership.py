@@ -1,4 +1,5 @@
 """Membership: links a User to an Organization with a role."""
+
 from __future__ import annotations
 
 import enum
@@ -37,12 +38,18 @@ class Membership(Base):
     organization_id: Mapped[str] = uuid_fk("organizations.id", nullable=False, index=True)
 
     role: Mapped[MembershipRole] = mapped_column(
-        Enum(MembershipRole, name="membership_role", values_callable=lambda x: [e.value for e in x]),
+        Enum(
+            MembershipRole, name="membership_role", values_callable=lambda x: [e.value for e in x]
+        ),
         default=MembershipRole.CLINICIAN,
         nullable=False,
     )
     status: Mapped[MembershipStatus] = mapped_column(
-        Enum(MembershipStatus, name="membership_status", values_callable=lambda x: [e.value for e in x]),
+        Enum(
+            MembershipStatus,
+            name="membership_status",
+            values_callable=lambda x: [e.value for e in x],
+        ),
         default=MembershipStatus.ACTIVE,
         nullable=False,
         index=True,

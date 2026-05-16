@@ -46,7 +46,8 @@ async def upload_dicom(file: UploadFile = File(...)):
     for multimodal fusion context.
     """
     if not file.filename or not (
-        file.filename.endswith(".dcm") or file.filename.endswith(".dicom")
+        file.filename.endswith(".dcm")
+        or file.filename.endswith(".dicom")
         or "." not in file.filename  # DICOM files often have no extension
     ):
         # Still accept — DICOM files may have any extension

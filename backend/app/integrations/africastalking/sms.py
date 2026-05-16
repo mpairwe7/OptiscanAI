@@ -36,6 +36,7 @@ class SMSService:
         """Initialize Africa's Talking SDK."""
         try:
             import africastalking
+
             africastalking.initialize(self._username, self._api_key)
             self._client = africastalking.SMS
             logger.info("Africa's Talking SMS initialized")

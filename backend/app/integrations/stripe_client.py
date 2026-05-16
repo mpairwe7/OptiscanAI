@@ -1,4 +1,5 @@
 """Stripe SDK wrapper — checkout sessions, billing portal, webhook verification."""
+
 from __future__ import annotations
 
 import logging
@@ -120,9 +121,7 @@ async def set_seat_quantity(
     _configure()
     price_id = extra_seat_price_id(billing_cycle)
     if not price_id:
-        raise RuntimeError(
-            f"No Stripe extra-seat price configured for cycle={billing_cycle}"
-        )
+        raise RuntimeError(f"No Stripe extra-seat price configured for cycle={billing_cycle}")
 
     if seat_item_id and new_quantity == 0:
         # Remove the item entirely

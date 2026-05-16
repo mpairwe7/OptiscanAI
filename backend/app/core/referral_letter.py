@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ReferralLetterData:
     """Data for generating a referral letter."""
+
     scan_id: str = ""
     patient_name: str = ""
     patient_age: str = ""

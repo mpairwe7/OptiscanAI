@@ -33,9 +33,34 @@ logger = logging.getLogger(__name__)
 
 # Standard RFMiD disease names (28 classes after filtering)
 DISEASE_NAMES = [
-    "DR", "ARMD", "MH", "DN", "MYA", "BRVO", "TSLN", "ERM", "LS",
-    "MS", "CSR", "ODC", "CRVO", "TV", "AH", "ODP", "ODE", "ST",
-    "AION", "PT", "RT", "RS", "CRS", "EDN", "RPEC", "MHL", "RP", "CWS",
+    "DR",
+    "ARMD",
+    "MH",
+    "DN",
+    "MYA",
+    "BRVO",
+    "TSLN",
+    "ERM",
+    "LS",
+    "MS",
+    "CSR",
+    "ODC",
+    "CRVO",
+    "TV",
+    "AH",
+    "ODP",
+    "ODE",
+    "ST",
+    "AION",
+    "PT",
+    "RT",
+    "RS",
+    "CRS",
+    "EDN",
+    "RPEC",
+    "MHL",
+    "RP",
+    "CWS",
 ]
 
 
@@ -69,10 +94,12 @@ def extract_kg(disease_names: list[str]) -> dict:
             edge_key = tuple(sorted([disease, rel]))
             if edge_key not in seen:
                 seen.add(edge_key)
-                co_occurrence.append({
-                    "from": disease,
-                    "to": rel,
-                })
+                co_occurrence.append(
+                    {
+                        "from": disease,
+                        "to": rel,
+                    }
+                )
 
     # --- Disease categories ---
     categories = {}
@@ -116,7 +143,11 @@ def extract_kg(disease_names: list[str]) -> dict:
 
     # Classify diseases by referral urgency using the KG
     for disease in disease_names:
-        priority = kg.get_referral_priority([disease]) if hasattr(kg, "get_referral_priority") else "FOLLOW_UP"
+        priority = (
+            kg.get_referral_priority([disease])
+            if hasattr(kg, "get_referral_priority")
+            else "FOLLOW_UP"
+        )
         if priority == "EMERGENCY":
             referral_rules["emergency_diseases"].append(disease)
         elif priority == "URGENT":

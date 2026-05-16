@@ -7,6 +7,7 @@ The provider-specific replay logic mirrors the live webhook handlers in
 ``backend.app.routers.payments`` — kept here so it can be invoked without
 HTTP middleware.
 """
+
 from __future__ import annotations
 
 import logging
@@ -90,6 +91,7 @@ async def _replay_stripe(db: AsyncSession, event: dict) -> dict:
         sub_id = obj.get("subscription")
         if sub_id:
             from backend.app.integrations import stripe_client
+
             stripe_sub = await stripe_client.retrieve_subscription(sub_id)
             checkout_meta = obj.get("metadata") or {}
             sub_meta = dict(stripe_sub.get("metadata") or {})
@@ -104,6 +106,7 @@ async def _replay_stripe(db: AsyncSession, event: dict) -> dict:
         summary["invoice_id"] = str(inv.id) if inv else None
     elif event_type == "invoice.payment_failed":
         from sqlalchemy import select
+
         sub_id = obj.get("subscription")
         if sub_id:
             row = (
@@ -118,13 +121,21 @@ async def _replay_stripe(db: AsyncSession, event: dict) -> dict:
 
 
 async def _replay_mtn(db: AsyncSession, payload: dict) -> dict:
-    tx_id = payload.get("referenceId") or payload.get("externalId") or payload.get("transaction_id") or ""
+    tx_id = (
+        payload.get("referenceId")
+        or payload.get("externalId")
+        or payload.get("transaction_id")
+        or ""
+    )
     status_str = (payload.get("status") or "").lower()
     if not tx_id:
         return {"action": "ignored", "reason": "missing reference"}
     if status_str in {"successful", "completed"}:
         sub = await confirm_by_provider_id(
-            db, provider="mtn", provider_intent_id=tx_id, raw=payload,
+            db,
+            provider="mtn",
+            provider_intent_id=tx_id,
+            raw=payload,
         )
         return {"action": "confirmed", "subscription_id": str(sub.id) if sub else None}
     return {"action": "noop", "status": status_str}
@@ -138,7 +149,10 @@ async def _replay_airtel(db: AsyncSession, payload: dict) -> dict:
         return {"action": "ignored", "reason": "missing reference"}
     if status_str in {"success", "ts", "successful", "completed"}:
         sub = await confirm_by_provider_id(
-            db, provider="airtel", provider_intent_id=tx_id, raw=payload,
+            db,
+            provider="airtel",
+            provider_intent_id=tx_id,
+            raw=payload,
         )
         return {"action": "confirmed", "subscription_id": str(sub.id) if sub else None}
     return {"action": "noop", "status": status_str}
@@ -152,7 +166,10 @@ async def _replay_flutterwave(db: AsyncSession, body: dict) -> dict:
         return {"action": "ignored", "reason": "missing tx_ref"}
     if fw_status in {"successful", "success", "completed"}:
         sub = await confirm_by_tx_ref(
-            db, provider="flutterwave", tx_ref=tx_ref, raw=data,
+            db,
+            provider="flutterwave",
+            tx_ref=tx_ref,
+            raw=data,
         )
         return {"action": "confirmed", "subscription_id": str(sub.id) if sub else None}
     return {"action": "noop", "status": fw_status}

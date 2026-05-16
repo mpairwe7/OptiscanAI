@@ -11,6 +11,7 @@ For non-Stripe rails (MoMo / Flutterwave) we currently surface a 400 — the
 user must contact sales. Stripe is the only path with native quantity
 manipulation that supports proration.
 """
+
 from __future__ import annotations
 
 import logging

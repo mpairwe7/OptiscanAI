@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SubgroupMetrics:
     """Metrics for a single demographic subgroup."""
+
     group_name: str
     group_value: str
     sample_count: int
@@ -48,6 +49,7 @@ class SubgroupMetrics:
 @dataclass
 class BiasReport:
     """Complete bias audit report."""
+
     timestamp: float = field(default_factory=time.time)
     model_version: str = ""
     dataset_name: str = ""
@@ -84,7 +86,10 @@ class BiasAuditor:
         min_subgroup_size: int = 30,
     ):
         self.protected_attributes = protected_attributes or [
-            "age_group", "sex", "ethnicity", "camera_device"
+            "age_group",
+            "sex",
+            "ethnicity",
+            "camera_device",
         ]
         self.dp_threshold = dp_threshold
         self.eo_threshold = eo_threshold
@@ -150,8 +155,11 @@ class BiasAuditor:
                 group_targets = targets[mask]
 
                 metrics = self._compute_group_metrics(
-                    group_preds, group_targets, threshold,
-                    group_name=attr_name, group_value=str(group_val),
+                    group_preds,
+                    group_targets,
+                    threshold,
+                    group_name=attr_name,
+                    group_value=str(group_val),
                 )
                 report.subgroup_metrics.append(metrics)
                 group_metrics[str(group_val)] = metrics
@@ -221,6 +229,7 @@ class BiasAuditor:
             # AUC
             try:
                 from sklearn.metrics import roc_auc_score
+
                 auc = roc_auc_score(y_true, y_prob)
                 aucs.append(auc)
             except Exception:
@@ -363,6 +372,7 @@ class BiasAuditor:
 # Uganda-Specific Bias Auditor (Phase 4)
 # ---------------------------------------------------------------------------
 
+
 class UgandaBiasAuditor(BiasAuditor):
     """Uganda-specific bias auditor with device, lighting, geographic subgroups.
 
@@ -449,7 +459,11 @@ class UgandaBiasAuditor(BiasAuditor):
 
                 precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
                 recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-                f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+                f1 = (
+                    2 * precision * recall / (precision + recall)
+                    if (precision + recall) > 0
+                    else 0.0
+                )
 
                 group_metrics[group_val] = SubgroupMetrics(
                     group_name=attr,
@@ -465,8 +479,10 @@ class UgandaBiasAuditor(BiasAuditor):
             f1_disparity = self.compute_f1_disparity(group_metrics)
 
             report["analyses"][attr] = {
-                "groups": {k: {"f1": v.f1, "sensitivity": v.sensitivity, "samples": v.sample_count}
-                           for k, v in group_metrics.items()},
+                "groups": {
+                    k: {"f1": v.f1, "sensitivity": v.sensitivity, "samples": v.sample_count}
+                    for k, v in group_metrics.items()
+                },
                 "f1_disparity": f1_disparity,
                 "passed": f1_disparity < self.f1_disparity_threshold,
             }
@@ -481,9 +497,7 @@ class UgandaBiasAuditor(BiasAuditor):
 
         return report
 
-    def simulate_device_degradation(
-        self, image: np.ndarray, device: str
-    ) -> np.ndarray:
+    def simulate_device_degradation(self, image: np.ndarray, device: str) -> np.ndarray:
         """Apply realistic image degradation for a specific Ugandan device.
 
         Used in testing to verify model robustness across common CHW devices.

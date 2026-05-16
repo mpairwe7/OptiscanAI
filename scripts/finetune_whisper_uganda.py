@@ -46,10 +46,12 @@ def prepare_dataset(data_dir: Path, split: str = "train"):
     for wav_file in sorted(split_dir.glob("*.wav")):
         txt_file = wav_file.with_suffix(".txt")
         if txt_file.exists():
-            records.append({
-                "audio": str(wav_file),
-                "text": txt_file.read_text().strip(),
-            })
+            records.append(
+                {
+                    "audio": str(wav_file),
+                    "text": txt_file.read_text().strip(),
+                }
+            )
 
     if not records:
         logger.warning("No audio+text pairs found in %s", split_dir)
@@ -152,9 +154,7 @@ def finetune(args):
         from optimum.onnxruntime import ORTModelForSpeechSeq2Seq
 
         onnx_path = Path(args.output_dir) / "whisper-tiny-ug.onnx"
-        ort_model = ORTModelForSpeechSeq2Seq.from_pretrained(
-            str(output_dir), export=True
-        )
+        ort_model = ORTModelForSpeechSeq2Seq.from_pretrained(str(output_dir), export=True)
         ort_model.save_pretrained(str(onnx_path.parent / "whisper-tiny-ug-onnx"))
         logger.info("ONNX export saved")
     except ImportError:

@@ -81,6 +81,7 @@ def export_onnx_safe(
     # Verify
     try:
         import onnxruntime as ort
+
         sess = ort.InferenceSession(output_path)
         onnx_out = sess.run(None, {"input": dummy.numpy()})[0]
         max_diff = np.abs(ref_output.numpy() - onnx_out).max()
@@ -145,6 +146,7 @@ def quantize_int8_safe(model: nn.Module, output_path: str) -> str:
 
     # Measure size
     import io
+
     buf = io.BytesIO()
     torch.save(quantized.state_dict(), buf)
     size_mb = buf.tell() / (1024 * 1024)
@@ -169,10 +171,35 @@ def main():
     # Build model
     # Use a minimal disease list for the factory
     disease_names = [
-        "DR", "ARMD", "MH", "DN", "MYA", "BRVO", "TSLN", "ERM", "LS", "MS",
-        "CSR", "ODC", "CRVO", "TV", "AH", "ODP", "ODE", "ST", "AION", "PT",
-        "RT", "RS", "CRS", "EDN", "RPEC", "MHL", "RP", "CWS",
-    ][:args.num_classes]
+        "DR",
+        "ARMD",
+        "MH",
+        "DN",
+        "MYA",
+        "BRVO",
+        "TSLN",
+        "ERM",
+        "LS",
+        "MS",
+        "CSR",
+        "ODC",
+        "CRVO",
+        "TV",
+        "AH",
+        "ODP",
+        "ODE",
+        "ST",
+        "AION",
+        "PT",
+        "RT",
+        "RS",
+        "CRS",
+        "EDN",
+        "RPEC",
+        "MHL",
+        "RP",
+        "CWS",
+    ][: args.num_classes]
     kg = ClinicalKnowledgeGraph(disease_names=disease_names)
 
     model = create_hybrid_v2(

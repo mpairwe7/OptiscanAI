@@ -57,7 +57,9 @@ class ModelEvaluator:
         logits = torch.cat(all_logits).numpy()
         targets = torch.cat(all_targets).numpy()
         probs = 1 / (1 + np.exp(-logits))
-        threshold_array = np.asarray(self.threshold) if not np.isscalar(self.threshold) else self.threshold
+        threshold_array = (
+            np.asarray(self.threshold) if not np.isscalar(self.threshold) else self.threshold
+        )
         if np.isscalar(threshold_array):
             preds = (probs > float(threshold_array)).astype(float)
         else:

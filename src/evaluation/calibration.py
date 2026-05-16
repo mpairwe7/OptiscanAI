@@ -2,6 +2,7 @@
 Temperature scaling calibration and ECE computation.
 Post-hoc calibration (Guo et al. 2017) for reliable prediction confidence.
 """
+
 from __future__ import annotations
 
 import logging
@@ -58,9 +59,7 @@ class TemperatureScaler(nn.Module):
         return temp
 
 
-def compute_ece(
-    probs: np.ndarray, targets: np.ndarray, n_bins: int = 15
-) -> tuple[float, dict]:
+def compute_ece(probs: np.ndarray, targets: np.ndarray, n_bins: int = 15) -> tuple[float, dict]:
     """
     Expected Calibration Error for multi-label classification.
     Returns (ece_value, reliability_data_for_plotting).
@@ -119,4 +118,8 @@ def bootstrap_confidence_interval(
         return 0.0, 0.0, 0.0
     scores = np.array(scores)
     alpha = (1 - ci) / 2
-    return float(scores.mean()), float(np.percentile(scores, alpha * 100)), float(np.percentile(scores, (1 - alpha) * 100))
+    return (
+        float(scores.mean()),
+        float(np.percentile(scores, alpha * 100)),
+        float(np.percentile(scores, (1 - alpha) * 100)),
+    )

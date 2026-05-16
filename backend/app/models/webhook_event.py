@@ -1,4 +1,5 @@
 """WebhookEvent — idempotency log for provider webhooks."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -17,7 +18,12 @@ class WebhookEvent(Base):
 
     id: Mapped[str] = uuid_pk()
     provider: Mapped[PaymentProvider] = mapped_column(
-        Enum(PaymentProvider, name="payment_provider", create_type=False, values_callable=lambda x: [e.value for e in x]),
+        Enum(
+            PaymentProvider,
+            name="payment_provider",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
         nullable=False,
     )
     provider_event_id: Mapped[str] = mapped_column(String(200), nullable=False)

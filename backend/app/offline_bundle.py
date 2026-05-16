@@ -10,6 +10,7 @@ Features:
 - In-archive JSON manifest describing bundle contents
 - Version listing and rollback support
 """
+
 from __future__ import annotations
 
 import gzip
@@ -46,6 +47,7 @@ except ImportError:
 @dataclass
 class BundleManifest:
     """Metadata embedded inside every bundle archive."""
+
     version: str
     created_at: float
     created_by: str = "retinalai-bundle-manager"
@@ -81,6 +83,7 @@ class BundleManifest:
 @dataclass
 class BundleInfo:
     """Summary information about a bundle on disk."""
+
     version: str
     path: str
     size_bytes: int
@@ -172,12 +175,20 @@ class OfflineBundleManager:
         compression: str = "gzip",
         target_size_mb: int = 150,
     ) -> None:
-        self._index_dir = Path(index_dir or os.getenv(
-            "OFFLINE_RAG_INDEX_DIR", "data/offline_rag/index",
-        ))
-        self._bundles_dir = Path(bundles_dir or os.getenv(
-            "OFFLINE_RAG_BUNDLES_DIR", "data/offline_rag/bundles",
-        ))
+        self._index_dir = Path(
+            index_dir
+            or os.getenv(
+                "OFFLINE_RAG_INDEX_DIR",
+                "data/offline_rag/index",
+            )
+        )
+        self._bundles_dir = Path(
+            bundles_dir
+            or os.getenv(
+                "OFFLINE_RAG_BUNDLES_DIR",
+                "data/offline_rag/bundles",
+            )
+        )
         self._compression = compression if compression in ("gzip", "zstd") else "gzip"
         self._target_size_mb = target_size_mb
 
@@ -275,11 +286,13 @@ class OfflineBundleManager:
                 for arcname, filepath in all_entries:
                     tar.add(str(filepath), arcname=arcname)
                     size = filepath.stat().st_size
-                    manifest.files.append({
-                        "name": arcname,
-                        "size_bytes": size,
-                        "sha256": _sha256_file(filepath),
-                    })
+                    manifest.files.append(
+                        {
+                            "name": arcname,
+                            "size_bytes": size,
+                            "sha256": _sha256_file(filepath),
+                        }
+                    )
                     manifest.total_size_bytes += size
 
                 # Write bundle_meta.json
@@ -317,12 +330,17 @@ class OfflineBundleManager:
         if size_mb > self._target_size_mb:
             logger.warning(
                 "Bundle v%s is %.1f MB (target < %d MB)",
-                version, size_mb, self._target_size_mb,
+                version,
+                size_mb,
+                self._target_size_mb,
             )
 
         logger.info(
             "Bundle v%s built: %s (%.1f MB, sha256=%s)",
-            version, archive_path, size_mb, sha[:16],
+            version,
+            archive_path,
+            size_mb,
+            sha[:16],
         )
 
         return BundleInfo(
@@ -363,12 +381,13 @@ class OfflineBundleManager:
                 "error": "No .sha256 sidecar file found",
             }
 
-        raw_expected = hash_path.read_text().strip().split()[0] if hash_path.read_text().strip() else ""
+        raw_expected = (
+            hash_path.read_text().strip().split()[0] if hash_path.read_text().strip() else ""
+        )
 
         # Validate that the expected hash is a valid hex SHA-256 string
-        valid_hex = (
-            len(raw_expected) == 64
-            and all(c in "0123456789abcdef" for c in raw_expected.lower())
+        valid_hex = len(raw_expected) == 64 and all(
+            c in "0123456789abcdef" for c in raw_expected.lower()
         )
         if not valid_hex:
             return {
@@ -448,19 +467,25 @@ class OfflineBundleManager:
         for fp in sorted(self._bundles_dir.iterdir(), reverse=True):
             if not fp.name.startswith(self.BUNDLE_PREFIX):
                 continue
-            if not (fp.suffix in (".gz", ".zst") or fp.name.endswith(".tar.gz") or fp.name.endswith(".tar.zst")):
+            if not (
+                fp.suffix in (".gz", ".zst")
+                or fp.name.endswith(".tar.gz")
+                or fp.name.endswith(".tar.zst")
+            ):
                 continue
             if fp.name.endswith(".sha256"):
                 continue
 
             ver = self._version_from_path(fp)
             size = fp.stat().st_size
-            versions.append({
-                "version": ver,
-                "path": str(fp),
-                "size_bytes": size,
-                "size_mb": round(size / (1024 * 1024), 2),
-            })
+            versions.append(
+                {
+                    "version": ver,
+                    "path": str(fp),
+                    "size_bytes": size,
+                    "size_mb": round(size / (1024 * 1024), 2),
+                }
+            )
 
         # Sort by semver descending
         versions.sort(

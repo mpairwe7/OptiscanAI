@@ -3,6 +3,7 @@
 All Phase 1-4 features are opt-in via nested settings with env_nested_delimiter='__'.
 Example: TELEMETRY__ENABLED=true, MLFLOW__TRACKING_URI=http://mlflow:5000
 """
+
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
@@ -11,6 +12,7 @@ from pydantic_settings import BaseSettings
 
 class TelemetrySettings(BaseModel):
     """OpenTelemetry instrumentation (Phase 1)."""
+
     enabled: bool = False
     otlp_endpoint: str = "http://localhost:4317"
     otlp_protocol: str = "grpc"  # grpc | http
@@ -22,6 +24,7 @@ class TelemetrySettings(BaseModel):
 
 class MLflowSettings(BaseModel):
     """MLflow 3.0 Model Registry (Phase 1)."""
+
     enabled: bool = False
     tracking_uri: str = "http://localhost:5000"
     registry_uri: str = ""  # defaults to tracking_uri
@@ -33,6 +36,7 @@ class MLflowSettings(BaseModel):
 
 class ActiveLearningLoopSettings(BaseModel):
     """Active learning closed loop (Phase 1)."""
+
     enabled: bool = False
     retrain_threshold: int = 150
     queue_dir: str = "data/active_learning"
@@ -46,6 +50,7 @@ class ActiveLearningLoopSettings(BaseModel):
 
 class DriftSettings(BaseModel):
     """Enhanced drift detection (Phase 1)."""
+
     enabled: bool = True
     psi_threshold: float = 0.2
     ks_threshold: float = 0.05
@@ -62,6 +67,7 @@ class DriftSettings(BaseModel):
 
 class RayServeSettings(BaseModel):
     """Ray Serve model serving (Phase 2)."""
+
     enabled: bool = False
     serve_url: str = "http://localhost:8000"
     timeout_s: float = 30.0
@@ -74,6 +80,7 @@ class RayServeSettings(BaseModel):
 
 class CanarySettings(BaseModel):
     """Canary release routing (Phase 2)."""
+
     enabled: bool = False
     primary_version: str = "default"
     canary_version: str = ""
@@ -83,6 +90,7 @@ class CanarySettings(BaseModel):
 
 class CircuitBreakerSettings(BaseModel):
     """Circuit breaker for external services (Phase 2)."""
+
     failure_threshold: int = 5
     recovery_timeout_s: float = 60.0
     half_open_max_calls: int = 3
@@ -90,6 +98,7 @@ class CircuitBreakerSettings(BaseModel):
 
 class MTLSSettings(BaseModel):
     """Mutual TLS between services (Phase 2)."""
+
     enabled: bool = False
     ca_cert_path: str = ""
     client_cert_path: str = ""
@@ -99,6 +108,7 @@ class MTLSSettings(BaseModel):
 
 class KafkaSettings(BaseModel):
     """Kafka for durable event streaming (Phase 2)."""
+
     enabled: bool = False
     bootstrap_servers: str = "localhost:9092"
     audit_topic: str = "retinalai.audit"
@@ -109,6 +119,7 @@ class KafkaSettings(BaseModel):
 
 class IcebergSettings(BaseModel):
     """Apache Iceberg for immutable audit tables (Phase 2)."""
+
     enabled: bool = False
     catalog_uri: str = ""
     warehouse: str = ""
@@ -120,6 +131,7 @@ class IcebergSettings(BaseModel):
 
 class EdgeSettings(BaseModel):
     """Edge inference formats (Phase 3)."""
+
     onnx_enabled: bool = False
     onnx_model_path: str = "models/export/model.onnx"
     coreml_enabled: bool = False
@@ -131,13 +143,21 @@ class EdgeSettings(BaseModel):
 
 class FairnessSettings(BaseModel):
     """Fairness dashboard (Phase 3)."""
+
     enabled: bool = False
     cache_ttl_s: int = 3600
-    protected_attributes: list[str] = ["age_group", "sex", "ethnicity", "camera_device", "geography"]
+    protected_attributes: list[str] = [
+        "age_group",
+        "sex",
+        "ethnicity",
+        "camera_device",
+        "geography",
+    ]
 
 
 class ModelCardSettings(BaseModel):
     """Automated model card generation (Phase 3)."""
+
     auto_generate: bool = False
     output_dir: str = "outputs/governance"
 
@@ -147,17 +167,19 @@ class ModelCardSettings(BaseModel):
 
 class FundusGateSettings(BaseModel):
     """Fundus gate v2 fusion settings."""
+
     enabled: bool = True
-    version: str = "v2"                    # "v1" | "v2"
-    learned_weight: float = 0.4            # weight for learned gate in fusion
-    min_confidence: float = 0.70           # fusion confidence threshold
+    version: str = "v2"  # "v1" | "v2"
+    learned_weight: float = 0.4  # weight for learned gate in fusion
+    min_confidence: float = 0.70  # fusion confidence threshold
     model_path: str = "weights/fundus_gate.pth"
-    visual_evidence: bool = False          # generate base64 heatmaps on rejection
-    mc_dropout_samples: int = 5            # uncertainty estimation forward passes
+    visual_evidence: bool = False  # generate base64 heatmaps on rejection
+    mc_dropout_samples: int = 5  # uncertainty estimation forward passes
 
 
 class OfflineRAGSettings(BaseModel):
     """Offline RAG pipeline (Phase 5: Offline-First)."""
+
     enabled: bool = False
     index_dir: str = "data/offline_rag/index"
     source_dir: str = "data/offline_rag/source"
@@ -172,30 +194,32 @@ class OfflineRAGSettings(BaseModel):
 
 class QuantizationSettings(BaseModel):
     """Quantization pipeline and server optimization (Phase 5)."""
+
     enabled: bool = False
-    active_format: str = ""                 # gguf_q4_k_m | awq_4bit | onnx_int8 | etc.
+    active_format: str = ""  # gguf_q4_k_m | awq_4bit | onnx_int8 | etc.
     models_dir: str = "outputs/quantized"
     torch_compile_enabled: bool = False
     torch_compile_mode: str = "max-autotune"  # default | reduce-overhead | max-autotune
     prefix_cache_enabled: bool = False
     speculative_decoding_enabled: bool = False
-    speculative_draft_model: str = ""       # path to draft model for speculative decoding
-    embedder_format: str = ""               # onnx_int8 | fp16 | etc.
+    speculative_draft_model: str = ""  # path to draft model for speculative decoding
+    embedder_format: str = ""  # onnx_int8 | fp16 | etc.
     vllm_enabled: bool = False
     vllm_gpu_memory_fraction: float = 0.9
-    max_faithfulness_drop: float = 0.04     # max 4% faithfulness drop from baseline
-    max_p95_latency_ms: float = 1800.0      # target: <= 1.8s for full RAG
+    max_faithfulness_drop: float = 0.04  # max 4% faithfulness drop from baseline
+    max_p95_latency_ms: float = 1800.0  # target: <= 1.8s for full RAG
 
 
 class VoiceFirstSettings(BaseModel):
     """Voice-first mobile experience (Phase 5)."""
+
     enabled: bool = False
-    default_language: str = "en-ug"         # Ugandan English
-    asr_model: str = "whisper-tiny"         # whisper-tiny | whisper-base
+    default_language: str = "en-ug"  # Ugandan English
+    asr_model: str = "whisper-tiny"  # whisper-tiny | whisper-base
     asr_model_path: str = "models/voice/whisper-tiny.onnx"
-    tts_engine: str = "piper"              # piper | sherpa
+    tts_engine: str = "piper"  # piper | sherpa
     tts_model_path: str = "models/voice/piper-en-ug.onnx"
-    vad_sensitivity: float = 0.6            # 0.0-1.0, higher = more sensitive
+    vad_sensitivity: float = 0.6  # 0.0-1.0, higher = more sensitive
     barge_in_enabled: bool = True
     speech_rate: float = 1.0
     max_recording_seconds: float = 30.0
@@ -204,6 +228,7 @@ class VoiceFirstSettings(BaseModel):
 
 class MobileBundleSettings(BaseModel):
     """Mobile bundle optimization (Phase 5)."""
+
     enabled: bool = False
     max_bundle_size_mb: int = 800
     target_model: str = "gemma-2-2b-q4_k_m"
@@ -217,6 +242,7 @@ class MobileBundleSettings(BaseModel):
 
 class ResilienceSettings(BaseModel):
     """Graceful degradation (Phase 4)."""
+
     enabled: bool = False
     health_check_interval_s: float = 30.0
     fallback_cache_ttl_s: int = 300
@@ -224,6 +250,7 @@ class ResilienceSettings(BaseModel):
 
 class MultiModalSettings(BaseModel):
     """Multi-modal fusion skeleton (Phase 4)."""
+
     enabled: bool = False
     modalities: list[str] = ["fundus"]
     fusion_strategy: str = "concatenation"  # concatenation | cross_attention
@@ -231,6 +258,7 @@ class MultiModalSettings(BaseModel):
 
 class FederatedSettings(BaseModel):
     """Federated learning (Phase 4)."""
+
     enabled: bool = False
     framework: str = "flower"  # flower | nvflare
     server_address: str = "localhost:8080"
@@ -246,6 +274,7 @@ class FederatedSettings(BaseModel):
 
 class DHIS2Settings(BaseModel):
     """DHIS2 Uganda health information system integration (Phase 3)."""
+
     enabled: bool = False
     base_url: str = "https://dhis2.health.go.ug"
     auth_method: str = "pat"  # pat | oauth2
@@ -261,6 +290,7 @@ class DHIS2Settings(BaseModel):
 
 class MobileMoneySettings(BaseModel):
     """Mobile money integration — MTN MoMo + Airtel Money (Phase 3)."""
+
     enabled: bool = False
     mtn_api_key: str = ""
     mtn_api_secret: str = ""
@@ -278,11 +308,14 @@ class MobileMoneySettings(BaseModel):
 
 class StripeSettings(BaseModel):
     """Stripe card-payment integration (subscription billing)."""
+
     enabled: bool = False
     api_key: str = ""  # sk_test_... or sk_live_...
     publishable_key: str = ""  # pk_test_... (exposed to frontend via /plans)
     webhook_secret: str = ""  # whsec_... — for stripe.Webhook.construct_event
-    success_url: str = "https://www.optiscan.makstartup.com/app/checkout/success?session_id={CHECKOUT_SESSION_ID}"
+    success_url: str = (
+        "https://www.optiscan.makstartup.com/app/checkout/success?session_id={CHECKOUT_SESSION_ID}"
+    )
     cancel_url: str = "https://www.optiscan.makstartup.com/app/billing"
     portal_return_url: str = "https://www.optiscan.makstartup.com/app/billing"
 
@@ -303,6 +336,7 @@ class StripeSettings(BaseModel):
 
 class FlutterwaveSettings(BaseModel):
     """Flutterwave pan-African aggregator (cards + MoMo)."""
+
     enabled: bool = False
     public_key: str = ""
     secret_key: str = ""
@@ -313,6 +347,7 @@ class FlutterwaveSettings(BaseModel):
 
 class BillingSettings(BaseModel):
     """Subscription billing platform settings."""
+
     enabled: bool = False  # master switch — when False, predict.py skips quota
     free_scan_limit_monthly: int = 10
     free_period_days: int = 30  # rolling 30-day window for free-tier users
@@ -322,6 +357,7 @@ class BillingSettings(BaseModel):
 
 class EmailSettings(BaseModel):
     """Outbound email — used for verification, magic links, password reset, invites."""
+
     enabled: bool = False
     provider: str = "console"  # console | smtp | sendgrid | resend
     from_address: str = "noreply@makstartup.com"
@@ -340,6 +376,7 @@ class EmailSettings(BaseModel):
 
 class DatabaseSettings(BaseModel):
     """Postgres connection (async, asyncpg driver)."""
+
     enabled: bool = False  # when False, billing/auth features are disabled
     url: str = "postgresql+asyncpg://optiscan:optiscan@localhost:5432/optiscan"
     pool_size: int = 5
@@ -350,6 +387,7 @@ class DatabaseSettings(BaseModel):
 
 class AfricasTalkingSettings(BaseModel):
     """Africa's Talking SMS/USSD integration (Phase 3)."""
+
     enabled: bool = False
     api_key: str = ""
     username: str = "sandbox"
@@ -358,6 +396,7 @@ class AfricasTalkingSettings(BaseModel):
 
 class PrivacySettings(BaseModel):
     """Uganda PDP Act 2019 privacy compliance (Phase 3)."""
+
     enabled: bool = True
     consent_required: bool = True
     consent_storage_dir: str = "data/consent"

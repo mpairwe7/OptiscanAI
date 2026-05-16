@@ -2,6 +2,7 @@
 VisualLanguageGNN - Visual-Language Graph Neural Network.
 Extracted from notebook cell 47. ~48M parameters.
 """
+
 import torch
 import torch.nn as nn
 
@@ -14,10 +15,20 @@ class VisualLanguageGNN(nn.Module):
     Features: Multi-resolution processing, adaptive region selection, sparse attention.
     REQUIRES: clinical_knowledge_graph (ClinicalKnowledgeGraph instance)
     """
-    def __init__(self, num_classes=45, visual_dim=384, text_dim=256,
-                 hidden_dim=384, num_layers=2, num_heads=4, dropout=0.1,
-                 clinical_knowledge_graph=None,
-                 backbone='vit_small_patch16_224', img_size=224):
+
+    def __init__(
+        self,
+        num_classes=45,
+        visual_dim=384,
+        text_dim=256,
+        hidden_dim=384,
+        num_layers=2,
+        num_heads=4,
+        dropout=0.1,
+        clinical_knowledge_graph=None,
+        backbone="vit_small_patch16_224",
+        img_size=224,
+    ):
         super().__init__()
         if clinical_knowledge_graph is None:
             raise ValueError("VisualLanguageGNN requires clinical_knowledge_graph parameter")
@@ -25,29 +36,39 @@ class VisualLanguageGNN(nn.Module):
 
         self.visual_encoder = MultiResolutionEncoder(backbone, visual_dim, img_size=img_size)
         self.visual_proj = nn.Sequential(
-            nn.Linear(visual_dim, hidden_dim), nn.LayerNorm(hidden_dim), nn.GELU(),
+            nn.Linear(visual_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.GELU(),
         )
 
         self.region_importance = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim // 2), nn.ReLU(),
-            nn.Linear(hidden_dim // 2, 1), nn.Sigmoid(),
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.ReLU(),
+            nn.Linear(hidden_dim // 2, 1),
+            nn.Sigmoid(),
         )
 
         self.disease_text_embed = nn.Parameter(torch.randn(num_classes, text_dim))
         nn.init.normal_(self.disease_text_embed, std=0.02)
         self.text_proj = nn.Sequential(
-            nn.Linear(text_dim, hidden_dim), nn.LayerNorm(hidden_dim),
+            nn.Linear(text_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),
         )
 
-        self.cross_modal_layers = nn.ModuleList([
-            SparseTopKAttention(hidden_dim, num_heads=num_heads, dropout=dropout, top_k=20)
-            for _ in range(num_layers)
-        ])
+        self.cross_modal_layers = nn.ModuleList(
+            [
+                SparseTopKAttention(hidden_dim, num_heads=num_heads, dropout=dropout, top_k=20)
+                for _ in range(num_layers)
+            ]
+        )
         self.norms = nn.ModuleList([nn.LayerNorm(hidden_dim) for _ in range(num_layers)])
 
         self.classifier = nn.Sequential(
-            nn.Linear(hidden_dim * 2, 256), nn.LayerNorm(256), nn.GELU(),
-            nn.Dropout(dropout * 2), nn.Linear(256, num_classes),
+            nn.Linear(hidden_dim * 2, 256),
+            nn.LayerNorm(256),
+            nn.GELU(),
+            nn.Dropout(dropout * 2),
+            nn.Linear(256, num_classes),
         )
 
     def forward(self, x):

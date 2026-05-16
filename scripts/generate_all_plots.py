@@ -53,8 +53,11 @@ def generate_eda(cfg: dict):
     dm.setup("fit")
 
     generate_all_eda_plots(
-        train_df=dm.train_dataset.labels_df if hasattr(dm.train_dataset, 'labels_df') else
-                 _rebuild_df(dm.train_dataset),
+        train_df=(
+            dm.train_dataset.labels_df
+            if hasattr(dm.train_dataset, "labels_df")
+            else _rebuild_df(dm.train_dataset)
+        ),
         val_df=_rebuild_df(dm.val_dataset),
         test_df=_rebuild_df(dm.test_dataset) if dm.test_dataset else _rebuild_df(dm.val_dataset),
         disease_columns=dm.disease_columns,
@@ -62,7 +65,9 @@ def generate_eda(cfg: dict):
     )
 
 
-def generate_training(history_path: str = "outputs/training_history.json", model_name: str = "ViGNN"):
+def generate_training(
+    history_path: str = "outputs/training_history.json", model_name: str = "ViGNN"
+):
     """Generate training visualization plots."""
     from src.visualization.training_plots import generate_all_training_plots
 
@@ -174,9 +179,9 @@ def generate_evaluation(
     if cal_cfg.get("bootstrap_ci", {}).get("enabled", False):
         ci_cfg = cal_cfg["bootstrap_ci"]
         _, lower, upper = bootstrap_confidence_interval(
-            lambda y_true, y_prob: compute_multilabel_metrics(
-                y_true, y_prob, threshold=thresholds
-            )["f1_macro"],
+            lambda y_true, y_prob: compute_multilabel_metrics(y_true, y_prob, threshold=thresholds)[
+                "f1_macro"
+            ],
             results["y_true"],
             results["y_prob"],
             n_bootstrap=ci_cfg.get("n_bootstrap", 1000),
@@ -187,7 +192,9 @@ def generate_evaluation(
 
     # Benchmark
     benchmark = evaluator.benchmark_latency(batch_size=1)
-    logger.info(f"Latency: {benchmark['latency_mean_ms']:.2f} ms, Throughput: {benchmark['throughput_fps']:.1f} FPS")
+    logger.info(
+        f"Latency: {benchmark['latency_mean_ms']:.2f} ms, Throughput: {benchmark['throughput_fps']:.1f} FPS"
+    )
 
     # Save
     evaluator.save_results(results, benchmark, Path("outputs/evaluation"))
@@ -269,6 +276,7 @@ def generate_explainability(cfg: dict, checkpoint_path: str = "outputs/checkpoin
 
     # Load disease names from data module
     from src.data.datamodule import RetinalDataModule
+
     dm = RetinalDataModule(cfg)
     dm.setup("fit")
 
@@ -276,6 +284,7 @@ def generate_explainability(cfg: dict, checkpoint_path: str = "outputs/checkpoin
     adjacency = None
     try:
         from src.models.vignn import ClinicalKnowledgeGraph
+
         kg = ClinicalKnowledgeGraph(disease_names=dm.disease_columns)
         adjacency = kg.get_adjacency_matrix()
     except Exception as e:
@@ -321,29 +330,37 @@ def generate_benchmarks(cfg: dict, device_str: str = "cuda:0"):
     models = {}
     try:
         from src.models.vignn import ViGNN
-        models["ViGNN"] = ViGNN(num_classes=num_classes, hidden_dim=hidden,
-                                 clinical_knowledge_graph=kg)
+
+        models["ViGNN"] = ViGNN(
+            num_classes=num_classes, hidden_dim=hidden, clinical_knowledge_graph=kg
+        )
     except Exception as e:
         logger.warning(f"ViGNN: {e}")
 
     try:
         from src.models.graphclip import GraphCLIP
-        models["GraphCLIP"] = GraphCLIP(num_classes=num_classes, hidden_dim=hidden,
-                                         clinical_knowledge_graph=kg)
+
+        models["GraphCLIP"] = GraphCLIP(
+            num_classes=num_classes, hidden_dim=hidden, clinical_knowledge_graph=kg
+        )
     except Exception as e:
         logger.warning(f"GraphCLIP: {e}")
 
     try:
         from src.models.visual_language_gnn import VisualLanguageGNN
-        models["VisualLanguageGNN"] = VisualLanguageGNN(num_classes=num_classes,
-                                                         hidden_dim=hidden, clinical_knowledge_graph=kg)
+
+        models["VisualLanguageGNN"] = VisualLanguageGNN(
+            num_classes=num_classes, hidden_dim=hidden, clinical_knowledge_graph=kg
+        )
     except Exception as e:
         logger.warning(f"VisualLanguageGNN: {e}")
 
     try:
         from src.models.scene_graph_transformer import SceneGraphTransformer
-        models["SceneGraphTransformer"] = SceneGraphTransformer(num_classes=num_classes,
-                                                                  hidden_dim=hidden, clinical_knowledge_graph=kg)
+
+        models["SceneGraphTransformer"] = SceneGraphTransformer(
+            num_classes=num_classes, hidden_dim=hidden, clinical_knowledge_graph=kg
+        )
     except Exception as e:
         logger.warning(f"SceneGraphTransformer: {e}")
 
@@ -366,12 +383,32 @@ def generate_precision_rescue():
 
     # Static comparison: before (v1 experiments) vs after (v2 projected)
     before_metrics = {
-        "RETFound+MLP": {"precision_macro": 0.0252, "recall_macro": 0.8167, "f1_macro": 0.0458, "auc_roc": 0.4818},
-        "SGT+RETFound": {"precision_macro": 0.0293, "recall_macro": 0.7839, "f1_macro": 0.0488, "auc_roc": 0.4670},
-        "SGT+ViT-Small": {"precision_macro": 0.0356, "recall_macro": 0.1933, "f1_macro": 0.0445, "auc_roc": 0.4902},
+        "RETFound+MLP": {
+            "precision_macro": 0.0252,
+            "recall_macro": 0.8167,
+            "f1_macro": 0.0458,
+            "auc_roc": 0.4818,
+        },
+        "SGT+RETFound": {
+            "precision_macro": 0.0293,
+            "recall_macro": 0.7839,
+            "f1_macro": 0.0488,
+            "auc_roc": 0.4670,
+        },
+        "SGT+ViT-Small": {
+            "precision_macro": 0.0356,
+            "recall_macro": 0.1933,
+            "f1_macro": 0.0445,
+            "auc_roc": 0.4902,
+        },
     }
     after_metrics = {
-        "HybridV2 (projected)": {"precision_macro": 0.15, "recall_macro": 0.32, "f1_macro": 0.20, "auc_roc": 0.65},
+        "HybridV2 (projected)": {
+            "precision_macro": 0.15,
+            "recall_macro": 0.32,
+            "f1_macro": 0.20,
+            "auc_roc": 0.65,
+        },
     }
 
     # Load threshold report if available
@@ -409,6 +446,7 @@ def generate_precision_rescue():
 def _rebuild_df(dataset):
     """Rebuild a DataFrame from dataset for plotting."""
     import pandas as pd
+
     df = pd.DataFrame(dataset.labels_array, columns=dataset.disease_columns)
     df["ID"] = dataset.image_ids
     return df
@@ -430,7 +468,16 @@ def main():
     parser.add_argument(
         "--stages",
         nargs="+",
-        default=["eda", "training", "evaluation", "comparison", "explainability", "architecture", "benchmarks", "precision_rescue"],
+        default=[
+            "eda",
+            "training",
+            "evaluation",
+            "comparison",
+            "explainability",
+            "architecture",
+            "benchmarks",
+            "precision_rescue",
+        ],
         help="Which plot stages to run",
     )
     args = parser.parse_args()

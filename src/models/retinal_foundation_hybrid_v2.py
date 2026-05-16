@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 # Bottleneck Classifier (precision-focused)
 # ---------------------------------------------------------------------------
 
+
 class BottleneckClassifier(nn.Module):
     """High-dropout bottleneck head designed for small medical datasets.
 
@@ -47,9 +48,15 @@ class BottleneckClassifier(nn.Module):
     the classifier from encoding per-sample information.
     """
 
-    def __init__(self, input_dim: int, num_classes: int,
-                 hidden1: int = 512, hidden2: int = 128,
-                 dropout1: float = 0.5, dropout2: float = 0.3):
+    def __init__(
+        self,
+        input_dim: int,
+        num_classes: int,
+        hidden1: int = 512,
+        hidden2: int = 128,
+        dropout1: float = 0.5,
+        dropout2: float = 0.3,
+    ):
         super().__init__()
         self.head = nn.Sequential(
             nn.Linear(input_dim, hidden1),
@@ -71,6 +78,7 @@ class BottleneckClassifier(nn.Module):
 # Asymmetric Loss (precision-tuned)
 # ---------------------------------------------------------------------------
 
+
 class AsymmetricLossV2(nn.Module):
     """Asymmetric Loss tuned for extreme class imbalance (ICCV 2021).
 
@@ -81,8 +89,13 @@ class AsymmetricLossV2(nn.Module):
       - label_smoothing=0.05: prevent overconfident predictions
     """
 
-    def __init__(self, gamma_neg: float = 4.0, gamma_pos: float = 0.0,
-                 clip: float = 0.05, label_smoothing: float = 0.05):
+    def __init__(
+        self,
+        gamma_neg: float = 4.0,
+        gamma_pos: float = 0.0,
+        clip: float = 0.05,
+        label_smoothing: float = 0.05,
+    ):
         super().__init__()
         self.gamma_neg = gamma_neg
         self.gamma_pos = gamma_pos
@@ -95,7 +108,7 @@ class AsymmetricLossV2(nn.Module):
             targets = targets * (1 - self.label_smoothing) + 0.5 * self.label_smoothing
 
         probs = torch.sigmoid(logits).clamp(min=1e-8, max=1 - 1e-8)
-        probs_neg = (1.0 - probs)
+        probs_neg = 1.0 - probs
 
         # Probability shifting (hard threshold for easy negatives)
         if self.clip > 0:
@@ -116,6 +129,7 @@ class AsymmetricLossV2(nn.Module):
 # ---------------------------------------------------------------------------
 # RetinalFoundationHybridV2 — Precision-Focused Model
 # ---------------------------------------------------------------------------
+
 
 class RetinalFoundationHybridV2(nn.Module):
     """Precision-optimized retinal disease classification model.
@@ -196,9 +210,7 @@ class RetinalFoundationHybridV2(nn.Module):
             nn.Dropout(dropout),
         )
 
-        self.graph_attn = SparseTopKAttention(
-            hidden_dim, num_heads=8, dropout=dropout, top_k=32
-        )
+        self.graph_attn = SparseTopKAttention(hidden_dim, num_heads=8, dropout=dropout, top_k=32)
         self.graph_norm = nn.LayerNorm(hidden_dim)
 
         # Global context
@@ -225,19 +237,19 @@ class RetinalFoundationHybridV2(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass returning raw logits for loss computation."""
         # Encode
-        patch_features = self.encoder(x)                     # [B, N, D]
-        patch_embeds = self.patch_proj(patch_features)        # [B, N, D]
+        patch_features = self.encoder(x)  # [B, N, D]
+        patch_embeds = self.patch_proj(patch_features)  # [B, N, D]
 
         # Single graph attention layer
         attn_out, _ = self.graph_attn(patch_embeds, patch_embeds, patch_embeds)
         graph_embeds = self.graph_norm(patch_embeds + attn_out)
 
         # Global average pooling
-        global_feat = graph_embeds.mean(dim=1)                # [B, D]
+        global_feat = graph_embeds.mean(dim=1)  # [B, D]
         global_feat = self.global_pool(global_feat)
 
         # Classify
-        logits = self.classifier(global_feat)                 # [B, C]
+        logits = self.classifier(global_feat)  # [B, C]
         return logits
 
     # ------------------------------------------------------------------
@@ -347,7 +359,8 @@ class RetinalFoundationHybridV2(nn.Module):
         # Use optimized thresholds for detection
         thresholds_np = self.thresholds.cpu().numpy()
         detected = [
-            name for i, name in enumerate(disease_names)
+            name
+            for i, name in enumerate(disease_names)
             if i < len(probs) and probs[i] >= thresholds_np[i]
         ]
 
@@ -438,9 +451,7 @@ class RetinalFoundationHybridV2(nn.Module):
         else:
             raise ValueError(f"Unsupported threshold format: {type(thresholds)}")
 
-        self.thresholds.copy_(
-            torch.tensor(values[:self.num_classes], dtype=torch.float32)
-        )
+        self.thresholds.copy_(torch.tensor(values[: self.num_classes], dtype=torch.float32))
         logger.info(f"Loaded thresholds from {path} (mean={self.thresholds.mean():.3f})")
 
     def save_thresholds(self, path: str):
@@ -467,11 +478,11 @@ class RetinalFoundationHybridV2(nn.Module):
         encoder_total = sum(p.numel() for p in self.encoder.parameters())
         encoder_trainable = sum(p.numel() for p in self.encoder.parameters() if p.requires_grad)
         head_total = sum(
-            p.numel() for n, p in self.named_parameters()
-            if not n.startswith("encoder")
+            p.numel() for n, p in self.named_parameters() if not n.startswith("encoder")
         )
         head_trainable = sum(
-            p.numel() for n, p in self.named_parameters()
+            p.numel()
+            for n, p in self.named_parameters()
             if not n.startswith("encoder") and p.requires_grad
         )
         return {
@@ -492,6 +503,7 @@ class RetinalFoundationHybridV2(nn.Module):
 # ---------------------------------------------------------------------------
 # Class filtering utility
 # ---------------------------------------------------------------------------
+
 
 def filter_rare_classes(
     disease_columns: List[str],
@@ -538,6 +550,7 @@ def filter_rare_classes(
 # Factory
 # ---------------------------------------------------------------------------
 
+
 def create_hybrid_v2(
     num_classes: int = 28,
     hidden_dim: int = 512,
@@ -551,6 +564,7 @@ def create_hybrid_v2(
     """Create a precision-optimized hybrid model."""
     if clinical_knowledge_graph is None:
         from src.models.vignn import create_knowledge_graph
+
         clinical_knowledge_graph = create_knowledge_graph()
 
     model = RetinalFoundationHybridV2(

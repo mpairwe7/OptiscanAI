@@ -128,7 +128,8 @@ def build_teacher(cfg: dict, device: torch.device) -> nn.Module:
         if "num_classes" in ckpt and ckpt["num_classes"] != num_classes:
             logger.warning(
                 "Checkpoint num_classes=%d differs from config=%d",
-                ckpt["num_classes"], num_classes,
+                ckpt["num_classes"],
+                num_classes,
             )
 
     # Load thresholds from separate file if specified
@@ -187,9 +188,7 @@ def build_dataloader(cfg: dict, split: str = "train") -> DataLoader:
         return dm.test_dataloader()
 
 
-def extract_teacher_features(
-    teacher: nn.Module, x: torch.Tensor
-) -> torch.Tensor:
+def extract_teacher_features(teacher: nn.Module, x: torch.Tensor) -> torch.Tensor:
     """Extract teacher's global pool features (512-dim) via forward hook."""
     features = {}
 
@@ -281,12 +280,17 @@ def train(cfg: dict) -> dict:
         if "disease_columns" in ckpt_peek:
             teacher_cols = ckpt_peek["disease_columns"]
             # Get all 45 disease column names from the dataset
-            all_cols = list(train_loader.dataset.disease_columns) if hasattr(train_loader.dataset, "disease_columns") else None
+            all_cols = (
+                list(train_loader.dataset.disease_columns)
+                if hasattr(train_loader.dataset, "disease_columns")
+                else None
+            )
             if all_cols:
                 class_indices = [all_cols.index(c) for c in teacher_cols if c in all_cols]
                 logger.info(
                     "Class mapping: %d teacher classes from %d dataset columns",
-                    len(class_indices), len(all_cols),
+                    len(class_indices),
+                    len(all_cols),
                 )
         del ckpt_peek
 
@@ -391,9 +395,7 @@ def train(cfg: dict) -> dict:
             scaler.scale(loss).backward()
             if train_cfg.get("gradient_clip_val"):
                 scaler.unscale_(optimizer)
-                nn.utils.clip_grad_norm_(
-                    student.parameters(), train_cfg["gradient_clip_val"]
-                )
+                nn.utils.clip_grad_norm_(student.parameters(), train_cfg["gradient_clip_val"])
             scaler.step(optimizer)
             scaler.update()
 
@@ -438,18 +440,23 @@ def train(cfg: dict) -> dict:
         logger.info(
             "Epoch %d/%d — loss=%.4f (kd=%.4f task=%.4f feat=%.4f thresh=%.4f) "
             "val_P=%.3f val_R=%.3f val_F1=%.3f T=%.1f min_P=%.3f below_floor=%d",
-            epoch + 1, max_epochs,
-            epoch_losses["total"], epoch_losses["kd"], epoch_losses["task"],
-            epoch_losses["feature"], epoch_losses["threshold"],
-            val_metrics["precision_macro"], val_metrics["recall_macro"],
-            val_metrics["f1_macro"], criterion.temperature,
-            val_metrics["min_precision"], val_metrics["classes_below_floor"],
+            epoch + 1,
+            max_epochs,
+            epoch_losses["total"],
+            epoch_losses["kd"],
+            epoch_losses["task"],
+            epoch_losses["feature"],
+            epoch_losses["threshold"],
+            val_metrics["precision_macro"],
+            val_metrics["recall_macro"],
+            val_metrics["f1_macro"],
+            criterion.temperature,
+            val_metrics["min_precision"],
+            val_metrics["classes_below_floor"],
         )
 
         # Checkpointing
-        monitor = val_metrics.get(
-            cfg["checkpointing"].get("monitor", "precision_macro"), 0
-        )
+        monitor = val_metrics.get(cfg["checkpointing"].get("monitor", "precision_macro"), 0)
         if monitor > best_metric:
             best_metric = monitor
             patience_counter = 0

@@ -213,6 +213,7 @@ MEDICAL_TERMS: dict[str, dict[str, str]] = {
 # Lookup helpers
 # ---------------------------------------------------------------------------
 
+
 def get_disease_name(code: str, language: str = "en") -> str:
     """Get disease display name in the specified language."""
     entry = DISEASE_NAMES.get(code, {})

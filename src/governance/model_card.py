@@ -1,5 +1,6 @@
 """Model Card generator following Google's Model Cards framework (2024).
 Generates standardized documentation for each model version."""
+
 import json
 import logging
 from dataclasses import asdict, dataclass, field
@@ -26,13 +27,17 @@ class ModelDetails:
 @dataclass
 class IntendedUse:
     primary_use: str = "Screening aid for multi-label retinal disease detection from fundus images"
-    primary_users: list[str] = field(default_factory=lambda: ["Ophthalmologists", "Clinical researchers", "Healthcare AI teams"])
-    out_of_scope: list[str] = field(default_factory=lambda: [
-        "Standalone diagnostic tool without clinician oversight",
-        "Pediatric retinal screening (model trained on adult population)",
-        "Non-fundus imaging modalities (OCT, fluorescein angiography)",
-        "Real-time surgical guidance",
-    ])
+    primary_users: list[str] = field(
+        default_factory=lambda: ["Ophthalmologists", "Clinical researchers", "Healthcare AI teams"]
+    )
+    out_of_scope: list[str] = field(
+        default_factory=lambda: [
+            "Standalone diagnostic tool without clinician oversight",
+            "Pediatric retinal screening (model trained on adult population)",
+            "Non-fundus imaging modalities (OCT, fluorescein angiography)",
+            "Real-time surgical guidance",
+        ]
+    )
 
 
 @dataclass
@@ -44,11 +49,13 @@ class TrainingData:
     split_ratios: str = "70/20/10 (train/val/test)"
     preprocessing: str = "Resize to 224x224, ImageNet normalization"
     augmentation: str = "Random flips, rotation(15°), color jitter, random erasing"
-    known_limitations: list[str] = field(default_factory=lambda: [
-        "Dataset may not represent all global demographics equally",
-        "Severe class imbalance — rare diseases have very few samples",
-        "Image quality varies across collection sites",
-    ])
+    known_limitations: list[str] = field(
+        default_factory=lambda: [
+            "Dataset may not represent all global demographics equally",
+            "Severe class imbalance — rare diseases have very few samples",
+            "Image quality varies across collection sites",
+        ]
+    )
 
 
 @dataclass
@@ -74,39 +81,49 @@ class FairnessAnalysis:
 
 @dataclass
 class EthicalConsiderations:
-    risks: list[str] = field(default_factory=lambda: [
-        "False negatives may delay treatment for sight-threatening conditions",
-        "False positives may cause unnecessary patient anxiety and follow-up costs",
-        "Model performance may vary across demographic groups not well-represented in training data",
-        "Over-reliance on AI screening without clinical validation could harm patients",
-    ])
-    mitigations: list[str] = field(default_factory=lambda: [
-        "Model is designed as a screening AID, not a replacement for clinical diagnosis",
-        "High-confidence threshold recommended for automated referral decisions",
-        "Human-in-the-loop review required for all positive findings",
-        "Regular performance monitoring across demographic subgroups",
-        "Clinical validation study recommended before deployment",
-    ])
+    risks: list[str] = field(
+        default_factory=lambda: [
+            "False negatives may delay treatment for sight-threatening conditions",
+            "False positives may cause unnecessary patient anxiety and follow-up costs",
+            "Model performance may vary across demographic groups not well-represented in training data",
+            "Over-reliance on AI screening without clinical validation could harm patients",
+        ]
+    )
+    mitigations: list[str] = field(
+        default_factory=lambda: [
+            "Model is designed as a screening AID, not a replacement for clinical diagnosis",
+            "High-confidence threshold recommended for automated referral decisions",
+            "Human-in-the-loop review required for all positive findings",
+            "Regular performance monitoring across demographic subgroups",
+            "Clinical validation study recommended before deployment",
+        ]
+    )
 
 
 @dataclass
 class RegulatoryInfo:
     classification: str = "High-risk AI system (EU AI Act Article 6)"
-    applicable_regulations: list[str] = field(default_factory=lambda: [
-        "EU AI Act (2024/1689) — High-risk AI system",
-        "EU MDR 2017/745 — Software as Medical Device (SaMD)",
-        "FDA 21 CFR Part 820 — Quality System Regulation (if US market)",
-        "ISO 13485 — Medical Device Quality Management",
-        "ISO 14971 — Risk Management for Medical Devices",
-        "IEC 62304 — Medical Device Software Lifecycle",
-    ])
+    applicable_regulations: list[str] = field(
+        default_factory=lambda: [
+            "EU AI Act (2024/1689) — High-risk AI system",
+            "EU MDR 2017/745 — Software as Medical Device (SaMD)",
+            "FDA 21 CFR Part 820 — Quality System Regulation (if US market)",
+            "ISO 13485 — Medical Device Quality Management",
+            "ISO 14971 — Risk Management for Medical Devices",
+            "IEC 62304 — Medical Device Software Lifecycle",
+        ]
+    )
     conformity_status: str = "Pre-conformity — research use only"
-    post_market_surveillance: str = "Continuous monitoring via drift detection and prediction logging"
+    post_market_surveillance: str = (
+        "Continuous monitoring via drift detection and prediction logging"
+    )
 
 
 @dataclass
 class ModelCard:
-    model_details: ModelDetails = field(default_factory=lambda: ModelDetails(name="", version="", type="", architecture=""))
+    model_details: ModelDetails = field(
+        default_factory=lambda: ModelDetails(name="", version="", type="", architecture="")
+    )
     intended_use: IntendedUse = field(default_factory=IntendedUse)
     training_data: TrainingData = field(default_factory=TrainingData)
     performance: PerformanceMetrics = field(default_factory=PerformanceMetrics)
@@ -149,19 +166,30 @@ class ModelCard:
         for item in self.intended_use.out_of_scope:
             lines.append(f"- {item}")
 
-        lines += ["\n## Training Data", f"- **Dataset:** {self.training_data.dataset}",
-                   f"- **Samples:** {self.training_data.num_samples}", f"- **Classes:** {self.training_data.num_classes}",
-                   f"- **Split:** {self.training_data.split_ratios}\n",
-                   "**Known Limitations:**"]
+        lines += [
+            "\n## Training Data",
+            f"- **Dataset:** {self.training_data.dataset}",
+            f"- **Samples:** {self.training_data.num_samples}",
+            f"- **Classes:** {self.training_data.num_classes}",
+            f"- **Split:** {self.training_data.split_ratios}\n",
+            "**Known Limitations:**",
+        ]
         for item in self.training_data.known_limitations:
             lines.append(f"- {item}")
 
         p = self.performance
-        lines += ["\n## Performance", "| Metric | Value |", "|--------|-------|",
-                   f"| F1 Macro | {p.f1_macro:.4f} |", f"| F1 Micro | {p.f1_micro:.4f} |",
-                   f"| AUC-ROC | {p.auc_roc:.4f} |", f"| mAP | {p.mAP:.4f} |",
-                   f"| Precision | {p.precision_macro:.4f} |", f"| Recall | {p.recall_macro:.4f} |",
-                   f"| Inference | {p.inference_ms:.1f}ms |"]
+        lines += [
+            "\n## Performance",
+            "| Metric | Value |",
+            "|--------|-------|",
+            f"| F1 Macro | {p.f1_macro:.4f} |",
+            f"| F1 Micro | {p.f1_micro:.4f} |",
+            f"| AUC-ROC | {p.auc_roc:.4f} |",
+            f"| mAP | {p.mAP:.4f} |",
+            f"| Precision | {p.precision_macro:.4f} |",
+            f"| Recall | {p.recall_macro:.4f} |",
+            f"| Inference | {p.inference_ms:.1f}ms |",
+        ]
 
         lines += ["\n## Ethical Considerations", "### Risks"]
         for r in self.ethical_considerations.risks:
@@ -170,8 +198,12 @@ class ModelCard:
         for m in self.ethical_considerations.mitigations:
             lines.append(f"- {m}")
 
-        lines += ["\n## Regulatory", f"- **Classification:** {self.regulatory.classification}",
-                   f"- **Status:** {self.regulatory.conformity_status}\n", "**Applicable Regulations:**"]
+        lines += [
+            "\n## Regulatory",
+            f"- **Classification:** {self.regulatory.classification}",
+            f"- **Status:** {self.regulatory.conformity_status}\n",
+            "**Applicable Regulations:**",
+        ]
         for r in self.regulatory.applicable_regulations:
             lines.append(f"- {r}")
 
@@ -189,16 +221,23 @@ def generate_model_card(
     """Factory to create a pre-filled model card."""
     card = ModelCard()
     card.model_details = ModelDetails(
-        name=model_name, version=version, type="Graph Neural Network",
-        architecture=architecture, num_parameters=num_parameters,
+        name=model_name,
+        version=version,
+        type="Graph Neural Network",
+        architecture=architecture,
+        num_parameters=num_parameters,
         training_date=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
     )
     card.training_data.num_samples = num_samples
     card.performance = PerformanceMetrics(
-        f1_macro=metrics.get("f1_macro", 0), f1_micro=metrics.get("f1_micro", 0),
-        auc_roc=metrics.get("auc_roc", 0), mAP=metrics.get("mAP", 0),
-        precision_macro=metrics.get("precision_macro", 0), recall_macro=metrics.get("recall_macro", 0),
-        hamming_loss=metrics.get("hamming_loss", 0), inference_ms=metrics.get("inference_ms", 0),
+        f1_macro=metrics.get("f1_macro", 0),
+        f1_micro=metrics.get("f1_micro", 0),
+        auc_roc=metrics.get("auc_roc", 0),
+        mAP=metrics.get("mAP", 0),
+        precision_macro=metrics.get("precision_macro", 0),
+        recall_macro=metrics.get("recall_macro", 0),
+        hamming_loss=metrics.get("hamming_loss", 0),
+        inference_ms=metrics.get("inference_ms", 0),
         per_class_metrics=metrics.get("per_class", {}),
     )
     return card

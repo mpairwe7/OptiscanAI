@@ -1,4 +1,5 @@
 """Gate router — status and debug endpoints for fundus gate v2."""
+
 import io
 import logging
 import time
@@ -80,7 +81,9 @@ async def gate_validate(file: UploadFile = File(...)):
 
     contents = await file.read()
     if len(contents) > settings.max_upload_size:
-        raise HTTPException(413, f"File too large (max {settings.max_upload_size // 1024 // 1024}MB)")
+        raise HTTPException(
+            413, f"File too large (max {settings.max_upload_size // 1024 // 1024}MB)"
+        )
 
     try:
         image = Image.open(io.BytesIO(contents))

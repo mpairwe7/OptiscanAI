@@ -30,9 +30,7 @@ class DHIS2Client:
         if self._session is None or self._session.closed:
             headers = await self.auth.get_headers()
             headers["Content-Type"] = "application/json"
-            self._session = aiohttp.ClientSession(
-                headers=headers, timeout=self.timeout
-            )
+            self._session = aiohttp.ClientSession(headers=headers, timeout=self.timeout)
         return self._session
 
     async def close(self) -> None:
@@ -41,9 +39,7 @@ class DHIS2Client:
 
     # -- Patient lookup (TrackedEntityInstance API) --
 
-    async def search_patient(
-        self, query: str, org_unit: str
-    ) -> list[TrackedEntity]:
+    async def search_patient(self, query: str, org_unit: str) -> list[TrackedEntity]:
         """Search for patients by name or NIN."""
         session = await self._get_session()
         url = f"{self.base_url}/api/trackedEntityInstances"
@@ -60,8 +56,7 @@ class DHIS2Client:
                     tei_id=i.get("trackedEntityInstance", ""),
                     org_unit=i.get("orgUnit", ""),
                     attributes={
-                        a["displayName"]: a.get("value", "")
-                        for a in i.get("attributes", [])
+                        a["displayName"]: a.get("value", "") for a in i.get("attributes", [])
                     },
                 )
                 for i in instances
@@ -80,8 +75,7 @@ class DHIS2Client:
                 tei_id=data.get("trackedEntityInstance", ""),
                 org_unit=data.get("orgUnit", ""),
                 attributes={
-                    a["displayName"]: a.get("value", "")
-                    for a in data.get("attributes", [])
+                    a["displayName"]: a.get("value", "") for a in data.get("attributes", [])
                 },
             )
 
@@ -120,10 +114,7 @@ class DHIS2Client:
             "trackedEntityInstance": referral.tei_id,
             "eventDate": referral.event_date,
             "status": referral.status,
-            "dataValues": [
-                {"dataElement": k, "value": v}
-                for k, v in referral.data_values.items()
-            ],
+            "dataValues": [{"dataElement": k, "value": v} for k, v in referral.data_values.items()],
         }
 
         async with session.post(url, json=payload) as resp:

@@ -15,6 +15,7 @@ All functionality is gated behind ``MULTIMODAL__ENABLED=false`` by
 default.  When disabled the module can still be imported; the classifier
 simply wraps the fundus-only path.
 """
+
 from __future__ import annotations
 
 import logging
@@ -121,6 +122,7 @@ class FundusEncoder(ModalityEncoder, nn.Module):
         # Build a lightweight feature extractor from the ViGNN backbone
         try:
             from src.models.vignn import MultiResolutionEncoder
+
             self.visual_encoder = MultiResolutionEncoder(
                 backbone_name="vit_small_patch16_224",
                 output_dim=self._dim,
@@ -144,8 +146,8 @@ class FundusEncoder(ModalityEncoder, nn.Module):
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         """Encode a batch of fundus images ``(B, 3, 224, 224)`` -> ``(B, 384)``."""
         if self.visual_encoder is not None:
-            patch_tokens = self.visual_encoder(x)          # (B, N, D)
-            pooled = patch_tokens.mean(dim=1)              # (B, D)
+            patch_tokens = self.visual_encoder(x)  # (B, N, D)
+            pooled = patch_tokens.mean(dim=1)  # (B, D)
         else:
             pooled = x.flatten(1)[:, : self._dim]
             if pooled.size(1) < self._dim:
@@ -182,6 +184,7 @@ class OCTEncoder(ModalityEncoder, nn.Module):
 
         try:
             import timm
+
             self.backbone = timm.create_model(
                 "vit_small_patch16_224",
                 pretrained=False,
@@ -203,7 +206,7 @@ class OCTEncoder(ModalityEncoder, nn.Module):
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         """Encode a batch of OCT B-scans ``(B, 3, 224, 224)`` -> ``(B, 384)``."""
         if self.backbone is not None:
-            features = self.backbone(x)                    # (B, backbone_out)
+            features = self.backbone(x)  # (B, backbone_out)
         else:
             features = x.flatten(1)
         return self.proj(features)
@@ -242,9 +245,7 @@ class PatientMetadataEncoder(ModalityEncoder, nn.Module):
         self._num_features = num_features or self.DEFAULT_NUM_FEATURES
 
         # Learned defaults for imputing missing values (NaN -> default)
-        self.feature_defaults = nn.Parameter(
-            torch.zeros(self._num_features)
-        )
+        self.feature_defaults = nn.Parameter(torch.zeros(self._num_features))
 
         self.mlp = nn.Sequential(
             nn.Linear(self._num_features, 128),
@@ -341,10 +342,9 @@ class CrossAttentionFusion(FusionStrategy, nn.Module):
         self._modality_order = sorted(modality_dims.keys())
 
         # Per-modality input projections to a common dimension
-        self.input_projs = nn.ModuleDict({
-            name: nn.Linear(dim, output_dim)
-            for name, dim in modality_dims.items()
-        })
+        self.input_projs = nn.ModuleDict(
+            {name: nn.Linear(dim, output_dim) for name, dim in modality_dims.items()}
+        )
 
         self.cross_attn = nn.MultiheadAttention(
             embed_dim=output_dim,
@@ -366,8 +366,8 @@ class CrossAttentionFusion(FusionStrategy, nn.Module):
             if name not in embeddings:
                 continue
             emb = embeddings[name]
-            proj = self.input_projs[name](emb)       # (B, D)
-            projected.append(proj.unsqueeze(1))       # (B, 1, D)
+            proj = self.input_projs[name](emb)  # (B, D)
+            projected.append(proj.unsqueeze(1))  # (B, 1, D)
 
         if not projected:
             raise ValueError("No embeddings provided to CrossAttentionFusion")
@@ -376,8 +376,8 @@ class CrossAttentionFusion(FusionStrategy, nn.Module):
         tokens = torch.cat(projected, dim=1)
 
         attended, attn_weights = self.cross_attn(tokens, tokens, tokens)
-        attended = self.norm(attended + tokens)        # residual
-        pooled = attended.mean(dim=1)                  # (B, D)
+        attended = self.norm(attended + tokens)  # residual
+        pooled = attended.mean(dim=1)  # (B, D)
         return self.out_proj(pooled)
 
     def forward(self, embeddings: dict[str, torch.Tensor]) -> torch.Tensor:
@@ -450,10 +450,9 @@ class RetinalMultiModalClassifier(nn.Module):
             self._active_modalities = ["fundus"]
 
         # -- Learned default embeddings for missing modalities ---------------
-        self.default_embeddings = nn.ParameterDict({
-            name: nn.Parameter(torch.randn(dim) * 0.02)
-            for name, dim in modality_dims.items()
-        })
+        self.default_embeddings = nn.ParameterDict(
+            {name: nn.Parameter(torch.randn(dim) * 0.02) for name, dim in modality_dims.items()}
+        )
 
         # -- Fusion -----------------------------------------------------------
         if _fusion_name == "cross_attention":
@@ -532,10 +531,7 @@ class RetinalMultiModalClassifier(nn.Module):
         logits = self.classifier(fused)
 
         # Compute fusion weights as relative embedding norms
-        norms = {
-            name: float(emb.norm(dim=-1).mean().item())
-            for name, emb in embeddings.items()
-        }
+        norms = {name: float(emb.norm(dim=-1).mean().item()) for name, emb in embeddings.items()}
         total_norm = sum(norms.values()) or 1.0
         fusion_weights = {name: n / total_norm for name, n in norms.items()}
 

@@ -47,6 +47,7 @@ def set_cell_shading(cell, color_hex):
     """Set cell background color."""
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+
     shading = OxmlElement("w:shd")
     shading.set(qn("w:fill"), color_hex)
     shading.set(qn("w:val"), "clear")
@@ -119,8 +120,7 @@ def build_docx():
     affil = doc.add_paragraph()
     affil.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = affil.add_run(
-        "College of Computing and Information Sciences\n"
-        "Makerere University, Kampala, Uganda"
+        "College of Computing and Information Sciences\n" "Makerere University, Kampala, Uganda"
     )
     r.font.size = Pt(10)
 
@@ -425,7 +425,8 @@ def build_docx():
     # ── VII. Results ──
     add_heading_styled(doc, "VII. Results", level=1)
     add_heading_styled(doc, "A. Teacher Model Performance", level=2)
-    add_table_with_style(doc,
+    add_table_with_style(
+        doc,
         ["Metric", "Value"],
         [
             ["Precision (macro)", "0.312"],
@@ -443,7 +444,8 @@ def build_docx():
     )
 
     add_heading_styled(doc, "B. Student Model Properties", level=2)
-    add_table_with_style(doc,
+    add_table_with_style(
+        doc,
         ["Property", "Target", "Achieved"],
         [
             ["Parameters", "< 10M", "5.19M"],
@@ -455,7 +457,8 @@ def build_docx():
     )
 
     add_heading_styled(doc, "C. System Metrics", level=2)
-    add_table_with_style(doc,
+    add_table_with_style(
+        doc,
         ["Component", "Metric", "Target"],
         [
             ["Web API /predict", "p95 latency (GPU)", "< 100 ms"],
@@ -573,22 +576,30 @@ def main():
             [
                 "libreoffice",
                 "--headless",
-                "--convert-to", "pdf",
-                "--outdir", str(DOCS_DIR),
+                "--convert-to",
+                "pdf",
+                "--outdir",
+                str(DOCS_DIR),
                 str(docx_path),
             ],
-            capture_output=True, text=True, timeout=120,
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
         if pdf_path.exists() and pdf_path.stat().st_mtime_ns > old_pdf_mtime:
             print(f"  Saved: {pdf_path} ({pdf_path.stat().st_size / 1024:.0f} KB)")
         else:
             print(f"  PDF conversion may have failed: {result.stderr[:200]}")
             export_docx_to_pdf(docx_path, pdf_path)
-            print(f"  Saved via ReportLab fallback: {pdf_path} ({pdf_path.stat().st_size / 1024:.0f} KB)")
+            print(
+                f"  Saved via ReportLab fallback: {pdf_path} ({pdf_path.stat().st_size / 1024:.0f} KB)"
+            )
     except Exception as e:
         print(f"  PDF conversion failed: {e}")
         export_docx_to_pdf(docx_path, pdf_path)
-        print(f"  Saved via ReportLab fallback: {pdf_path} ({pdf_path.stat().st_size / 1024:.0f} KB)")
+        print(
+            f"  Saved via ReportLab fallback: {pdf_path} ({pdf_path.stat().st_size / 1024:.0f} KB)"
+        )
 
     # Also generate the FinalIEEETemplate.docx (same content, different filename)
     template_path = DOCS_DIR / "FinalIEEETemplate.docx"

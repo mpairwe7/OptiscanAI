@@ -1,5 +1,6 @@
 """Immutable audit trail for model lifecycle events.
 Records training runs, deployments, predictions, and configuration changes."""
+
 import hashlib
 import json
 import logging
@@ -47,9 +48,13 @@ class AuditTrail:
         content = f"{self._last_checksum}{event_data}"
         return hashlib.sha256(content.encode()).hexdigest()
 
-    def log_event(self, event_type: AuditEventType, actor: str, details: dict, model_version: str = ""):
+    def log_event(
+        self, event_type: AuditEventType, actor: str, details: dict, model_version: str = ""
+    ):
         """Record an audit event."""
-        event_data = json.dumps({"type": event_type.value, "actor": actor, "details": details, "model": model_version})
+        event_data = json.dumps(
+            {"type": event_type.value, "actor": actor, "details": details, "model": model_version}
+        )
         checksum = self._compute_checksum(event_data)
         self._last_checksum = checksum
 
@@ -71,19 +76,37 @@ class AuditTrail:
         return event
 
     def log_training(self, actor: str, model_version: str, config: dict, metrics: dict):
-        return self.log_event(AuditEventType.MODEL_TRAINED, actor, {"config": config, "metrics": metrics}, model_version)
+        return self.log_event(
+            AuditEventType.MODEL_TRAINED,
+            actor,
+            {"config": config, "metrics": metrics},
+            model_version,
+        )
 
     def log_evaluation(self, actor: str, model_version: str, metrics: dict):
-        return self.log_event(AuditEventType.MODEL_EVALUATED, actor, {"metrics": metrics}, model_version)
+        return self.log_event(
+            AuditEventType.MODEL_EVALUATED, actor, {"metrics": metrics}, model_version
+        )
 
     def log_deployment(self, actor: str, model_version: str, environment: str):
-        return self.log_event(AuditEventType.MODEL_DEPLOYED, actor, {"environment": environment}, model_version)
+        return self.log_event(
+            AuditEventType.MODEL_DEPLOYED, actor, {"environment": environment}, model_version
+        )
 
     def log_drift(self, severity: str, details: dict, model_version: str = ""):
-        return self.log_event(AuditEventType.DRIFT_DETECTED, "monitoring_system", {"severity": severity, **details}, model_version)
+        return self.log_event(
+            AuditEventType.DRIFT_DETECTED,
+            "monitoring_system",
+            {"severity": severity, **details},
+            model_version,
+        )
 
     def log_human_review(self, reviewer: str, prediction_id: str, decision: str, notes: str = ""):
-        return self.log_event(AuditEventType.HUMAN_REVIEW, reviewer, {"prediction_id": prediction_id, "decision": decision, "notes": notes})
+        return self.log_event(
+            AuditEventType.HUMAN_REVIEW,
+            reviewer,
+            {"prediction_id": prediction_id, "decision": decision, "notes": notes},
+        )
 
     def verify_integrity(self) -> bool:
         """Verify the chain of checksums hasn't been tampered with."""
@@ -94,10 +117,14 @@ class AuditTrail:
             with open(log_file) as f:
                 for line in f:
                     event = json.loads(line.strip())
-                    event_data = json.dumps({
-                        "type": event["event_type"], "actor": event["actor"],
-                        "details": event["details"], "model": event["model_version"],
-                    })
+                    event_data = json.dumps(
+                        {
+                            "type": event["event_type"],
+                            "actor": event["actor"],
+                            "details": event["details"],
+                            "model": event["model_version"],
+                        }
+                    )
                     expected = hashlib.sha256(f"{prev_checksum}{event_data}".encode()).hexdigest()
                     if event["checksum"] != expected:
                         logger.error(f"Integrity check FAILED at {event['timestamp']}")

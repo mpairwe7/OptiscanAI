@@ -145,14 +145,8 @@ class PrecisionAwareDistillationLoss(nn.Module):
 
         # --- 3. Feature Alignment Loss ---
         feature_loss = torch.tensor(0.0, device=student_logits.device)
-        if (
-            student_features is not None
-            and teacher_features is not None
-            and self.beta > 0
-        ):
-            feature_loss = F.mse_loss(
-                student_features, teacher_features.detach()
-            )
+        if student_features is not None and teacher_features is not None and self.beta > 0:
+            feature_loss = F.mse_loss(student_features, teacher_features.detach())
 
         # --- 4. Threshold Alignment Loss ---
         threshold_loss = torch.tensor(0.0, device=student_logits.device)
@@ -178,9 +172,7 @@ class PrecisionAwareDistillationLoss(nn.Module):
             "temperature": torch.tensor(T),
         }
 
-    def _asymmetric_loss(
-        self, logits: torch.Tensor, targets: torch.Tensor
-    ) -> torch.Tensor:
+    def _asymmetric_loss(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         """AsymmetricLossV2 matching the teacher's training loss."""
         # Label smoothing
         if self.label_smoothing > 0:

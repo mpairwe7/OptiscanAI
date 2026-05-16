@@ -26,6 +26,7 @@ Integrates with:
   events on level changes
 * ``backend.app.core.config.settings.resilience`` for configuration
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -175,10 +176,7 @@ class GracefulDegradationManager:
             Updated health states keyed by service name.
         """
         self._check_count += 1
-        tasks = {
-            name: self._check_service(name, fn)
-            for name, fn in self._health_checks.items()
-        }
+        tasks = {name: self._check_service(name, fn) for name, fn in self._health_checks.items()}
 
         if tasks:
             await asyncio.gather(*tasks.values(), return_exceptions=True)
@@ -243,9 +241,7 @@ class GracefulDegradationManager:
         if not self._services:
             return DegradationLevel.FULL
 
-        unhealthy = {
-            name for name, svc in self._services.items() if not svc.healthy
-        }
+        unhealthy = {name for name, svc in self._services.items() if not svc.healthy}
 
         if not unhealthy:
             return DegradationLevel.FULL
@@ -375,9 +371,9 @@ class GracefulDegradationManager:
                     "healthy": svc.healthy,
                     "consecutive_failures": svc.consecutive_failures,
                     "latency_ms": round(svc.latency_ms, 2),
-                    "last_check_ago_s": round(
-                        time.monotonic() - svc.last_check, 1
-                    ) if svc.last_check > 0 else None,
+                    "last_check_ago_s": (
+                        round(time.monotonic() - svc.last_check, 1) if svc.last_check > 0 else None
+                    ),
                 }
                 for name, svc in self._services.items()
             },
@@ -396,23 +392,20 @@ class GracefulDegradationManager:
         try:
             from src.agents.event_bus import Event, EventType, event_bus
 
-            await event_bus.emit(Event(
-                type=EventType.GRACEFUL_DEGRADATION_ACTIVATED,
-                source="graceful_degradation_manager",
-                data={
-                    "old_level": old_level.name,
-                    "new_level": new_level.name,
-                    "services": {
-                        name: svc.healthy
-                        for name, svc in self._services.items()
+            await event_bus.emit(
+                Event(
+                    type=EventType.GRACEFUL_DEGRADATION_ACTIVATED,
+                    source="graceful_degradation_manager",
+                    data={
+                        "old_level": old_level.name,
+                        "new_level": new_level.name,
+                        "services": {name: svc.healthy for name, svc in self._services.items()},
                     },
-                },
-            ))
+                )
+            )
             logger.info("GRACEFUL_DEGRADATION_ACTIVATED event emitted")
         except Exception as exc:
-            logger.debug(
-                "Event bus unavailable for degradation event: %s", exc
-            )
+            logger.debug("Event bus unavailable for degradation event: %s", exc)
 
 
 # ---------------------------------------------------------------------------
@@ -660,9 +653,7 @@ def init_graceful_degradation() -> None:
     global _manager, _router
 
     if not settings.resilience.enabled:
-        logger.info(
-            "Graceful degradation disabled (RESILIENCE__ENABLED=false)"
-        )
+        logger.info("Graceful degradation disabled (RESILIENCE__ENABLED=false)")
         return
 
     _manager = GracefulDegradationManager()
@@ -671,6 +662,7 @@ def init_graceful_degradation() -> None:
     async def _check_model_service() -> bool:
         try:
             from backend.app.core.model_service import model_service
+
             return model_service.is_loaded
         except Exception:
             return False
@@ -679,6 +671,7 @@ def init_graceful_degradation() -> None:
         """Check Claude agent availability via circuit breaker state."""
         try:
             from src.serving.circuit_breaker import get_circuit_breaker_registry
+
             registry = get_circuit_breaker_registry()
             cb = registry.get("claude_agent")
             if cb is None:
@@ -691,6 +684,7 @@ def init_graceful_degradation() -> None:
         """Check Groq fallback agent availability."""
         try:
             from src.serving.circuit_breaker import get_circuit_breaker_registry
+
             registry = get_circuit_breaker_registry()
             cb = registry.get("groq_agent")
             if cb is None:

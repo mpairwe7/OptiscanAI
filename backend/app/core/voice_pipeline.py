@@ -101,12 +101,14 @@ class VoicePipeline:
                 # Trigger final transcription
                 result = self.asr.transcribe_final()
                 if result.text.strip():
-                    events.append(VoiceEvent(
-                        "transcription",
-                        data=result.text,
-                        language=result.language,
-                        confidence=result.confidence,
-                    ))
+                    events.append(
+                        VoiceEvent(
+                            "transcription",
+                            data=result.text,
+                            language=result.language,
+                            confidence=result.confidence,
+                        )
+                    )
                     self.session.add_transcript(result.text, result.duration_ms)
 
         # Feed audio to ASR buffer
@@ -115,10 +117,12 @@ class VoicePipeline:
         # Emit partial transcriptions periodically
         partial = self.asr.transcribe_partial()
         if partial and partial.text.strip():
-            events.append(VoiceEvent(
-                "partial_transcription",
-                data=partial.text,
-            ))
+            events.append(
+                VoiceEvent(
+                    "partial_transcription",
+                    data=partial.text,
+                )
+            )
 
         return events
 
@@ -128,12 +132,14 @@ class VoicePipeline:
 
         result = self.asr.transcribe_final()
         if result.text.strip():
-            events.append(VoiceEvent(
-                "transcription",
-                data=result.text,
-                language=result.language,
-                confidence=result.confidence,
-            ))
+            events.append(
+                VoiceEvent(
+                    "transcription",
+                    data=result.text,
+                    language=result.language,
+                    confidence=result.confidence,
+                )
+            )
             self.session.add_transcript(result.text, result.duration_ms)
 
         return events

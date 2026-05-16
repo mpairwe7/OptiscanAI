@@ -1,4 +1,5 @@
 """Pydantic schemas for /api/v1/billing."""
+
 from __future__ import annotations
 
 from datetime import datetime

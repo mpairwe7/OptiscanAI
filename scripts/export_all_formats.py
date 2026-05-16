@@ -56,6 +56,7 @@ DEFAULT_FORMATS = ["onnx", "torchscript", "int8"]
 # Model loading
 # ---------------------------------------------------------------------------
 
+
 def load_model(checkpoint_path: str) -> tuple[torch.nn.Module, dict]:
     """Load a RetinalAI model from a checkpoint.
 
@@ -90,10 +91,7 @@ def load_model(checkpoint_path: str) -> tuple[torch.nn.Module, dict]:
                 checkpoint_path=None,
             )
         except ImportError:
-            logger.warning(
-                "retinal_foundation_hybrid not available -- "
-                "falling back to vignn"
-            )
+            logger.warning("retinal_foundation_hybrid not available -- " "falling back to vignn")
             model = create_vignn_model(
                 num_classes=num_classes,
                 clinical_knowledge_graph=kg,
@@ -150,7 +148,9 @@ def load_model(checkpoint_path: str) -> tuple[torch.nn.Module, dict]:
         model.prepare_for_export()
 
     model.cpu().eval()
-    logger.info("Model loaded: %s (%d parameters)", model_name, sum(p.numel() for p in model.parameters()))
+    logger.info(
+        "Model loaded: %s (%d parameters)", model_name, sum(p.numel() for p in model.parameters())
+    )
 
     return model, ckpt if isinstance(ckpt, dict) else {"model_state_dict": ckpt}
 
@@ -158,6 +158,7 @@ def load_model(checkpoint_path: str) -> tuple[torch.nn.Module, dict]:
 # ---------------------------------------------------------------------------
 # Reference output for parity checks
 # ---------------------------------------------------------------------------
+
 
 def get_reference_output(model: torch.nn.Module) -> tuple[torch.Tensor, np.ndarray]:
     """Run a dummy forward pass and return (input_tensor, output_probs)."""
@@ -173,6 +174,7 @@ def get_reference_output(model: torch.nn.Module) -> tuple[torch.Tensor, np.ndarr
 # ---------------------------------------------------------------------------
 # Export functions
 # ---------------------------------------------------------------------------
+
 
 def export_onnx_format(
     model: torch.nn.Module,
@@ -400,9 +402,7 @@ def export_quantized_format(
                 tolerance = 0.05 if precision == "int8" else 1e-3
                 parity_passed = max_diff < tolerance
         except Exception as exc:
-            logger.warning(
-                "Quantized parity check failed (%s): %s", precision, exc
-            )
+            logger.warning("Quantized parity check failed (%s): %s", precision, exc)
 
         return {
             "format": f"quantized_{precision}",
@@ -430,6 +430,7 @@ def export_quantized_format(
 # ---------------------------------------------------------------------------
 # Summary printer
 # ---------------------------------------------------------------------------
+
 
 def print_summary(results: list[dict], fp32_size_mb: float) -> None:
     """Print a formatted summary table of export results."""
@@ -475,11 +476,7 @@ def print_summary(results: list[dict], fp32_size_mb: float) -> None:
         else:
             parity_str = "FAIL"
 
-        diff_str = (
-            f"{r['parity_max_diff']:.6f}"
-            if r["parity_max_diff"] is not None
-            else "--"
-        )
+        diff_str = f"{r['parity_max_diff']:.6f}" if r["parity_max_diff"] is not None else "--"
         time_str = f"{r['export_time_s']:.2f}" if r.get("export_time_s") else "--"
 
         print(
@@ -498,11 +495,10 @@ def print_summary(results: list[dict], fp32_size_mb: float) -> None:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(
-        description=(
-            "Export RetinalAI model to all serving formats with parity validation."
-        ),
+        description=("Export RetinalAI model to all serving formats with parity validation."),
     )
     parser.add_argument(
         "--model-path",
@@ -562,15 +558,11 @@ def main():
 
     if "onnx" in args.formats:
         logger.info("Exporting ONNX ...")
-        results.append(
-            export_onnx_format(model, output_dir, dummy, ref_probs)
-        )
+        results.append(export_onnx_format(model, output_dir, dummy, ref_probs))
 
     if "torchscript" in args.formats:
         logger.info("Exporting TorchScript ...")
-        results.append(
-            export_torchscript_format(model, output_dir, dummy, ref_probs)
-        )
+        results.append(export_torchscript_format(model, output_dir, dummy, ref_probs))
 
     if "coreml" in args.formats:
         logger.info("Exporting CoreML ...")
@@ -578,15 +570,11 @@ def main():
 
     if "int8" in args.formats:
         logger.info("Exporting INT8 quantized ...")
-        results.append(
-            export_quantized_format(model, output_dir, dummy, ref_probs, "int8")
-        )
+        results.append(export_quantized_format(model, output_dir, dummy, ref_probs, "int8"))
 
     if "fp16" in args.formats:
         logger.info("Exporting FP16 ...")
-        results.append(
-            export_quantized_format(model, output_dir, dummy, ref_probs, "fp16")
-        )
+        results.append(export_quantized_format(model, output_dir, dummy, ref_probs, "fp16"))
 
     # Summary
     print_summary(results, fp32_size_mb)

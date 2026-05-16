@@ -67,7 +67,9 @@ def prepare_rop_flat():
 
     df = pd.DataFrame(records)
     df.to_csv(OUTPUT_ROP / "labels.csv", index=False)
-    logger.info(f"ROP processed: {count} images -> {img_out}, labels -> {OUTPUT_ROP / 'labels.csv'}")
+    logger.info(
+        f"ROP processed: {count} images -> {img_out}, labels -> {OUTPUT_ROP / 'labels.csv'}"
+    )
     return count
 
 
@@ -106,7 +108,7 @@ def prepare_fundus_gate_data():
         "To train the fundus gate:\n"
         "  1. Add 500+ non-fundus images to data/fundus_gate_training/non_fundus/\n"
         "     (natural scenes, other medical images, random photos)\n"
-        "  2. Run: python3 -c \"from src.data.fundus_gate_learned import train_fundus_gate; "
+        '  2. Run: python3 -c "from src.data.fundus_gate_learned import train_fundus_gate; '
         "train_fundus_gate('data/fundus_gate_training/fundus', "
         "'data/fundus_gate_training/non_fundus')\""
     )
@@ -130,7 +132,9 @@ def main():
     logger.info("   Labels: data/rop_processed/labels.csv")
     logger.info("   Use for: future ROP classification task")
     logger.info("")
-    logger.info(f"2. Fundus gate training: {n_gate} positive examples at data/fundus_gate_training/fundus/")
+    logger.info(
+        f"2. Fundus gate training: {n_gate} positive examples at data/fundus_gate_training/fundus/"
+    )
     logger.info(f"   Sources: {n_rop} ROP + {n_gate - n_rop} RFMiD training images")
     logger.info("   Need: Add non-fundus images to data/fundus_gate_training/non_fundus/")
     logger.info("")

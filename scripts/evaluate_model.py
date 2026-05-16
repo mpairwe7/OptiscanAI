@@ -104,9 +104,9 @@ def main():
     if cal_cfg.get("bootstrap_ci", {}).get("enabled", False):
         ci_cfg = cal_cfg["bootstrap_ci"]
         _, lower, upper = bootstrap_confidence_interval(
-            lambda y_true, y_prob: compute_multilabel_metrics(
-                y_true, y_prob, threshold=thresholds
-            )["f1_macro"],
+            lambda y_true, y_prob: compute_multilabel_metrics(y_true, y_prob, threshold=thresholds)[
+                "f1_macro"
+            ],
             results["y_true"],
             results["y_prob"],
             n_bootstrap=ci_cfg.get("n_bootstrap", 1000),

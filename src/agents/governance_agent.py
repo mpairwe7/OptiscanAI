@@ -7,6 +7,7 @@ Reacts to events across the system and:
 4. Generates compliance reports on demand
 5. Alerts when governance thresholds are violated
 """
+
 import logging
 from datetime import datetime, timezone
 from typing import Optional
@@ -77,7 +78,11 @@ class GovernanceAgent(BaseAgent):
 
     async def _on_scan_analyzed(self, event: Event):
         self.audit.log_event(
-            AuditEventType.PREDICTION_FLAGGED if event.data.get("needs_review") else AuditEventType.DATA_VALIDATED,
+            (
+                AuditEventType.PREDICTION_FLAGGED
+                if event.data.get("needs_review")
+                else AuditEventType.DATA_VALIDATED
+            ),
             actor="screening_agent",
             details={
                 "scan_id": event.data.get("scan_id"),
@@ -95,15 +100,20 @@ class GovernanceAgent(BaseAgent):
             details=event.data,
         )
         if event.data.get("severity") == "critical":
-            self._compliance_alerts.append({
-                "type": "critical_drift",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "details": event.data,
-            })
-            await self.emit(EventType.AUDIT_ALERT, {
-                "alert": "Critical drift detected — model performance may be degraded",
-                "severity": "high",
-            })
+            self._compliance_alerts.append(
+                {
+                    "type": "critical_drift",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "details": event.data,
+                }
+            )
+            await self.emit(
+                EventType.AUDIT_ALERT,
+                {
+                    "alert": "Critical drift detected — model performance may be degraded",
+                    "severity": "high",
+                },
+            )
 
     async def _on_retrain_triggered(self, event: Event):
         self.audit.log_event(
@@ -132,11 +142,13 @@ class GovernanceAgent(BaseAgent):
             actor="screening_agent",
             details={"emergency": True, **event.data},
         )
-        self._compliance_alerts.append({
-            "type": "emergency_referral",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "details": event.data,
-        })
+        self._compliance_alerts.append(
+            {
+                "type": "emergency_referral",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "details": event.data,
+            }
+        )
 
     async def _on_sla_violated(self, event: Event):
         self.audit.log_event(
@@ -144,11 +156,13 @@ class GovernanceAgent(BaseAgent):
             actor="monitor_agent",
             details={"action": "sla_violated", **event.data},
         )
-        self._compliance_alerts.append({
-            "type": "sla_violation",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "details": event.data,
-        })
+        self._compliance_alerts.append(
+            {
+                "type": "sla_violation",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "details": event.data,
+            }
+        )
 
     async def _on_model_promoted(self, event: Event):
         self.audit.log_event(
@@ -167,7 +181,9 @@ class GovernanceAgent(BaseAgent):
         try:
             audit_type = AuditEventType(event_type)
         except ValueError:
-            return ToolResult(tool="log_audit_event", success=False, error=f"Invalid event type: {event_type}")
+            return ToolResult(
+                tool="log_audit_event", success=False, error=f"Invalid event type: {event_type}"
+            )
 
         self.audit.log_event(audit_type, actor, details, model_version)
         return ToolResult(tool="log_audit_event", success=True, data={"logged": True})
@@ -175,13 +191,17 @@ class GovernanceAgent(BaseAgent):
     async def _check_review_compliance(self) -> ToolResult:
         """Check review queue for compliance violations."""
         if not self.review_gate:
-            return ToolResult(tool="check_review_compliance", success=True, data={"status": "no_review_gate"})
+            return ToolResult(
+                tool="check_review_compliance", success=True, data={"status": "no_review_gate"}
+            )
 
         pending_count = self.review_gate.pending_count
         violations = []
 
         if pending_count > MAX_PENDING_REVIEWS:
-            violations.append(f"Review backlog: {pending_count} pending (max: {MAX_PENDING_REVIEWS})")
+            violations.append(
+                f"Review backlog: {pending_count} pending (max: {MAX_PENDING_REVIEWS})"
+            )
 
         # Check for overdue reviews
         overdue = 0
@@ -204,11 +224,14 @@ class GovernanceAgent(BaseAgent):
             violations.append(f"{overdue} review(s) overdue (>{MAX_REVIEW_AGE_HOURS}h)")
 
         if violations:
-            await self.emit(EventType.AUDIT_ALERT, {
-                "alert": "Review compliance violations",
-                "violations": violations,
-                "severity": "medium",
-            })
+            await self.emit(
+                EventType.AUDIT_ALERT,
+                {
+                    "alert": "Review compliance violations",
+                    "violations": violations,
+                    "severity": "medium",
+                },
+            )
 
         return ToolResult(
             tool="check_review_compliance",
@@ -227,8 +250,12 @@ class GovernanceAgent(BaseAgent):
 
         # Check for governance artifacts
         outputs = Path("outputs/governance")
-        model_card_exists = (outputs / "MODEL_CARD.md").exists() or (outputs / "model_card.json").exists()
-        dataset_card_exists = (outputs / "DATASET_CARD.md").exists() or (outputs / "dataset_card.json").exists()
+        model_card_exists = (outputs / "MODEL_CARD.md").exists() or (
+            outputs / "model_card.json"
+        ).exists()
+        dataset_card_exists = (outputs / "DATASET_CARD.md").exists() or (
+            outputs / "dataset_card.json"
+        ).exists()
 
         # Get recent audit events
         recent_events = self.audit.get_events(limit=20)
@@ -261,7 +288,9 @@ class GovernanceAgent(BaseAgent):
         eu_checks = report["eu_ai_act"]
         score = sum(1 for v in eu_checks.values() if v) / len(eu_checks)
         report["compliance_score"] = round(score, 2)
-        report["status"] = "compliant" if score >= 0.85 else "partial" if score >= 0.5 else "non_compliant"
+        report["status"] = (
+            "compliant" if score >= 0.85 else "partial" if score >= 0.5 else "non_compliant"
+        )
 
         return ToolResult(tool="generate_compliance_report", success=True, data=report)
 
@@ -291,10 +320,13 @@ class GovernanceAgent(BaseAgent):
         try:
             valid = self.audit.verify_integrity()
             if not valid:
-                await self.emit(EventType.AUDIT_ALERT, {
-                    "alert": "Audit trail integrity check FAILED — possible tampering",
-                    "severity": "critical",
-                })
+                await self.emit(
+                    EventType.AUDIT_ALERT,
+                    {
+                        "alert": "Audit trail integrity check FAILED — possible tampering",
+                        "severity": "critical",
+                    },
+                )
             return ToolResult(
                 tool="verify_audit_integrity",
                 success=True,

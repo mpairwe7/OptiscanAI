@@ -35,8 +35,14 @@ IEEE_COLORS = {
 
 # Colorblind-safe sequential
 CB_PALETTE = [
-    "#0072B2", "#E69F00", "#009E73", "#D55E00",
-    "#CC79A7", "#56B4E9", "#F0E442", "#999999",
+    "#0072B2",
+    "#E69F00",
+    "#009E73",
+    "#D55E00",
+    "#CC79A7",
+    "#56B4E9",
+    "#F0E442",
+    "#999999",
 ]
 
 MODEL_COLORS = {
@@ -75,11 +81,9 @@ _IEEE_RC = {
     "savefig.dpi": 300,
     "savefig.bbox": "tight",
     "savefig.pad_inches": 0.02,
-
     "font.family": "sans-serif",
     "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
     "font.size": 9,
-
     "axes.titlesize": 10,
     "axes.titleweight": "bold",
     "axes.titlepad": 6,
@@ -89,24 +93,19 @@ _IEEE_RC = {
     "axes.grid": True,
     "axes.spines.top": False,
     "axes.spines.right": False,
-
     "grid.alpha": 0.25,
     "grid.linewidth": 0.5,
-
     "xtick.labelsize": 8,
     "ytick.labelsize": 8,
     "xtick.major.width": 0.6,
     "ytick.major.width": 0.6,
     "xtick.direction": "in",
     "ytick.direction": "in",
-
     "legend.fontsize": 8,
     "legend.framealpha": 0.9,
     "legend.edgecolor": "#CCCCCC",
-
     "lines.linewidth": 1.5,
     "lines.markersize": 5,
-
     "figure.constrained_layout.use": True,
 }
 
@@ -167,8 +166,13 @@ def annotate_bars(ax, fmt="{:.3f}", fontsize=7, offset=0.01):
 def add_watermark(fig, text="MLOps Pipeline 2026"):
     """Add a subtle watermark."""
     fig.text(
-        0.99, 0.01, text,
-        ha="right", va="bottom",
-        fontsize=6, color="#CCCCCC", style="italic",
+        0.99,
+        0.01,
+        text,
+        ha="right",
+        va="bottom",
+        fontsize=6,
+        color="#CCCCCC",
+        style="italic",
         transform=fig.transFigure,
     )

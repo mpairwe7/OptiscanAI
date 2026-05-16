@@ -20,6 +20,7 @@ All functionality is gated behind ``FEDERATED__ENABLED=false`` by
 default and Flower imports are guarded with ``try/except`` so the
 module never breaks a deployment that lacks the ``flwr`` package.
 """
+
 from __future__ import annotations
 
 import logging
@@ -180,9 +181,7 @@ class FlowerRetinalClient(FederatedClient):
         self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
-        self.device = device or torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu"
-        )
+        self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
 
         cfg = settings.federated
@@ -201,10 +200,7 @@ class FlowerRetinalClient(FederatedClient):
 
     def get_model_parameters(self) -> list[np.ndarray]:
         """Extract model parameters as a list of NumPy arrays."""
-        return [
-            val.cpu().numpy()
-            for _, val in self.model.state_dict().items()
-        ]
+        return [val.cpu().numpy() for _, val in self.model.state_dict().items()]
 
     def set_model_parameters(self, parameters: list[np.ndarray]) -> None:
         """Load parameters into the model."""
@@ -432,17 +428,12 @@ class NVFlareRetinalClient(FederatedClient):
         self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
-        self.device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu"
-        )
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
         logger.info("NVFlareRetinalClient stub created")
 
     def get_model_parameters(self) -> list[np.ndarray]:
-        return [
-            val.cpu().numpy()
-            for _, val in self.model.state_dict().items()
-        ]
+        return [val.cpu().numpy() for _, val in self.model.state_dict().items()]
 
     def set_model_parameters(self, parameters: list[np.ndarray]) -> None:
         state_dict = self.model.state_dict()
@@ -553,9 +544,7 @@ class FedAvgStrategy:
 
         # Initialise with zeros
         num_layers = len(results[0][0])
-        aggregated: list[np.ndarray] = [
-            np.zeros_like(results[0][0][i]) for i in range(num_layers)
-        ]
+        aggregated: list[np.ndarray] = [np.zeros_like(results[0][0][i]) for i in range(num_layers)]
 
         for params, num_samples in results:
             weight = num_samples / total_samples
@@ -613,9 +602,7 @@ class FedProxStrategy:
         proximal_term = torch.tensor(0.0, device=device)
 
         for local_param, global_np in zip(model.parameters(), global_params):
-            global_tensor = torch.tensor(
-                global_np, dtype=local_param.dtype, device=device
-            )
+            global_tensor = torch.tensor(global_np, dtype=local_param.dtype, device=device)
             proximal_term += ((local_param - global_tensor) ** 2).sum()
 
         return (self.mu / 2.0) * proximal_term
@@ -719,6 +706,7 @@ def start_flower_client(
 # LoRA-Only Federated Client (Phase 4)
 # ---------------------------------------------------------------------------
 
+
 class FlowerLoRAClient(FlowerRetinalClient):
     """Federated client that exchanges only LoRA adapter parameters.
 
@@ -751,7 +739,8 @@ class FlowerLoRAClient(FlowerRetinalClient):
             logger.warning(
                 "LoRA parameter count mismatch: received %d, expected %d. "
                 "Falling back to partial load.",
-                len(parameters), len(lora_keys),
+                len(parameters),
+                len(lora_keys),
             )
 
         new_state = OrderedDict(state_dict)
@@ -763,10 +752,7 @@ class FlowerLoRAClient(FlowerRetinalClient):
     def get_parameter_count(self) -> dict:
         """Report LoRA vs total parameter counts."""
         total = sum(p.numel() for p in self.model.parameters())
-        lora = sum(
-            v.numel() for k, v in self.model.state_dict().items()
-            if self._is_lora_key(k)
-        )
+        lora = sum(v.numel() for k, v in self.model.state_dict().items() if self._is_lora_key(k))
         return {
             "total_params": total,
             "lora_params": lora,
@@ -792,9 +778,7 @@ class SecureAggregation:
         self.num_clients = num_clients
         self._rng = np.random.RandomState(seed)
 
-    def split_parameters(
-        self, parameters: list[np.ndarray]
-    ) -> list[list[np.ndarray]]:
+    def split_parameters(self, parameters: list[np.ndarray]) -> list[list[np.ndarray]]:
         """Split each parameter array into N additive shares.
 
         The shares sum to the original: sum(shares[i]) == parameters for each layer.
@@ -816,9 +800,7 @@ class SecureAggregation:
 
         return shares
 
-    def recombine_shares(
-        self, all_shares: list[list[np.ndarray]]
-    ) -> list[np.ndarray]:
+    def recombine_shares(self, all_shares: list[list[np.ndarray]]) -> list[np.ndarray]:
         """Recombine shares from all clients by summing."""
         if not all_shares:
             return []

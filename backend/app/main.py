@@ -2,6 +2,7 @@
 FastAPI application entry point with modern lifespan management.
 UV-managed, production-ready retinal disease classification API.
 """
+
 import logging
 from contextlib import asynccontextmanager
 
@@ -46,6 +47,7 @@ async def lifespan(app: FastAPI):
     if settings.database.enabled:
         try:
             from backend.app.core.db import init_engine
+
             init_engine()
             logger.info("Database engine initialized")
         except Exception as e:
@@ -55,6 +57,7 @@ async def lifespan(app: FastAPI):
     if settings.telemetry.enabled:
         try:
             from backend.app.core.telemetry import init_telemetry
+
             init_telemetry(app)
             logger.info("OpenTelemetry initialized")
         except Exception as e:
@@ -67,6 +70,7 @@ async def lifespan(app: FastAPI):
     if settings.mlflow.enabled:
         try:
             from backend.app.core.mlflow_registry import init_mlflow_registry
+
             init_mlflow_registry()
             logger.info("MLflow registry initialized")
         except Exception as e:
@@ -76,6 +80,7 @@ async def lifespan(app: FastAPI):
     if settings.active_learning_loop.enabled:
         try:
             from backend.app.core.active_learning import init_active_learning
+
             init_active_learning()
             logger.info("Active learning loop initialized")
         except Exception as e:
@@ -85,6 +90,7 @@ async def lifespan(app: FastAPI):
     if settings.drift.enabled:
         try:
             from backend.app.core.drift_detector import init_drift_detector
+
             init_drift_detector()
             logger.info("Enhanced drift detector initialized")
         except Exception as e:
@@ -96,13 +102,16 @@ async def lifespan(app: FastAPI):
             import os
 
             from src.data.fundus_gate_learned import LearnedFundusGate
+
             gate_path = settings.fundus_gate.model_path
             weights = gate_path if os.path.isfile(gate_path) else None
             learned_gate = LearnedFundusGate(weights_path=weights)
             learned_gate.eval()
             gate.set_learned_gate(learned_gate)
-            logger.info("Fundus gate v2 learned model loaded%s",
-                        f" from {gate_path}" if weights else " (ImageNet weights)")
+            logger.info(
+                "Fundus gate v2 learned model loaded%s",
+                f" from {gate_path}" if weights else " (ImageNet weights)",
+            )
         except Exception as e:
             logger.warning(f"Fundus gate v2 learned model failed to load (non-fatal): {e}")
             gate.set_learned_gate(None)
@@ -135,6 +144,7 @@ async def lifespan(app: FastAPI):
     if settings.telemetry.enabled:
         try:
             from backend.app.core.telemetry import shutdown_telemetry
+
             shutdown_telemetry()
         except Exception:
             pass
@@ -142,6 +152,7 @@ async def lifespan(app: FastAPI):
     if settings.database.enabled:
         try:
             from backend.app.core.db import dispose_engine
+
             await dispose_engine()
         except Exception:
             pass
@@ -155,6 +166,7 @@ app = FastAPI(
     description="Multi-label retinal disease classification with clinical knowledge graph reasoning",
     lifespan=lifespan,
 )
+
 
 # ── Global exception handler ──
 @app.exception_handler(Exception)
@@ -173,6 +185,7 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"detail": "Internal server error. Please try again."},
     )
+
 
 # ── Middleware stack (order matters: last added = first executed) ──
 
@@ -198,6 +211,7 @@ from backend.app.middleware.rate_limit import RateLimiterMiddleware
 
 app.add_middleware(RateLimiterMiddleware, requests_per_minute=settings.rate_limit_per_minute)
 
+
 # 5. Security headers
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
@@ -210,6 +224,7 @@ async def add_security_headers(request: Request, call_next):
     if settings.environment == "production":
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
+
 
 # ── Routers ──
 app.include_router(health.router)
@@ -246,6 +261,7 @@ app.include_router(dicom.router)
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "backend.app.main:app",
         host=settings.api_host,

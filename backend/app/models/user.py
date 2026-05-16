@@ -1,4 +1,5 @@
 """User account model."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -20,7 +21,9 @@ class User(Base):
 
     id: Mapped[str] = uuid_pk()
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
-    email_normalized: Mapped[str] = mapped_column(String(320), unique=True, nullable=False, index=True)
+    email_normalized: Mapped[str] = mapped_column(
+        String(320), unique=True, nullable=False, index=True
+    )
     password_hash: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     full_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
 
@@ -34,7 +37,9 @@ class User(Base):
     facility_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(TimestampTZ, default=utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(TimestampTZ, default=utcnow, onupdate=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        TimestampTZ, default=utcnow, onupdate=utcnow, nullable=False
+    )
     last_login_at: Mapped[Optional[datetime]] = mapped_column(TimestampTZ, nullable=True)
 
     memberships: Mapped[list["Membership"]] = relationship(
@@ -49,9 +54,7 @@ class User(Base):
         foreign_keys="Organization.owner_user_id",
     )
 
-    __table_args__ = (
-        Index("ix_users_email_normalized_active", "email_normalized", "is_active"),
-    )
+    __table_args__ = (Index("ix_users_email_normalized_active", "email_normalized", "is_active"),)
 
     def __repr__(self) -> str:
         return f"<User {self.email}>"

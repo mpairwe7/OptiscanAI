@@ -7,6 +7,7 @@ Flutterwave's "Standard" flow:
   4. Flutterwave fires a webhook to your endpoint with verif-hash header
   5. You verify the hash and the transaction (GET /v3/transactions/verify_by_reference)
 """
+
 from __future__ import annotations
 
 import hmac

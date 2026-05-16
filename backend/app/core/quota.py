@@ -4,6 +4,7 @@ Returns a ``BillingContext`` on success; raises HTTPException(402) with a
 structured ``quota_exceeded`` payload + ``X-Usage-*`` headers on failure so
 the frontend can open the paywall modal.
 """
+
 from __future__ import annotations
 
 import logging
@@ -88,7 +89,12 @@ def _build_402_payload(
 
 
 def _recommend_next_tier(current: str) -> str:
-    ladder = [PlanCode.FREE.value, PlanCode.CLINICIAN.value, PlanCode.PRACTICE.value, PlanCode.HEALTH_SYSTEM.value]
+    ladder = [
+        PlanCode.FREE.value,
+        PlanCode.CLINICIAN.value,
+        PlanCode.PRACTICE.value,
+        PlanCode.HEALTH_SYSTEM.value,
+    ]
     try:
         idx = ladder.index(current)
         return ladder[min(idx + 1, len(ladder) - 1)]
@@ -160,6 +166,7 @@ def increment_cached_count(org_id: str, period_end_iso: str, by: int = 1) -> Non
 
 # ── Inline helpers (used inside endpoints whose primary Depends is legacy) ──
 
+
 async def check_scan_quota_inline(request, response) -> Optional["BillingContext"]:
     """Resolve auth + quota manually for endpoints that keep their legacy
     Depends(get_current_user) signature (e.g. /api/v1/predict).
@@ -213,7 +220,8 @@ async def check_scan_quota_inline(request, response) -> Optional["BillingContext
             raise HTTPException(status_code=401, detail="User not found")
 
         stmt = select(Membership).where(
-            Membership.user_id == user.id, Membership.status == MembershipStatus.ACTIVE,
+            Membership.user_id == user.id,
+            Membership.status == MembershipStatus.ACTIVE,
         )
         if org_id:
             stmt = stmt.where(Membership.organization_id == org_id)
@@ -223,20 +231,25 @@ async def check_scan_quota_inline(request, response) -> Optional["BillingContext
         organization = await db.get(Organization, membership.organization_id)
 
         sub = (
-            await db.execute(select(Subscription).where(Subscription.organization_id == organization.id))
+            await db.execute(
+                select(Subscription).where(Subscription.organization_id == organization.id)
+            )
         ).scalar_one_or_none()
         if sub is None:
             raise HTTPException(status_code=403, detail="No active subscription")
 
         from backend.app.services.billing_service import roll_period_forward_if_needed
+
         await roll_period_forward_if_needed(db, sub)
 
         from backend.app.models.plan import Plan
+
         plan = await db.get(Plan, sub.plan_id)
         period_end_iso = sub.current_period_end.isoformat()
 
         from backend.app.models.usage_event import UsageEventType
         from backend.app.services.usage_service import count_events_in_period
+
         used = _cache_get(str(organization.id), period_end_iso)
         if used is None:
             used = await count_events_in_period(
@@ -298,12 +311,14 @@ async def record_scan_usage(ctx: "_SimpleCtx", request_id: Optional[str] = None)
     if factory is None:
         return
     async with factory() as db:
-        db.add(UsageEvent(
-            organization_id=ctx.organization_id,
-            user_id=ctx.user_id,
-            event_type=UsageEventType.SCAN,
-            quantity=1,
-            request_id=request_id,
-        ))
+        db.add(
+            UsageEvent(
+                organization_id=ctx.organization_id,
+                user_id=ctx.user_id,
+                event_type=UsageEventType.SCAN,
+                quantity=1,
+                request_id=request_id,
+            )
+        )
         await db.commit()
     increment_cached_count(ctx.organization_id, ctx.period_end_iso, by=1)

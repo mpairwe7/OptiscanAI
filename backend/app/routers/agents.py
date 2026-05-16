@@ -1,4 +1,5 @@
 """Agent orchestration API — status, control, event history, and agentic screening."""
+
 import io
 import logging
 from typing import Optional
@@ -58,7 +59,9 @@ async def agent_events(
         try:
             et = EventType(event_type)
         except ValueError:
-            raise HTTPException(400, f"Invalid event type: {event_type}. Valid: {[e.value for e in EventType]}")
+            raise HTTPException(
+                400, f"Invalid event type: {event_type}. Valid: {[e.value for e in EventType]}"
+            )
 
     events = orch.bus.get_history(event_type=et, source=source, limit=limit)
     return {
@@ -127,7 +130,9 @@ async def agentic_screen(
 
     contents = await file.read()
     if len(contents) > settings.max_upload_size:
-        raise HTTPException(413, f"File too large (max {settings.max_upload_size // 1024 // 1024}MB)")
+        raise HTTPException(
+            413, f"File too large (max {settings.max_upload_size // 1024 // 1024}MB)"
+        )
 
     try:
         image = Image.open(io.BytesIO(contents))
@@ -136,6 +141,7 @@ async def agentic_screen(
 
     # Fundus image gating (v2 fusion gate)
     from src.data.fundus_gate_v2 import gate_image
+
     gate_result = gate_image(image)
     if not gate_result.passed:
         detail = {

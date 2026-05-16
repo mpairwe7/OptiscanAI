@@ -4,6 +4,7 @@ Revision ID: 0002
 Revises: 0001
 Create Date: 2026-05-15
 """
+
 from __future__ import annotations
 
 from typing import Sequence, Union
@@ -20,7 +21,11 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     sa.Enum(
-        "7d", "3d", "1d", "expired", name="renewal_reminder_kind",
+        "7d",
+        "3d",
+        "1d",
+        "expired",
+        name="renewal_reminder_kind",
     ).create(op.get_bind(), checkfirst=True)
 
     reminder_kind = postgresql.ENUM(name="renewal_reminder_kind", create_type=False)

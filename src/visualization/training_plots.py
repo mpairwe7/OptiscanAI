@@ -54,8 +54,10 @@ def plot_training_curves(
         axes[0, 1].annotate(
             f"Best: {best_f1:.4f}",
             xy=(epochs[best_f1_idx], best_f1),
-            xytext=(5, 10), textcoords="offset points",
-            fontsize=7, color=IEEE_COLORS["red"],
+            xytext=(5, 10),
+            textcoords="offset points",
+            fontsize=7,
+            color=IEEE_COLORS["red"],
             arrowprops=dict(arrowstyle="->", color=IEEE_COLORS["red"], lw=0.8),
         )
         axes[0, 1].set_xlabel("Epoch")
@@ -109,7 +111,9 @@ def plot_bias_variance(
         axes[0].plot(epochs, train_f1, "o-", ms=3, color=IEEE_COLORS["blue"], label="Train F1")
         axes[0].plot(epochs, val_f1, "s-", ms=3, color=IEEE_COLORS["red"], label="Val F1")
         gap = [t - v for t, v in zip(train_f1, val_f1)]
-        axes[0].fill_between(epochs, val_f1, train_f1, alpha=0.15, color=IEEE_COLORS["orange"], label="Gap (overfit)")
+        axes[0].fill_between(
+            epochs, val_f1, train_f1, alpha=0.15, color=IEEE_COLORS["orange"], label="Gap (overfit)"
+        )
         axes[0].set_xlabel("Epoch")
         axes[0].set_ylabel("F1 Macro")
         axes[0].set_title("(a) Generalization Gap")
@@ -128,7 +132,11 @@ def plot_bias_variance(
         if len(history) > 1:
             final_gap = gap[-1]
             trend = "increasing" if len(gap) > 2 and gap[-1] > gap[-2] else "stable"
-            status = "Overfitting" if final_gap > 0.1 else "Underfitting" if val_f1[-1] < 0.15 else "Balanced"
+            status = (
+                "Overfitting"
+                if final_gap > 0.1
+                else "Underfitting" if val_f1[-1] < 0.15 else "Balanced"
+            )
             color_map = {"Overfitting": "red", "Underfitting": "orange", "Balanced": "green"}
             text = (
                 f"Diagnostic: {status}\n\n"
@@ -146,15 +154,23 @@ def plot_bias_variance(
                 text += "  - Continue training\n  - Consider ensembling"
 
             axes[2].text(
-                0.05, 0.95, text, transform=axes[2].transAxes,
-                fontsize=7, va="top", family="monospace",
-                bbox=dict(boxstyle="round", fc=color_map.get(status, "#f0f0f0"),
-                          ec="#cccccc", alpha=0.2),
+                0.05,
+                0.95,
+                text,
+                transform=axes[2].transAxes,
+                fontsize=7,
+                va="top",
+                family="monospace",
+                bbox=dict(
+                    boxstyle="round", fc=color_map.get(status, "#f0f0f0"), ec="#cccccc", alpha=0.2
+                ),
             )
         axes[2].set_axis_off()
         axes[2].set_title("(c) Bias-Variance Diagnostic")
 
-        fig.suptitle(f"{model_name} - Bias-Variance Analysis", fontsize=11, fontweight="bold", y=1.02)
+        fig.suptitle(
+            f"{model_name} - Bias-Variance Analysis", fontsize=11, fontweight="bold", y=1.02
+        )
         add_watermark(fig)
         save_ieee(fig, save_dir / "fig_bias_variance")
 
@@ -173,7 +189,7 @@ def plot_convergence_analysis(
         [h["val_loss"] for h in history]
 
         # (a) Rate of improvement
-        improvements = [0] + [val_f1[i] - val_f1[i-1] for i in range(1, len(val_f1))]
+        improvements = [0] + [val_f1[i] - val_f1[i - 1] for i in range(1, len(val_f1))]
         colors_bar = [IEEE_COLORS["green"] if v > 0 else IEEE_COLORS["red"] for v in improvements]
         axes[0].bar(epochs, improvements, color=colors_bar, edgecolor="black", lw=0.3, alpha=0.8)
         axes[0].axhline(0, color="black", lw=0.8)

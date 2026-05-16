@@ -20,11 +20,51 @@ logger = logging.getLogger(__name__)
 
 # Standard 48 disease columns from RFMiD
 DISEASE_COLUMNS = [
-    "DR", "ARMD", "MH", "DN", "MYA", "BRVO", "TSLN", "ERM", "LS", "MS",
-    "CSR", "ODC", "CRVO", "TV", "AH", "ODP", "ODE", "ST", "AION", "PT",
-    "RT", "RS", "CRS", "EDN", "RPEC", "MHL", "RP", "CWS", "CB", "ODPM",
-    "PRH", "MNF", "HR", "CRAO", "TD", "CME", "PTCR", "CF", "VH", "MCA",
-    "VS", "BRAO", "PLQ", "HPED", "CL",
+    "DR",
+    "ARMD",
+    "MH",
+    "DN",
+    "MYA",
+    "BRVO",
+    "TSLN",
+    "ERM",
+    "LS",
+    "MS",
+    "CSR",
+    "ODC",
+    "CRVO",
+    "TV",
+    "AH",
+    "ODP",
+    "ODE",
+    "ST",
+    "AION",
+    "PT",
+    "RT",
+    "RS",
+    "CRS",
+    "EDN",
+    "RPEC",
+    "MHL",
+    "RP",
+    "CWS",
+    "CB",
+    "ODPM",
+    "PRH",
+    "MNF",
+    "HR",
+    "CRAO",
+    "TD",
+    "CME",
+    "PTCR",
+    "CF",
+    "VH",
+    "MCA",
+    "VS",
+    "BRAO",
+    "PLQ",
+    "HPED",
+    "CL",
 ]
 
 
@@ -66,17 +106,13 @@ def build_multilabel_stratify_labels(
         signatures.append(f"{risk}::k={count}::{signature}")
 
     signature_counts = Counter(signatures)
-    fallback_labels = [
-        f"{risk}::k={count}" for risk, count in zip(disease_risk, label_counts)
-    ]
+    fallback_labels = [f"{risk}::k={count}" for risk, count in zip(disease_risk, label_counts)]
     merged = [
         sig if signature_counts[sig] >= 2 else fallback
         for sig, fallback in zip(signatures, fallback_labels)
     ]
     merged_counts = Counter(merged)
-    stratify_labels = [
-        label if merged_counts[label] >= 2 else "__other__" for label in merged
-    ]
+    stratify_labels = [label if merged_counts[label] >= 2 else "__other__" for label in merged]
 
     counts = Counter(stratify_labels)
     if len(counts) < 2 or min(counts.values()) < 2:
@@ -153,9 +189,7 @@ class RetinalDataModule:
         if self.data_dir is None:
             return False
         csv_candidates = list(self.data_dir.rglob("*.csv"))
-        img_candidates = list(self.data_dir.rglob("*.png")) + list(
-            self.data_dir.rglob("*.jpg")
-        )
+        img_candidates = list(self.data_dir.rglob("*.png")) + list(self.data_dir.rglob("*.jpg"))
         return len(csv_candidates) > 0 and len(img_candidates) > 0
 
     def setup(self, stage: str = "fit"):
@@ -188,15 +222,10 @@ class RetinalDataModule:
 
         # Find image directories per split
         train_img_dir = self._find_image_dir("train", train_labels)
-        val_img_dir = (
-            self._find_image_dir("val", val_labels) if len(val_labels) > 0 else None
-        )
-        test_img_dir = (
-            self._find_image_dir("test", test_labels) if len(test_labels) > 0 else None
-        )
+        val_img_dir = self._find_image_dir("val", val_labels) if len(val_labels) > 0 else None
+        test_img_dir = self._find_image_dir("test", test_labels) if len(test_labels) > 0 else None
         logger.info(
-            f"Image dirs - Train: {train_img_dir}, Val: {val_img_dir}, "
-            f"Test: {test_img_dir}"
+            f"Image dirs - Train: {train_img_dir}, Val: {val_img_dir}, " f"Test: {test_img_dir}"
         )
 
         self._validate_splits(
@@ -417,9 +446,7 @@ class RetinalDataModule:
                 img_dir=img_dir if validate_images else None,
             )
             for result in report.results:
-                message = (
-                    f"[{split_name}] {result.check_name}: {result.details}"
-                )
+                message = f"[{split_name}] {result.check_name}: {result.details}"
                 if result.passed:
                     logger.info(message)
                 elif result.severity == "warning":
