@@ -10,6 +10,7 @@ Ray Serve, Kafka, or MLflow. Three states:
 Integrates with Phase 1 OpenTelemetry for observability and
 Phase 1 event bus for CIRCUIT_BREAKER_OPENED/CLOSED events.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -41,6 +42,7 @@ class CircuitBreakerError(Exception):
 @dataclass
 class CircuitBreakerStats:
     """Runtime statistics for a circuit breaker."""
+
     total_calls: int = 0
     successful_calls: int = 0
     failed_calls: int = 0
@@ -148,9 +150,7 @@ class CircuitBreaker:
         except Exception as e:
             await self._on_failure(e)
             if fallback is not None:
-                logger.info(
-                    f"Circuit breaker '{self.name}' — using fallback after error: {e}"
-                )
+                logger.info(f"Circuit breaker '{self.name}' — using fallback after error: {e}")
                 return await fallback(*args, **kwargs)
             raise
 
@@ -213,16 +213,18 @@ class CircuitBreaker:
             else:
                 return
 
-            await event_bus.emit(Event(
-                type=event_type,
-                source=f"circuit_breaker.{self.name}",
-                data={
-                    "breaker": self.name,
-                    "old_state": old_state.value,
-                    "new_state": new_state.value,
-                    "consecutive_failures": self._consecutive_failures,
-                },
-            ))
+            await event_bus.emit(
+                Event(
+                    type=event_type,
+                    source=f"circuit_breaker.{self.name}",
+                    data={
+                        "breaker": self.name,
+                        "old_state": old_state.value,
+                        "new_state": new_state.value,
+                        "consecutive_failures": self._consecutive_failures,
+                    },
+                )
+            )
         except Exception:
             pass  # event emission is best-effort
 

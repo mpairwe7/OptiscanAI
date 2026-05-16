@@ -17,9 +17,7 @@ class USSDService:
     4. Result display
     """
 
-    def handle_callback(
-        self, session_id: str, phone: str, text: str
-    ) -> str:
+    def handle_callback(self, session_id: str, phone: str, text: str) -> str:
         """Process USSD menu interaction.
 
         Parameters
@@ -58,15 +56,9 @@ class USSDService:
             patient = parts[1]
             if language == "lg":
                 return (
-                    f"CON Omulwadde: {patient}\n\n"
-                    "1. Okukebera okuggya\n"
-                    "2. Okukebera ebivaamu"
+                    f"CON Omulwadde: {patient}\n\n" "1. Okukebera okuggya\n" "2. Okukebera ebivaamu"
                 )
-            return (
-                f"CON Patient: {patient}\n\n"
-                "1. New screening\n"
-                "2. Check result"
-            )
+            return f"CON Patient: {patient}\n\n" "1. New screening\n" "2. Check result"
 
         if level == 3:
             if language == "lg":

@@ -40,8 +40,10 @@ class LearnedFundusGate(nn.Module):
         # MobileNetV3-Small backbone
         try:
             import timm
+
             self.backbone = timm.create_model(
-                "mobilenetv3_small_100", pretrained=(weights_path is None),
+                "mobilenetv3_small_100",
+                pretrained=(weights_path is None),
                 num_classes=1,
             )
         except Exception:
@@ -59,12 +61,13 @@ class LearnedFundusGate(nn.Module):
             self.load_state_dict(state, strict=False)
             logger.info(f"Loaded fundus gate weights from {weights_path}")
 
-        self.transform = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225]),
-        ])
+        self.transform = transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.backbone(x)
@@ -112,9 +115,7 @@ class LearnedFundusGate(nn.Module):
         logit = self.backbone(tensor[:1])
         confidence = torch.sigmoid(logit).item()
         is_fundus = confidence >= self.threshold
-        message = "" if is_fundus else (
-            f"Non-fundus image detected (confidence: {confidence:.0%})"
-        )
+        message = "" if is_fundus else (f"Non-fundus image detected (confidence: {confidence:.0%})")
         return is_fundus, confidence, message
 
 
@@ -167,12 +168,14 @@ def train_fundus_gate(
             image = Image.open(path).convert("RGB")
             return self.transform(image), torch.tensor(label)
 
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-    ])
+    transform = transforms.Compose(
+        [
+            transforms.Resize((224, 224)),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        ]
+    )
 
     dataset = BinaryImageDataset(fundus_dir, non_fundus_dir, transform)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=0)
@@ -199,7 +202,9 @@ def train_fundus_gate(
             total += len(labels)
 
         acc = correct / total if total > 0 else 0
-        logger.info(f"Epoch {epoch+1}/{epochs} - Loss: {total_loss/len(loader):.4f}, Acc: {acc:.4f}")
+        logger.info(
+            f"Epoch {epoch+1}/{epochs} - Loss: {total_loss/len(loader):.4f}, Acc: {acc:.4f}"
+        )
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     torch.save(gate.state_dict(), output_path)

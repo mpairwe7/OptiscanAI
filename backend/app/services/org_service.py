@@ -1,4 +1,5 @@
 """Organization + membership operations."""
+
 from __future__ import annotations
 
 import logging
@@ -52,32 +53,39 @@ async def create_organization(db: AsyncSession, owner: User, name: str) -> Organ
     await db.flush()
 
     # Owner membership
-    db.add(Membership(
-        id=uuid.uuid4(),
-        user_id=owner.id,
-        organization_id=org.id,
-        role=MembershipRole.OWNER,
-        status=MembershipStatus.ACTIVE,
-        accepted_at=_utcnow(),
-    ))
+    db.add(
+        Membership(
+            id=uuid.uuid4(),
+            user_id=owner.id,
+            organization_id=org.id,
+            role=MembershipRole.OWNER,
+            status=MembershipStatus.ACTIVE,
+            accepted_at=_utcnow(),
+        )
+    )
 
     # Default to Free subscription — owner upgrades via /billing
     from backend.app.models.plan import PlanCode
+
     free_plan = (
         await db.execute(select(Plan).where(Plan.code == PlanCode.FREE.value))
     ).scalar_one()
-    db.add(Subscription(
-        id=uuid.uuid4(),
-        organization_id=org.id,
-        plan_id=free_plan.id,
-        current_period_start=_utcnow(),
-        current_period_end=_utcnow() + timedelta(days=settings.billing.free_period_days),
-    ))
+    db.add(
+        Subscription(
+            id=uuid.uuid4(),
+            organization_id=org.id,
+            plan_id=free_plan.id,
+            current_period_start=_utcnow(),
+            current_period_end=_utcnow() + timedelta(days=settings.billing.free_period_days),
+        )
+    )
     await db.flush()
     return org
 
 
-async def get_active_membership(db: AsyncSession, user_id: str, org_id: str) -> Optional[Membership]:
+async def get_active_membership(
+    db: AsyncSession, user_id: str, org_id: str
+) -> Optional[Membership]:
     return (
         await db.execute(
             select(Membership).where(
@@ -90,7 +98,10 @@ async def get_active_membership(db: AsyncSession, user_id: str, org_id: str) -> 
 
 
 async def require_org_role(
-    db: AsyncSession, user_id: str, org_id: str, required: set[MembershipRole],
+    db: AsyncSession,
+    user_id: str,
+    org_id: str,
+    required: set[MembershipRole],
 ) -> Membership:
     m = await get_active_membership(db, user_id, org_id)
     if m is None or m.role not in required:
@@ -99,9 +110,13 @@ async def require_org_role(
 
 
 async def count_active_seats(db: AsyncSession, org_id: str) -> int:
-    stmt = select(func.count()).select_from(Membership).where(
-        Membership.organization_id == org_id,
-        Membership.status == MembershipStatus.ACTIVE,
+    stmt = (
+        select(func.count())
+        .select_from(Membership)
+        .where(
+            Membership.organization_id == org_id,
+            Membership.status == MembershipStatus.ACTIVE,
+        )
     )
     return int((await db.execute(stmt)).scalar_one())
 
@@ -116,7 +131,9 @@ async def invite_member(
 ) -> tuple[OrganizationInvite, str]:
     # Check effective seat limit = plan.seat_limit + subscription.additional_seats
     sub = (
-        await db.execute(select(Subscription).where(Subscription.organization_id == organization.id))
+        await db.execute(
+            select(Subscription).where(Subscription.organization_id == organization.id)
+        )
     ).scalar_one_or_none()
     plan = await db.get(Plan, sub.plan_id) if sub else None
     included = plan.seat_limit if plan else 1
@@ -126,7 +143,9 @@ async def invite_member(
         used = await count_active_seats(db, str(organization.id))
         pending = (
             await db.execute(
-                select(func.count()).select_from(OrganizationInvite).where(
+                select(func.count())
+                .select_from(OrganizationInvite)
+                .where(
                     OrganizationInvite.organization_id == organization.id,
                     OrganizationInvite.accepted_at.is_(None),
                     OrganizationInvite.revoked_at.is_(None),
@@ -218,14 +237,16 @@ async def accept_invite(
 
     existing = await get_active_membership(db, str(user.id), str(invite.organization_id))
     if existing is None:
-        db.add(Membership(
-            id=uuid.uuid4(),
-            user_id=user.id,
-            organization_id=invite.organization_id,
-            role=invite.role,
-            status=MembershipStatus.ACTIVE,
-            accepted_at=_utcnow(),
-        ))
+        db.add(
+            Membership(
+                id=uuid.uuid4(),
+                user_id=user.id,
+                organization_id=invite.organization_id,
+                role=invite.role,
+                status=MembershipStatus.ACTIVE,
+                accepted_at=_utcnow(),
+            )
+        )
     invite.accepted_at = _utcnow()
 
     org = await db.get(Organization, invite.organization_id)

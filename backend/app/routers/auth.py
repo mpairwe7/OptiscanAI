@@ -3,6 +3,7 @@
 The legacy ``POST /token`` endpoint is kept for backwards compatibility with
 existing internal callers; new callers should use ``/login`` instead.
 """
+
 from __future__ import annotations
 
 import logging
@@ -52,6 +53,7 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 # ── Helpers ──
 
+
 def _set_auth_cookies(response: Response, *, access_token: str, refresh_token: str) -> None:
     response.set_cookie(
         key="os_access",
@@ -80,9 +82,13 @@ def _clear_auth_cookies(response: Response) -> None:
 
 # Back-compat shim — older callers still reference these names.
 _set_refresh_cookie = lambda r, t, _ttl: r.set_cookie(  # noqa: E731
-    key="os_refresh", value=t, max_age=settings.jwt_refresh_ttl_seconds,
-    httponly=True, secure=settings.environment == "production",
-    samesite="lax", path="/",
+    key="os_refresh",
+    value=t,
+    max_age=settings.jwt_refresh_ttl_seconds,
+    httponly=True,
+    secure=settings.environment == "production",
+    samesite="lax",
+    path="/",
 )
 _clear_refresh_cookie = _clear_auth_cookies
 
@@ -119,7 +125,10 @@ async def _build_me_response(
         email_verified=user.email_verified_at is not None,
         is_superuser=bool(user.is_superuser),
         organization=OrgSummary(
-            id=str(org.id), name=org.name, slug=org.slug, is_personal=org.is_personal,
+            id=str(org.id),
+            name=org.name,
+            slug=org.slug,
+            is_personal=org.is_personal,
         ),
         role=role,
         subscription=sub_summary,
@@ -145,6 +154,7 @@ async def _issue_session(
 
 # ── Register ──
 
+
 @router.post("/register", response_model=AuthSuccessResponse, status_code=status.HTTP_201_CREATED)
 async def register(
     body: RegisterRequest,
@@ -152,7 +162,10 @@ async def register(
     db: AsyncSession = Depends(get_db),
 ) -> AuthSuccessResponse:
     user, org = await register_user(
-        db, email=body.email, password=body.password, full_name=body.full_name,
+        db,
+        email=body.email,
+        password=body.password,
+        full_name=body.full_name,
     )
     try:
         await issue_email_verification(db, user)
@@ -162,6 +175,7 @@ async def register(
 
 
 # ── Login ──
+
 
 @router.post("/login", response_model=AuthSuccessResponse)
 async def login(
@@ -175,6 +189,7 @@ async def login(
 
 # ── Refresh ──
 
+
 @router.post("/refresh", response_model=AuthSuccessResponse)
 async def refresh(
     response: Response,
@@ -187,6 +202,7 @@ async def refresh(
     _set_auth_cookies(response, access_token=access, refresh_token=new_refresh)
 
     from backend.app.models.membership import Membership, MembershipStatus
+
     membership = (
         await db.execute(
             select(Membership).where(
@@ -200,11 +216,14 @@ async def refresh(
 
     me = await _build_me_response(db, user, org, role)
     return AuthSuccessResponse(
-        user=me, access_token=access, expires_in=settings.jwt_access_ttl_seconds,
+        user=me,
+        access_token=access,
+        expires_in=settings.jwt_access_ttl_seconds,
     )
 
 
 # ── Logout ──
+
 
 @router.post("/logout")
 async def logout(
@@ -219,6 +238,7 @@ async def logout(
 
 
 # ── Magic link ──
+
 
 @router.post("/magic-link/request")
 async def magic_link_request(body: MagicLinkRequest, db: AsyncSession = Depends(get_db)) -> dict:
@@ -237,6 +257,7 @@ async def magic_link_verify(
 
 
 # ── Email verification ──
+
 
 @router.get("/verify-email")
 async def verify_email(token: str, db: AsyncSession = Depends(get_db)) -> dict:
@@ -257,6 +278,7 @@ async def resend_verification(
 
 # ── Password reset ──
 
+
 @router.post("/password/forgot")
 async def password_forgot(body: PasswordForgotRequest, db: AsyncSession = Depends(get_db)) -> dict:
     await issue_password_reset(db, body.email)
@@ -271,6 +293,7 @@ async def password_reset(body: PasswordResetRequest, db: AsyncSession = Depends(
 
 # ── Current user ──
 
+
 @router.get("/me", response_model=MeResponse)
 async def me(
     ctx: AuthContext = Depends(get_auth_context),
@@ -280,6 +303,7 @@ async def me(
 
 
 # ── Legacy token endpoint (backwards compat for on-prem deployments) ──
+
 
 class _LegacyTokenRequest(BaseModel):
     api_key: str
@@ -305,8 +329,11 @@ async def legacy_token(request: _LegacyTokenRequest):
     if request.api_key != settings.jwt_secret:
         raise HTTPException(status_code=401, detail="Invalid API key")
     token = create_access_token(
-        subject="api_user", role="user", expires_seconds=settings.jwt_access_ttl_seconds,
+        subject="api_user",
+        role="user",
+        expires_seconds=settings.jwt_access_ttl_seconds,
     )
     return _LegacyTokenResponse(
-        access_token=token, expires_in=settings.jwt_access_ttl_seconds,
+        access_token=token,
+        expires_in=settings.jwt_access_ttl_seconds,
     )

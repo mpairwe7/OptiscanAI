@@ -5,6 +5,7 @@ are persisted and queued for incremental LoRA fine-tuning.  Once the queue
 reaches ``retrain_threshold`` the loop automatically triggers a fine-tuning
 run that blends corrected samples with high-confidence retention samples.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -49,6 +50,7 @@ def get_active_learning_loop() -> ActiveLearningLoop | None:
 # ---------------------------------------------------------------------------
 # Core implementation
 # ---------------------------------------------------------------------------
+
 
 class ActiveLearningLoop:
     """Closes the active-learning loop between clinician reviews and LoRA
@@ -192,9 +194,7 @@ class ActiveLearningLoop:
             }
 
         # Retention samples (high-confidence predictions mixed in)
-        retention_count = max(
-            1, int(len(corrected_samples) * self._retention_ratio)
-        )
+        retention_count = max(1, int(len(corrected_samples) * self._retention_ratio))
         retention_samples = self._sample_retention_predictions(retention_count)
 
         logger.info(
@@ -262,9 +262,7 @@ class ActiveLearningLoop:
         from backend.app.core.config import settings
 
         num_classes = settings.num_classes
-        device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu"
-        )
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # ------- build label tensors -----------------------------------
         all_samples = corrected_samples + retention_samples
@@ -433,8 +431,7 @@ class ActiveLearningLoop:
                         top_code = best.get("code", "UNKNOWN")
                         retention_item = {
                             "predictions": {
-                                p.get("code", "?"): p.get("probability", 0.0)
-                                for p in preds
+                                p.get("code", "?"): p.get("probability", 0.0) for p in preds
                             },
                             "image_info": {
                                 "request_id": entry.get("request_id", ""),
@@ -579,10 +576,12 @@ class ActiveLearningLoop:
         """Return the ordered list of disease codes used by the model."""
         try:
             from src.data.datamodule import DISEASE_COLUMNS
+
             return list(DISEASE_COLUMNS)
         except ImportError:
             logger.warning("Cannot import DISEASE_COLUMNS - using config num_classes")
             from backend.app.core.config import settings
+
             return [f"class_{i}" for i in range(settings.num_classes)]
 
     def _load_base_model(self, device: "torch.device") -> "torch.nn.Module | None":
@@ -687,7 +686,9 @@ class ActiveLearningLoop:
                 setattr(model, attr_name, wrapped)
                 lora_modules.append(wrapped)
 
-        logger.info("Applied %d LoRA adapters (rank=%d, alpha=%.1f)", len(lora_modules), rank, alpha)
+        logger.info(
+            "Applied %d LoRA adapters (rank=%d, alpha=%.1f)", len(lora_modules), rank, alpha
+        )
         return lora_modules
 
     def _build_input_tensors(
@@ -701,14 +702,16 @@ class ActiveLearningLoop:
         from PIL import Image
         from torchvision import transforms
 
-        transform = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize(
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225],
-            ),
-        ])
+        transform = transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225],
+                ),
+            ]
+        )
 
         tensors: list[torch.Tensor] = []
         for sample in samples:
@@ -741,37 +744,46 @@ class ActiveLearningLoop:
     async def _emit_review_completed(self, request_id: str, decision: str, reviewer: str) -> None:
         try:
             from src.agents.event_bus import Event, EventType, event_bus
-            await event_bus.emit(Event(
-                type=EventType.REVIEW_COMPLETED,
-                source="active_learning_loop",
-                data={
-                    "request_id": request_id,
-                    "decision": decision,
-                    "reviewer": reviewer,
-                },
-            ))
+
+            await event_bus.emit(
+                Event(
+                    type=EventType.REVIEW_COMPLETED,
+                    source="active_learning_loop",
+                    data={
+                        "request_id": request_id,
+                        "decision": decision,
+                        "reviewer": reviewer,
+                    },
+                )
+            )
         except Exception:
             logger.debug("Event bus unavailable for REVIEW_COMPLETED", exc_info=True)
 
     async def _emit_retrain_triggered(self, run_id: str) -> None:
         try:
             from src.agents.event_bus import Event, EventType, event_bus
-            await event_bus.emit(Event(
-                type=EventType.RETRAIN_TRIGGERED,
-                source="active_learning_loop",
-                data={"run_id": run_id},
-            ))
+
+            await event_bus.emit(
+                Event(
+                    type=EventType.RETRAIN_TRIGGERED,
+                    source="active_learning_loop",
+                    data={"run_id": run_id},
+                )
+            )
         except Exception:
             logger.debug("Event bus unavailable for RETRAIN_TRIGGERED", exc_info=True)
 
     async def _emit_retrain_completed(self, run_id: str, metrics: dict) -> None:
         try:
             from src.agents.event_bus import Event, EventType, event_bus
-            await event_bus.emit(Event(
-                type=EventType.RETRAIN_COMPLETED,
-                source="active_learning_loop",
-                data={"run_id": run_id, "metrics": metrics},
-            ))
+
+            await event_bus.emit(
+                Event(
+                    type=EventType.RETRAIN_COMPLETED,
+                    source="active_learning_loop",
+                    data={"run_id": run_id, "metrics": metrics},
+                )
+            )
         except Exception:
             logger.debug("Event bus unavailable for RETRAIN_COMPLETED", exc_info=True)
 

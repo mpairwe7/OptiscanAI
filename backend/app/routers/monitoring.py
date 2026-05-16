@@ -4,6 +4,7 @@ Provides Prometheus-compatible metrics, admin dashboards, and governance
 audit endpoints for offline RAG, mobile bundles, voice-first features,
 and quantization performance tracking.
 """
+
 from __future__ import annotations
 
 import logging
@@ -233,7 +234,9 @@ async def get_offline_stats() -> OfflineStats:
         total_fallback_to_offline=int(counters.get("online_fallback_to_offline_total", 0)),
         active_offline_users=int(gauges.get("active_offline_users", 0)),
         offline_faithfulness_score=gauges.get("offline_faithfulness_score", 0.0),
-        offline_search_latency_p95_ms=histograms.get("offline_search_latency_ms", {}).get("p95", 0.0),
+        offline_search_latency_p95_ms=histograms.get("offline_search_latency_ms", {}).get(
+            "p95", 0.0
+        ),
         bundle_size_mb=gauges.get("mobile_bundle_size_mb", 0.0),
         total_bundle_downloads=int(counters.get("mobile_bundle_downloads_total", 0)),
         total_delta_syncs=int(counters.get("delta_sync_total", 0)),
@@ -293,10 +296,16 @@ async def get_full_admin_stats() -> FullAdminStats:
     flags = {
         "FLAG_QUANTIZATION": getattr(getattr(settings, "quantization", None), "enabled", False),
         "FLAG_OFFLINE_RAG": getattr(getattr(settings, "offline_rag", None), "enabled", False),
-        "FLAG_VOICE_FIRST_MOBILE": getattr(getattr(settings, "voice_first", None), "enabled", False),
+        "FLAG_VOICE_FIRST_MOBILE": getattr(
+            getattr(settings, "voice_first", None), "enabled", False
+        ),
         "FLAG_MOBILE_BUNDLE": getattr(getattr(settings, "mobile_bundle", None), "enabled", False),
-        "FLAG_SPECULATIVE_DECODING": getattr(getattr(settings, "quantization", None), "speculative_decoding_enabled", False),
-        "FLAG_PREFIX_CACHE": getattr(getattr(settings, "quantization", None), "prefix_cache_enabled", False),
+        "FLAG_SPECULATIVE_DECODING": getattr(
+            getattr(settings, "quantization", None), "speculative_decoding_enabled", False
+        ),
+        "FLAG_PREFIX_CACHE": getattr(
+            getattr(settings, "quantization", None), "prefix_cache_enabled", False
+        ),
     }
 
     return FullAdminStats(
@@ -349,7 +358,7 @@ async def get_grafana_dashboard_config() -> GrafanaDashboard:
             {
                 "title": "Offline Search Latency (p95)",
                 "type": "timeseries",
-                "metric": "retinalai_offline_search_latency_ms{quantile=\"0.95\"}",
+                "metric": 'retinalai_offline_search_latency_ms{quantile="0.95"}',
                 "description": "p95 latency for offline RAG searches",
             },
             {
@@ -363,13 +372,13 @@ async def get_grafana_dashboard_config() -> GrafanaDashboard:
             {
                 "title": "Delta Sync Duration (p95)",
                 "type": "timeseries",
-                "metric": "retinalai_delta_sync_duration_ms{quantile=\"0.95\"}",
+                "metric": 'retinalai_delta_sync_duration_ms{quantile="0.95"}',
                 "description": "p95 delta sync duration",
             },
             {
                 "title": "Voice-First Latency (p95)",
                 "type": "timeseries",
-                "metric": "retinalai_voice_latency_ms{quantile=\"0.95\"}",
+                "metric": 'retinalai_voice_latency_ms{quantile="0.95"}',
                 "description": "p95 end-to-end voice interaction latency",
             },
             {

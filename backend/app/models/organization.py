@@ -1,4 +1,5 @@
 """Organization (tenant) model."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -32,9 +33,13 @@ class Organization(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(TimestampTZ, default=utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(TimestampTZ, default=utcnow, onupdate=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        TimestampTZ, default=utcnow, onupdate=utcnow, nullable=False
+    )
 
-    owner: Mapped["User"] = relationship(back_populates="owned_organizations", foreign_keys=[owner_user_id])
+    owner: Mapped["User"] = relationship(
+        back_populates="owned_organizations", foreign_keys=[owner_user_id]
+    )
     memberships: Mapped[list["Membership"]] = relationship(
         back_populates="organization",
         cascade="all, delete-orphan",

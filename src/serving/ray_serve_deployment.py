@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 try:
     import ray
     from ray import serve
+
     RAY_AVAILABLE = True
 except ImportError:
     RAY_AVAILABLE = False
@@ -45,18 +46,20 @@ except ImportError:
 # Preprocessing
 # ---------------------------------------------------------------------------
 
+
 def preprocess_image(image_bytes: bytes, img_size: int = 224) -> torch.Tensor:
     """Convert raw image bytes to model-ready tensor."""
     import io
 
     from torchvision import transforms
 
-    transform = transforms.Compose([
-        transforms.Resize((img_size, img_size)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                             std=[0.229, 0.224, 0.225]),
-    ])
+    transform = transforms.Compose(
+        [
+            transforms.Resize((img_size, img_size)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
 
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     return transform(img).unsqueeze(0)
@@ -89,6 +92,7 @@ _SERVE_CONFIG = {
 
 
 if RAY_AVAILABLE:
+
     @serve.deployment(
         name=_SERVE_CONFIG["name"],
         num_replicas=_SERVE_CONFIG["num_replicas"],
@@ -113,7 +117,8 @@ if RAY_AVAILABLE:
             mc_samples: int = 5,
         ):
             self.device = (
-                "cuda" if device == "auto" and torch.cuda.is_available()
+                "cuda"
+                if device == "auto" and torch.cuda.is_available()
                 else device if device != "auto" else "cpu"
             )
             self.mc_samples = mc_samples
@@ -169,12 +174,13 @@ if RAY_AVAILABLE:
 
             try:
                 # Parse request
-                if hasattr(request, 'body'):
+                if hasattr(request, "body"):
                     image_bytes = await request.body()
                 elif isinstance(request, bytes):
                     image_bytes = request
                 elif isinstance(request, dict):
                     import base64
+
                     image_bytes = base64.b64decode(request.get("image", ""))
                 else:
                     return {"error": "Invalid request format"}
@@ -218,8 +224,7 @@ if RAY_AVAILABLE:
         def get_metrics(self) -> Dict[str, Any]:
             """Return serving metrics for monitoring."""
             avg_latency = (
-                self._total_latency / self._request_count
-                if self._request_count > 0 else 0
+                self._total_latency / self._request_count if self._request_count > 0 else 0
             )
             return {
                 "total_requests": self._request_count,
@@ -235,6 +240,7 @@ if RAY_AVAILABLE:
 # ---------------------------------------------------------------------------
 # Launch helper
 # ---------------------------------------------------------------------------
+
 
 def launch_serve(
     model_path: Optional[str] = None,

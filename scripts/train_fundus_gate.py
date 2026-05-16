@@ -151,25 +151,33 @@ def pgd_attack(
 
 
 def train(args):
-    device = torch.device(args.device if args.device != "auto" else ("cuda" if torch.cuda.is_available() else "cpu"))
+    device = torch.device(
+        args.device if args.device != "auto" else ("cuda" if torch.cuda.is_available() else "cpu")
+    )
     logger.info("Device: %s", device)
 
     # Transforms
-    train_transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomVerticalFlip(p=0.2),
-        transforms.RandomRotation(15),
-        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.1),
-        JPEGCompression(quality_range=tuple(int(x) for x in args.jpeg_quality_range.split(","))),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-    ])
-    val_transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-    ])
+    train_transform = transforms.Compose(
+        [
+            transforms.Resize((224, 224)),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomVerticalFlip(p=0.2),
+            transforms.RandomRotation(15),
+            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.1),
+            JPEGCompression(
+                quality_range=tuple(int(x) for x in args.jpeg_quality_range.split(","))
+            ),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        ]
+    )
+    val_transform = transforms.Compose(
+        [
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        ]
+    )
 
     # Build full dataset to get indices, then split
     full_dataset = BinaryImageDataset(args.fundus_dir, args.non_fundus_dir, train_transform)
@@ -181,14 +189,21 @@ def train(args):
     )
     logger.info("Dataset: %d total (%d train, %d val)", n, len(train_idx), len(val_idx))
 
-    train_dataset = BinaryImageDataset(args.fundus_dir, args.non_fundus_dir, train_transform, indices=train_idx)
-    val_dataset = BinaryImageDataset(args.fundus_dir, args.non_fundus_dir, val_transform, indices=val_idx)
+    train_dataset = BinaryImageDataset(
+        args.fundus_dir, args.non_fundus_dir, train_transform, indices=train_idx
+    )
+    val_dataset = BinaryImageDataset(
+        args.fundus_dir, args.non_fundus_dir, val_transform, indices=val_idx
+    )
 
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=2)
+    train_loader = DataLoader(
+        train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=2
+    )
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=2)
 
     # Model
     from src.data.fundus_gate_learned import LearnedFundusGate
+
     model = LearnedFundusGate(weights_path=None)
     model = model.to(device)
 
@@ -211,8 +226,12 @@ def train(args):
             # Adversarial loss (PGD)
             if args.pgd_epsilon > 0:
                 images_adv = pgd_attack(
-                    model, images, labels_batch, criterion,
-                    epsilon=args.pgd_epsilon, steps=args.pgd_steps,
+                    model,
+                    images,
+                    labels_batch,
+                    criterion,
+                    epsilon=args.pgd_epsilon,
+                    steps=args.pgd_steps,
                 )
                 logits_adv = model(images_adv).squeeze(-1)
                 loss_adv = criterion(logits_adv, labels_batch)
@@ -254,7 +273,13 @@ def train(args):
         avg_loss = train_loss / max(len(train_loader), 1)
         logger.info(
             "Epoch %d/%d — Loss: %.4f | Val Acc: %.4f | Prec: %.4f | Rec: %.4f | AUC: %.4f",
-            epoch + 1, args.epochs, avg_loss, acc, prec, rec, auc,
+            epoch + 1,
+            args.epochs,
+            avg_loss,
+            acc,
+            prec,
+            rec,
+            auc,
         )
 
         if auc > best_auc:
@@ -277,8 +302,11 @@ def train(args):
             onnx_path = f"{stem}.onnx"
             dummy = torch.randn(1, 3, 224, 224)
             torch.onnx.export(
-                model, dummy, onnx_path,
-                input_names=["image"], output_names=["logit"],
+                model,
+                dummy,
+                onnx_path,
+                input_names=["image"],
+                output_names=["logit"],
                 dynamic_axes={"image": {0: "batch"}, "logit": {0: "batch"}},
                 opset_version=17,
             )
@@ -298,9 +326,7 @@ def train(args):
     if args.quantize_int8:
         try:
             int8_path = f"{stem}_int8.pth"
-            quantized = torch.quantization.quantize_dynamic(
-                model, {nn.Linear}, dtype=torch.qint8
-            )
+            quantized = torch.quantization.quantize_dynamic(model, {nn.Linear}, dtype=torch.qint8)
             torch.save(quantized.state_dict(), int8_path)
             logger.info("INT8 quantized model saved to %s", int8_path)
         except Exception as e:
@@ -329,13 +355,19 @@ def main():
     parser = argparse.ArgumentParser(description="Train fundus gate binary classifier")
     parser.add_argument("--fundus-dir", required=True, help="Directory of fundus images")
     parser.add_argument("--non-fundus-dir", required=True, help="Directory of non-fundus images")
-    parser.add_argument("--output-path", default="weights/fundus_gate.pth", help="Output weights path")
+    parser.add_argument(
+        "--output-path", default="weights/fundus_gate.pth", help="Output weights path"
+    )
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--pgd-epsilon", type=float, default=0.03, help="PGD attack epsilon (0 to disable)")
+    parser.add_argument(
+        "--pgd-epsilon", type=float, default=0.03, help="PGD attack epsilon (0 to disable)"
+    )
     parser.add_argument("--pgd-steps", type=int, default=7, help="PGD attack iterations")
-    parser.add_argument("--jpeg-quality-range", default="30,95", help="JPEG compression quality range")
+    parser.add_argument(
+        "--jpeg-quality-range", default="30,95", help="JPEG compression quality range"
+    )
     parser.add_argument("--val-split", type=float, default=0.15, help="Validation split ratio")
     parser.add_argument("--device", default="auto", help="Device: auto|cpu|cuda")
     parser.add_argument("--export-onnx", action="store_true", help="Export to ONNX after training")

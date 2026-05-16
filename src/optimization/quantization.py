@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 # torch.compile wrapper
 # ---------------------------------------------------------------------------
 
+
 def compile_model(
     model: nn.Module,
     mode: str = "max-autotune",
@@ -66,6 +67,7 @@ def compile_model(
 # ---------------------------------------------------------------------------
 # Dynamic INT8 Quantization
 # ---------------------------------------------------------------------------
+
 
 def quantize_dynamic_int8(
     model: nn.Module,
@@ -110,6 +112,7 @@ def quantize_dynamic_int8(
 # ---------------------------------------------------------------------------
 # Static INT8 Quantization with Calibration
 # ---------------------------------------------------------------------------
+
 
 def quantize_static_int8(
     model: nn.Module,
@@ -171,6 +174,7 @@ def quantize_static_int8(
 # FP16 Conversion
 # ---------------------------------------------------------------------------
 
+
 def convert_to_fp16(model: nn.Module) -> nn.Module:
     """Convert model to FP16 half precision for GPU inference."""
     model_fp16 = model.half()
@@ -182,6 +186,7 @@ def convert_to_fp16(model: nn.Module) -> nn.Module:
 # ---------------------------------------------------------------------------
 # Knowledge Distillation
 # ---------------------------------------------------------------------------
+
 
 class DistillationLoss(nn.Module):
     """Combined distillation + task loss for knowledge distillation.
@@ -232,9 +237,7 @@ class LightweightStudent(nn.Module):
         super().__init__()
         import timm
 
-        self.backbone = timm.create_model(
-            "efficientnet_b0", pretrained=True, num_classes=0
-        )
+        self.backbone = timm.create_model("efficientnet_b0", pretrained=True, num_classes=0)
         backbone_dim = self.backbone.num_features  # 1280
 
         self.classifier = nn.Sequential(
@@ -254,6 +257,7 @@ class LightweightStudent(nn.Module):
 # ---------------------------------------------------------------------------
 # Benchmarking
 # ---------------------------------------------------------------------------
+
 
 def benchmark_latency(
     model: nn.Module,
@@ -301,7 +305,7 @@ def benchmark_latency(
 
     results = {
         "mean_ms": sum(latencies) / n,
-        "std_ms": (sum((x - sum(latencies)/n)**2 for x in latencies) / n) ** 0.5,
+        "std_ms": (sum((x - sum(latencies) / n) ** 2 for x in latencies) / n) ** 0.5,
         "p50_ms": latencies[n // 2],
         "p95_ms": latencies[int(n * 0.95)],
         "p99_ms": latencies[int(n * 0.99)],
@@ -323,6 +327,7 @@ def benchmark_latency(
 # ---------------------------------------------------------------------------
 # Full optimization pipeline
 # ---------------------------------------------------------------------------
+
 
 def optimize_for_production(
     model: nn.Module,
@@ -415,6 +420,7 @@ def optimize_for_production(
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _model_size_mb(model: nn.Module) -> float:
     """Estimate model size in MB via state_dict serialization.
 
@@ -422,6 +428,7 @@ def _model_size_mb(model: nn.Module) -> float:
     (whose packed parameters are not exposed via .parameters()).
     """
     import io
+
     buf = io.BytesIO()
     torch.save(model.state_dict(), buf)
     return buf.tell() / (1024 * 1024)

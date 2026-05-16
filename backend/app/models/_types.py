@@ -1,4 +1,5 @@
 """Shared SQLAlchemy column types and helpers."""
+
 from __future__ import annotations
 
 import uuid
@@ -20,6 +21,7 @@ def uuid_pk():
 
 def uuid_fk(target: str, *, nullable: bool = False, **kw):
     from sqlalchemy import ForeignKey
+
     return mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey(target, ondelete="CASCADE"),

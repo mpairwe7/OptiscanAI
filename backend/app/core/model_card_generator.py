@@ -6,6 +6,7 @@ directory.  Re-uses the governance-layer ``ModelCard`` dataclass when
 available, with a fallback dict-based generator for environments where
 the governance package is not on ``sys.path``.
 """
+
 from __future__ import annotations
 
 import json
@@ -41,6 +42,7 @@ try:
     from src.governance.model_card import (
         generate_model_card as _gov_generate,
     )
+
     _GOV_AVAILABLE = True
 except ImportError:
     _GovernanceModelCard = None  # type: ignore[assignment,misc]
@@ -64,8 +66,7 @@ class ModelCardAutoGenerator:
         self._auto_generate: bool = self._cfg.auto_generate
         self._output_dir = Path(self._cfg.output_dir)
         logger.info(
-            "ModelCardAutoGenerator initialised "
-            "(auto_generate=%s, output_dir=%s)",
+            "ModelCardAutoGenerator initialised " "(auto_generate=%s, output_dir=%s)",
             self._auto_generate,
             self._output_dir,
         )
@@ -120,12 +121,8 @@ class ModelCardAutoGenerator:
                 architecture = (training_config or {}).get(
                     "architecture", "ViGNN (Vision Graph Neural Network)"
                 )
-                num_parameters = int(
-                    (training_config or {}).get("num_parameters", 0)
-                )
-                num_samples = int(
-                    (training_config or {}).get("num_samples", 0)
-                )
+                num_parameters = int((training_config or {}).get("num_parameters", 0))
+                num_samples = int((training_config or {}).get("num_samples", 0))
 
                 gov_card = _gov_generate(
                     model_name=model_name,
@@ -163,17 +160,14 @@ class ModelCardAutoGenerator:
                 "architecture": (training_config or {}).get(
                     "architecture", "ViGNN (Vision Graph Neural Network)"
                 ),
-                "num_parameters": int(
-                    (training_config or {}).get("num_parameters", 0)
-                ),
+                "num_parameters": int((training_config or {}).get("num_parameters", 0)),
                 "framework": "PyTorch 2.0+",
                 "license": "CC-BY-4.0",
                 "training_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             },
             "intended_use": {
                 "primary_use": (
-                    "Screening aid for multi-label retinal disease detection "
-                    "from fundus images"
+                    "Screening aid for multi-label retinal disease detection " "from fundus images"
                 ),
                 "primary_users": [
                     "Ophthalmologists",
@@ -190,15 +184,11 @@ class ModelCardAutoGenerator:
             "training_data": {
                 "dataset": "RFMiD (Retinal Fundus Multi-Disease Image Dataset)",
                 "source": "Kaggle: mpairwelauben/multi-disease-retinal-eye-disease-dataset",
-                "num_samples": int(
-                    (training_config or {}).get("num_samples", 0)
-                ),
+                "num_samples": int((training_config or {}).get("num_samples", 0)),
                 "num_classes": 45,
                 "split_ratios": "70/20/10 (train/val/test)",
                 "preprocessing": "Resize to 224x224, ImageNet normalization",
-                "augmentation": (
-                    "Random flips, rotation(15 deg), color jitter, random erasing"
-                ),
+                "augmentation": ("Random flips, rotation(15 deg), color jitter, random erasing"),
                 "known_limitations": [
                     "Dataset may not represent all global demographics equally",
                     "Severe class imbalance -- rare diseases have very few samples",
@@ -292,9 +282,7 @@ class ModelCardAutoGenerator:
         ``MODEL_CARD_GENERATED`` event.
         """
         if not self._auto_generate:
-            logger.debug(
-                "Model card auto-generation disabled -- skipping"
-            )
+            logger.debug("Model card auto-generation disabled -- skipping")
             return
 
         data = event.data if hasattr(event, "data") else {}
@@ -395,7 +383,11 @@ class ModelCardAutoGenerator:
         lines.append(f"- **Architecture:** {details.get('architecture', 'N/A')}")
         lines.append(f"- **Type:** {details.get('type', 'N/A')}")
         num_params = details.get("num_parameters", 0)
-        lines.append(f"- **Parameters:** {num_params:,}" if isinstance(num_params, int) else f"- **Parameters:** {num_params}")
+        lines.append(
+            f"- **Parameters:** {num_params:,}"
+            if isinstance(num_params, int)
+            else f"- **Parameters:** {num_params}"
+        )
         lines.append(f"- **Framework:** {details.get('framework', 'PyTorch 2.0+')}")
         lines.append(f"- **License:** {details.get('license', 'CC-BY-4.0')}")
         lines.append(f"- **Training Date:** {details.get('training_date', 'N/A')}")
@@ -537,9 +529,7 @@ def init_model_card_generator() -> None:
                 EventType.MODEL_PROMOTED,
                 _generator.on_model_promoted,
             )
-            logger.info(
-                "Model card generator subscribed to MODEL_PROMOTED events"
-            )
+            logger.info("Model card generator subscribed to MODEL_PROMOTED events")
         except Exception:
             logger.warning(
                 "Could not subscribe to event bus -- "

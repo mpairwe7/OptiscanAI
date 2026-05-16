@@ -11,6 +11,7 @@ Retinal fundus images have distinctive properties:
 - Specific luminance distribution (dark periphery, bright optic disc region)
 - Typical aspect ratios near 1:1 (4:3 also common from camera sensors)
 """
+
 import logging
 from dataclasses import dataclass
 
@@ -21,29 +22,30 @@ logger = logging.getLogger(__name__)
 
 # Fundus image statistical profiles (derived from RFMiD training set)
 # These are the expected ranges for normalized channel means
-FUNDUS_RED_MEAN_RANGE = (0.20, 0.75)    # fundus images are red-dominant
+FUNDUS_RED_MEAN_RANGE = (0.20, 0.75)  # fundus images are red-dominant
 FUNDUS_GREEN_MEAN_RANGE = (0.08, 0.55)
 FUNDUS_BLUE_MEAN_RANGE = (0.02, 0.40)
-FUNDUS_RED_GREEN_RATIO_MIN = 1.05        # red channel always > green in fundus
-FUNDUS_DARK_PIXEL_RATIO_MIN = 0.05       # at least 5% dark pixels (circular mask border)
-FUNDUS_DARK_PIXEL_RATIO_MAX = 0.80       # not mostly dark (would be blank/corrupt)
-FUNDUS_MIN_DIMENSION = 100               # fundus cameras produce at least 100px
-FUNDUS_MAX_ASPECT_DEVIATION = 0.65       # max deviation from square (4:3 = 0.33, 16:9 = 0.78)
-FUNDUS_SATURATION_MIN = 0.03             # fundus images have some color saturation
+FUNDUS_RED_GREEN_RATIO_MIN = 1.05  # red channel always > green in fundus
+FUNDUS_DARK_PIXEL_RATIO_MIN = 0.05  # at least 5% dark pixels (circular mask border)
+FUNDUS_DARK_PIXEL_RATIO_MAX = 0.80  # not mostly dark (would be blank/corrupt)
+FUNDUS_MIN_DIMENSION = 100  # fundus cameras produce at least 100px
+FUNDUS_MAX_ASPECT_DEVIATION = 0.65  # max deviation from square (4:3 = 0.33, 16:9 = 0.78)
+FUNDUS_SATURATION_MIN = 0.03  # fundus images have some color saturation
 
 # Post-inference OOD thresholds
-OOD_MAX_CONFIDENCE = 0.15   # if no disease has >15% confidence, likely non-retinal
+OOD_MAX_CONFIDENCE = 0.15  # if no disease has >15% confidence, likely non-retinal
 OOD_MEAN_CONFIDENCE = 0.03  # if mean across all 45 diseases is <3%, likely non-retinal
 
 
 @dataclass
 class GateResult:
     """Result of fundus image gating."""
+
     passed: bool
-    confidence: float          # 0-1, how likely this is a fundus image
-    reason: str                # human-readable explanation
-    checks: dict               # individual check results
-    layer: str                 # which layer made the decision: structural | statistical | ood
+    confidence: float  # 0-1, how likely this is a fundus image
+    reason: str  # human-readable explanation
+    checks: dict  # individual check results
+    layer: str  # which layer made the decision: structural | statistical | ood
 
 
 def check_structural(image: Image.Image) -> tuple[bool, dict]:
@@ -90,7 +92,11 @@ def check_statistical(image: Image.Image) -> tuple[bool, float, dict]:
     g_mean = float(pixels[:, :, 1].mean())
     b_mean = float(pixels[:, :, 2].mean())
 
-    checks["channel_means"] = {"red": round(r_mean, 3), "green": round(g_mean, 3), "blue": round(b_mean, 3)}
+    checks["channel_means"] = {
+        "red": round(r_mean, 3),
+        "green": round(g_mean, 3),
+        "blue": round(b_mean, 3),
+    }
 
     # Red channel in expected range
     r_ok = FUNDUS_RED_MEAN_RANGE[0] <= r_mean <= FUNDUS_RED_MEAN_RANGE[1]
@@ -140,10 +146,14 @@ def check_statistical(image: Image.Image) -> tuple[bool, float, dict]:
 
     # Center brightness (optic disc region tends to be brighter than edges)
     h, w = pixels.shape[:2]
-    center = luminance[h//4:3*h//4, w//4:3*w//4]
-    edge = np.concatenate([luminance[:h//4].flatten(), luminance[3*h//4:].flatten()])
+    center = luminance[h // 4 : 3 * h // 4, w // 4 : 3 * w // 4]
+    edge = np.concatenate([luminance[: h // 4].flatten(), luminance[3 * h // 4 :].flatten()])
     center_brighter = float(center.mean()) > float(edge.mean()) * 0.8
-    checks["center_bright"] = {"passed": center_brighter, "center_mean": round(float(center.mean()), 3), "edge_mean": round(float(edge.mean()), 3)}
+    checks["center_bright"] = {
+        "passed": center_brighter,
+        "center_mean": round(float(center.mean()), 3),
+        "edge_mean": round(float(edge.mean()), 3),
+    }
     if center_brighter:
         score += 1
     total_checks += 1
@@ -151,13 +161,15 @@ def check_statistical(image: Image.Image) -> tuple[bool, float, dict]:
     # Circular dark border pattern — fundus cameras produce a circular field
     # Check if corners are significantly darker than center (circular aperture)
     corner_size = max(h // 8, 1)
-    corners = np.concatenate([
-        luminance[:corner_size, :corner_size].flatten(),
-        luminance[:corner_size, -corner_size:].flatten(),
-        luminance[-corner_size:, :corner_size].flatten(),
-        luminance[-corner_size:, -corner_size:].flatten(),
-    ])
-    center_region = luminance[h//3:2*h//3, w//3:2*w//3]
+    corners = np.concatenate(
+        [
+            luminance[:corner_size, :corner_size].flatten(),
+            luminance[:corner_size, -corner_size:].flatten(),
+            luminance[-corner_size:, :corner_size].flatten(),
+            luminance[-corner_size:, -corner_size:].flatten(),
+        ]
+    )
+    center_region = luminance[h // 3 : 2 * h // 3, w // 3 : 2 * w // 3]
     corner_mean = float(corners.mean())
     center_mean = float(center_region.mean())
     # Corners should be at least 40% darker than center for circular aperture
@@ -226,7 +238,7 @@ def check_statistical(image: Image.Image) -> tuple[bool, float, dict]:
     # -------------------------------------------------------------------
     hsv = rgb.convert("HSV")
     hsv_arr = np.array(hsv, dtype=np.float32)
-    hue = hsv_arr[:, :, 0]          # 0-255 in PIL (maps to 0-360°)
+    hue = hsv_arr[:, :, 0]  # 0-255 in PIL (maps to 0-360°)
     sat = hsv_arr[:, :, 1] / 255.0
     # Only consider pixels with meaningful saturation (>0.10)
     sat_mask = sat > 0.10
@@ -246,7 +258,7 @@ def check_statistical(image: Image.Image) -> tuple[bool, float, dict]:
         "saturated_pixels": n_saturated,
     }
     if hue_ok:
-        score += 2.0   # heavily weighted — very discriminative
+        score += 2.0  # heavily weighted — very discriminative
     total_checks += 2.0
 
     # -------------------------------------------------------------------
@@ -257,8 +269,10 @@ def check_statistical(image: Image.Image) -> tuple[bool, float, dict]:
     green = pixels[:, :, 1]
     lap = (
         -4 * green[1:-1, 1:-1]
-        + green[:-2, 1:-1] + green[2:, 1:-1]
-        + green[1:-1, :-2] + green[1:-1, 2:]
+        + green[:-2, 1:-1]
+        + green[2:, 1:-1]
+        + green[1:-1, :-2]
+        + green[1:-1, 2:]
     )
     bright_mask = luminance[1:-1, 1:-1] > 0.15
     if bright_mask.sum() > 100:
@@ -281,8 +295,10 @@ def check_statistical(image: Image.Image) -> tuple[bool, float, dict]:
     # Hard requirement: must have (dark border or circular aperture) AND
     # sharp radial boundary AND red-orange hue concentration.
     has_fundus_spatial = (
-        (checks.get("dark_border", {}).get("passed", False)
-         or checks.get("circular_aperture", {}).get("passed", False))
+        (
+            checks.get("dark_border", {}).get("passed", False)
+            or checks.get("circular_aperture", {}).get("passed", False)
+        )
         and checks.get("radial_sharpness", {}).get("passed", False)
         and checks.get("hue_concentration", {}).get("passed", False)
     )
@@ -304,8 +320,7 @@ def check_ood_postinference(predictions: list[dict], all_probabilities: dict) ->
         return True, {"note": "no predictions to check"}
 
     probs = [
-        v["probability"] if isinstance(v, dict) else float(v)
-        for v in all_probabilities.values()
+        v["probability"] if isinstance(v, dict) else float(v) for v in all_probabilities.values()
     ]
 
     max_conf = max(probs) if probs else 0
@@ -334,7 +349,7 @@ def gate_image(image: Image.Image) -> GateResult:
             passed=False,
             confidence=0.0,
             reason=f"Image failed structural checks: {', '.join(failed_checks)}. "
-                   "Please upload a retinal fundus photograph.",
+            "Please upload a retinal fundus photograph.",
             checks={"structural": struct_checks},
             layer="structural",
         )
@@ -346,8 +361,8 @@ def gate_image(image: Image.Image) -> GateResult:
             passed=False,
             confidence=stat_confidence,
             reason="Image does not match retinal fundus color profile. "
-                   f"Fundus confidence: {stat_confidence:.0%}. "
-                   "Please upload a color retinal fundus photograph from a fundus camera.",
+            f"Fundus confidence: {stat_confidence:.0%}. "
+            "Please upload a color retinal fundus photograph from a fundus camera.",
             checks={"structural": struct_checks, "statistical": stat_checks},
             layer="statistical",
         )
@@ -369,8 +384,8 @@ def gate_predictions(predictions: list[dict], all_probabilities: dict) -> GateRe
             passed=False,
             confidence=0.0,
             reason="Model confidence is extremely low across all 45 diseases, "
-                   "indicating this may not be a retinal fundus image. "
-                   "Results should be interpreted with caution.",
+            "indicating this may not be a retinal fundus image. "
+            "Results should be interpreted with caution.",
             checks={"ood": ood_checks},
             layer="ood",
         )

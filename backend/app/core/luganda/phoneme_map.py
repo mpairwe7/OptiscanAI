@@ -11,8 +11,24 @@ VOWELS = {"a", "e", "i", "o", "u"}
 
 # Luganda consonant clusters common in medical terms
 CONSONANT_CLUSTERS = {
-    "mb", "nd", "ng", "nk", "nt", "mp", "nz", "ny", "bw", "gw", "kw", "lw",
-    "mw", "nw", "pw", "sw", "tw", "zw",
+    "mb",
+    "nd",
+    "ng",
+    "nk",
+    "nt",
+    "mp",
+    "nz",
+    "ny",
+    "bw",
+    "gw",
+    "kw",
+    "lw",
+    "mw",
+    "nw",
+    "pw",
+    "sw",
+    "tw",
+    "zw",
 }
 
 # Pronunciation overrides for medical terms
@@ -72,7 +88,9 @@ def number_to_luganda(n: int) -> str:
     if n < 1000:
         hundreds = n // 100
         remainder = n % 100
-        h_word = f"bikumi {LUGANDA_NUMBERS.get(hundreds, str(hundreds))}" if hundreds > 1 else "kikumi"
+        h_word = (
+            f"bikumi {LUGANDA_NUMBERS.get(hundreds, str(hundreds))}" if hundreds > 1 else "kikumi"
+        )
         if remainder == 0:
             return h_word
         return f"{h_word} mu {number_to_luganda(remainder)}"
@@ -99,6 +117,7 @@ def format_tts_text(text: str, language: str = "lg") -> str:
 
     # Expand percentages
     import re
+
     def replace_pct(match):
         num = float(match.group(1))
         return percentage_to_luganda(num)

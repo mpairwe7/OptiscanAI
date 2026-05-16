@@ -143,9 +143,17 @@ def optimize_thresholds_with_precision_floor(
             "classes_optimized": len(valid_thresholds),
             "classes_fallback": num_classes - len(valid_thresholds),
             "mean_threshold": float(thresholds.mean()),
-            "mean_precision": float(np.mean([r["precision"] for r in valid_thresholds])) if valid_thresholds else 0.0,
-            "mean_recall": float(np.mean([r["recall"] for r in valid_thresholds])) if valid_thresholds else 0.0,
-            "mean_f1": float(np.mean([r["f1"] for r in valid_thresholds])) if valid_thresholds else 0.0,
+            "mean_precision": (
+                float(np.mean([r["precision"] for r in valid_thresholds]))
+                if valid_thresholds
+                else 0.0
+            ),
+            "mean_recall": (
+                float(np.mean([r["recall"] for r in valid_thresholds])) if valid_thresholds else 0.0
+            ),
+            "mean_f1": (
+                float(np.mean([r["f1"] for r in valid_thresholds])) if valid_thresholds else 0.0
+            ),
         },
     }
 

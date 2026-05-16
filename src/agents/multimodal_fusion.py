@@ -28,8 +28,8 @@ RISK_FACTOR_BOOSTS: dict[str, dict[str, float]] = {
 # Age-related risk adjustments
 AGE_RISK: dict[str, dict[str, float]] = {
     "senior": {"ARMD": 0.15, "ODC": 0.10, "DR": 0.05},  # 60+
-    "middle": {"DR": 0.08, "BRVO": 0.05},                # 40-59
-    "young": {"MYA": 0.10},                               # < 40
+    "middle": {"DR": 0.08, "BRVO": 0.05},  # 40-59
+    "young": {"MYA": 0.10},  # < 40
 }
 
 
@@ -69,15 +69,11 @@ class MultimodalConfidenceEstimator:
 
         # History boost
         if clinical_history and clinical_history.get("risk_factors"):
-            history_boosts = self._compute_history_boosts(
-                clinical_history["risk_factors"]
-            )
+            history_boosts = self._compute_history_boosts(clinical_history["risk_factors"])
             available_weight += HISTORY_WEIGHT
             for code, boost in history_boosts.items():
                 if code in adjusted:
-                    adjusted[code] = min(
-                        adjusted[code] + boost * HISTORY_WEIGHT, 1.0
-                    )
+                    adjusted[code] = min(adjusted[code] + boost * HISTORY_WEIGHT, 1.0)
 
         # Demographics boost
         if demographics and demographics.get("age"):
@@ -85,9 +81,7 @@ class MultimodalConfidenceEstimator:
             available_weight += DEMOGRAPHICS_WEIGHT
             for code, boost in demo_boosts.items():
                 if code in adjusted:
-                    adjusted[code] = min(
-                        adjusted[code] + boost * DEMOGRAPHICS_WEIGHT, 1.0
-                    )
+                    adjusted[code] = min(adjusted[code] + boost * DEMOGRAPHICS_WEIGHT, 1.0)
 
         return adjusted
 
@@ -99,7 +93,9 @@ class MultimodalConfidenceEstimator:
     ) -> float:
         """Compute overall multimodal confidence score."""
         if history_available and demographics_available:
-            return image_confidence * IMAGE_WEIGHT + 0.8 * HISTORY_WEIGHT + 0.7 * DEMOGRAPHICS_WEIGHT
+            return (
+                image_confidence * IMAGE_WEIGHT + 0.8 * HISTORY_WEIGHT + 0.7 * DEMOGRAPHICS_WEIGHT
+            )
         if history_available:
             return image_confidence * (IMAGE_WEIGHT + DEMOGRAPHICS_WEIGHT) + 0.8 * HISTORY_WEIGHT
         return image_confidence

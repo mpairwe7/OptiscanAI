@@ -4,6 +4,7 @@ This is the hot path for quota enforcement. The composite index
 (organization_id, event_type, occurred_at) makes the monthly COUNT(*)
 query O(log n) even at millions of rows.
 """
+
 from __future__ import annotations
 
 import enum
@@ -36,7 +37,9 @@ class UsageEvent(Base):
     user_id: Mapped[Optional[str]] = uuid_fk("users.id", nullable=True)
 
     event_type: Mapped[UsageEventType] = mapped_column(
-        Enum(UsageEventType, name="usage_event_type", values_callable=lambda x: [e.value for e in x]),
+        Enum(
+            UsageEventType, name="usage_event_type", values_callable=lambda x: [e.value for e in x]
+        ),
         nullable=False,
     )
     quantity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)

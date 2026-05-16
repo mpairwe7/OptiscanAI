@@ -8,6 +8,7 @@ Wraps the LangGraph screening pipeline (graph.py) as an agent with:
 
 The actual workflow is in graph.py — this agent manages when and how it runs.
 """
+
 import logging
 
 from PIL import Image
@@ -71,4 +72,6 @@ class ScreeningAgent(BaseAgent):
         """Return the most recent screening report."""
         if self._last_report:
             return ToolResult(tool="get_last_report", success=True, data=self._last_report)
-        return ToolResult(tool="get_last_report", success=False, error="No screening has been run yet")
+        return ToolResult(
+            tool="get_last_report", success=False, error="No screening has been run yet"
+        )

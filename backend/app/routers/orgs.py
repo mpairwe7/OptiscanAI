@@ -1,4 +1,5 @@
 """Organization management routes: list/create orgs, invite members, manage roles."""
+
 from __future__ import annotations
 
 import logging
@@ -44,9 +45,13 @@ async def list_orgs(
     rows = await list_user_orgs(db, str(ctx.user.id))
     return [
         OrgResponse(
-            id=str(o.id), name=o.name, slug=o.slug,
-            is_personal=o.is_personal, is_active=o.is_active,
-            role=role, created_at=o.created_at,
+            id=str(o.id),
+            name=o.name,
+            slug=o.slug,
+            is_personal=o.is_personal,
+            is_active=o.is_active,
+            role=role,
+            created_at=o.created_at,
         )
         for o, role in rows
     ]
@@ -60,9 +65,13 @@ async def create_org(
 ) -> OrgResponse:
     org = await create_organization(db, ctx.user, body.name)
     return OrgResponse(
-        id=str(org.id), name=org.name, slug=org.slug,
-        is_personal=org.is_personal, is_active=org.is_active,
-        role="owner", created_at=org.created_at,
+        id=str(org.id),
+        name=org.name,
+        slug=org.slug,
+        is_personal=org.is_personal,
+        is_active=org.is_active,
+        role="owner",
+        created_at=org.created_at,
     )
 
 
@@ -72,7 +81,12 @@ async def list_members(
     ctx: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ) -> list[MemberResponse]:
-    await require_org_role(db, str(ctx.user.id), org_id, ADMIN_ROLES | {MembershipRole.CLINICIAN, MembershipRole.VIEWER})
+    await require_org_role(
+        db,
+        str(ctx.user.id),
+        org_id,
+        ADMIN_ROLES | {MembershipRole.CLINICIAN, MembershipRole.VIEWER},
+    )
     stmt = (
         select(Membership, User)
         .join(User, Membership.user_id == User.id)
@@ -95,7 +109,9 @@ async def list_members(
     ]
 
 
-@router.post("/{org_id}/invites", response_model=InviteResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{org_id}/invites", response_model=InviteResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_invite(
     org_id: str,
     body: InviteMemberRequest,
@@ -114,8 +130,11 @@ async def create_invite(
         role=MembershipRole(body.role),
     )
     return InviteResponse(
-        id=str(invite.id), email=invite.email, role=invite.role.value,
-        expires_at=invite.expires_at, created_at=invite.created_at,
+        id=str(invite.id),
+        email=invite.email,
+        role=invite.role.value,
+        expires_at=invite.expires_at,
+        created_at=invite.created_at,
     )
 
 
@@ -127,18 +146,25 @@ async def list_pending_invites(
 ) -> list[InviteResponse]:
     await require_org_role(db, str(ctx.user.id), org_id, ADMIN_ROLES)
     rows = (
-        await db.execute(
-            select(OrganizationInvite).where(
-                OrganizationInvite.organization_id == org_id,
-                OrganizationInvite.accepted_at.is_(None),
-                OrganizationInvite.revoked_at.is_(None),
+        (
+            await db.execute(
+                select(OrganizationInvite).where(
+                    OrganizationInvite.organization_id == org_id,
+                    OrganizationInvite.accepted_at.is_(None),
+                    OrganizationInvite.revoked_at.is_(None),
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     return [
         InviteResponse(
-            id=str(i.id), email=i.email, role=i.role.value,
-            expires_at=i.expires_at, created_at=i.created_at,
+            id=str(i.id),
+            email=i.email,
+            role=i.role.value,
+            expires_at=i.expires_at,
+            created_at=i.created_at,
         )
         for i in rows
     ]
@@ -153,6 +179,7 @@ async def revoke_invite(
 ) -> dict:
     await require_org_role(db, str(ctx.user.id), org_id, ADMIN_ROLES)
     from datetime import datetime, timezone
+
     invite = await db.get(OrganizationInvite, invite_id)
     if invite is None or str(invite.organization_id) != org_id:
         raise HTTPException(status_code=404, detail="Invite not found")
@@ -166,7 +193,10 @@ async def accept_invite_route(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     user, org = await accept_invite(
-        db, token=body.token, full_name=body.full_name, password=body.password,
+        db,
+        token=body.token,
+        full_name=body.full_name,
+        password=body.password,
     )
     return {
         "status": "ok",

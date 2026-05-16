@@ -42,8 +42,7 @@ except ImportError:
     ray = None  # type: ignore[assignment]
     serve = None  # type: ignore[assignment]
     logger.info(
-        "ray[serve] is not installed; "
-        "Ray Serve deployment will not be available at runtime"
+        "ray[serve] is not installed; " "Ray Serve deployment will not be available at runtime"
     )
 
 
@@ -110,9 +109,7 @@ def _load_serve_settings() -> Dict[str, Any]:
             "target_ongoing_requests": rs.target_ongoing_requests,
         }
     except Exception:
-        logger.warning(
-            "Could not load RayServeSettings from config; using defaults"
-        )
+        logger.warning("Could not load RayServeSettings from config; using defaults")
         return {
             "batch_max_size": 16,
             "batch_timeout_s": 0.1,
@@ -194,9 +191,7 @@ if _RAY_AVAILABLE:
         ) -> None:
             # Resolve device
             if device == "auto":
-                self._device = torch.device(
-                    "cuda" if torch.cuda.is_available() else "cpu"
-                )
+                self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             else:
                 self._device = torch.device(device)
 
@@ -243,12 +238,8 @@ if _RAY_AVAILABLE:
             self._disease_names = kg.disease_names
 
             if os.path.exists(model_path):
-                checkpoint = torch.load(
-                    model_path, map_location="cpu", weights_only=False
-                )
-                nc = checkpoint.get(
-                    "num_classes", len(self._disease_names)
-                )
+                checkpoint = torch.load(model_path, map_location="cpu", weights_only=False)
+                nc = checkpoint.get("num_classes", len(self._disease_names))
                 self._num_classes = nc
 
                 self._model = create_vignn_model(
@@ -257,9 +248,7 @@ if _RAY_AVAILABLE:
                 )
 
                 if "model_state_dict" in checkpoint:
-                    self._model.load_state_dict(
-                        checkpoint["model_state_dict"], strict=False
-                    )
+                    self._model.load_state_dict(checkpoint["model_state_dict"], strict=False)
                     logger.info(
                         "Loaded ViGNN weights from checkpoint",
                         extra={
@@ -289,14 +278,10 @@ if _RAY_AVAILABLE:
             # Optional torch.compile on CUDA
             if self._device.type == "cuda":
                 try:
-                    self._model = torch.compile(
-                        self._model, mode="reduce-overhead"
-                    )
+                    self._model = torch.compile(self._model, mode="reduce-overhead")
                     logger.info("torch.compile applied (reduce-overhead)")
                 except Exception as exc:
-                    logger.debug(
-                        "torch.compile unavailable: %s", exc
-                    )
+                    logger.debug("torch.compile unavailable: %s", exc)
 
         # -- preprocessing ------------------------------------------------
 
@@ -317,9 +302,7 @@ if _RAY_AVAILABLE:
             max_batch_size=_SERVE_SETTINGS["batch_max_size"],
             batch_wait_timeout_s=_SERVE_SETTINGS["batch_timeout_s"],
         )
-        async def _handle_batch(
-            self, image_list: List[bytes]
-        ) -> List[Dict[str, Any]]:
+        async def _handle_batch(self, image_list: List[bytes]) -> List[Dict[str, Any]]:
             """Process a dynamically-batched list of images.
 
             Ray Serve collects up to ``batch_max_size`` concurrent calls
@@ -366,9 +349,7 @@ if _RAY_AVAILABLE:
                                     "probability": float(prob_val),
                                 }
                             )
-                    predictions.sort(
-                        key=lambda d: d["probability"], reverse=True
-                    )
+                    predictions.sort(key=lambda d: d["probability"], reverse=True)
 
                     results.append(
                         {
@@ -402,8 +383,7 @@ if _RAY_AVAILABLE:
                     extra={"batch_size": batch_size},
                 )
                 return [
-                    {"error": "inference_failed", "detail": str(exc)}
-                    for _ in range(batch_size)
+                    {"error": "inference_failed", "detail": str(exc)} for _ in range(batch_size)
                 ]
 
         # -- public entry point -------------------------------------------
@@ -447,16 +427,12 @@ if _RAY_AVAILABLE:
             replica restart.  We run a small dummy tensor through the model
             to verify the full inference pipeline is functional.
             """
-            dummy = torch.randn(
-                1, 3, _IMG_SIZE, _IMG_SIZE, device=self._device
-            )
+            dummy = torch.randn(1, 3, _IMG_SIZE, _IMG_SIZE, device=self._device)
             with torch.no_grad():
                 output = self._model(dummy)
 
             if output is None or output.shape[0] != 1:
-                raise RuntimeError(
-                    "Health check failed: unexpected model output shape"
-                )
+                raise RuntimeError("Health check failed: unexpected model output shape")
 
             logger.debug(
                 "Health check passed",
@@ -478,16 +454,12 @@ if _RAY_AVAILABLE:
                 ``avg_latency_ms``, ``device``.
             """
             avg_latency = (
-                self._total_latency_ms / self._request_count
-                if self._request_count > 0
-                else 0.0
+                self._total_latency_ms / self._request_count if self._request_count > 0 else 0.0
             )
             return {
                 "total_requests": self._request_count,
                 "error_count": self._error_count,
-                "error_rate": round(
-                    self._error_count / max(self._request_count, 1), 4
-                ),
+                "error_rate": round(self._error_count / max(self._request_count, 1), 4),
                 "avg_latency_ms": round(avg_latency, 2),
                 "device": str(self._device),
             }
@@ -542,9 +514,7 @@ def deploy_model(
     global _ACTIVE_APP_NAME
 
     if not _RAY_AVAILABLE:
-        raise ImportError(
-            "ray[serve] is required: pip install 'ray[serve]'"
-        )
+        raise ImportError("ray[serve] is required: pip install 'ray[serve]'")
 
     # Initialise Ray (idempotent)
     if not ray.is_initialized():
@@ -591,9 +561,7 @@ def undeploy_model(app_name: Optional[str] = None) -> None:
     global _ACTIVE_APP_NAME
 
     if not _RAY_AVAILABLE:
-        raise ImportError(
-            "ray[serve] is required: pip install 'ray[serve]'"
-        )
+        raise ImportError("ray[serve] is required: pip install 'ray[serve]'")
 
     name = app_name or _ACTIVE_APP_NAME
     if name is None:
@@ -604,9 +572,7 @@ def undeploy_model(app_name: Optional[str] = None) -> None:
         serve.delete(name)
         logger.info("Deployment undeployed", extra={"app_name": name})
     except Exception as exc:
-        logger.error(
-            "Failed to undeploy: %s", exc, extra={"app_name": name}
-        )
+        logger.error("Failed to undeploy: %s", exc, extra={"app_name": name})
         raise
     finally:
         if name == _ACTIVE_APP_NAME:

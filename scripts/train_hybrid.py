@@ -72,6 +72,7 @@ def build_hybrid_model(cfg: dict) -> torch.nn.Module:
 
     # Build knowledge graph
     from src.data.datamodule import DISEASE_COLUMNS
+
     disease_names = model_cfg.get("disease_names")
     if not disease_names:
         disease_names = (

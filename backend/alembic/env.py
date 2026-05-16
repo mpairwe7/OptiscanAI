@@ -1,4 +1,5 @@
 """Alembic environment — uses async engine + reads URL from app settings."""
+
 from __future__ import annotations
 
 import asyncio

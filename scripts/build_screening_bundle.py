@@ -124,9 +124,7 @@ def collect_components(input_dir: Path) -> list[BundleComponent]:
     for spec in REQUIRED_COMPONENTS:
         src = input_dir / spec["filename"]
         if not src.exists():
-            raise FileNotFoundError(
-                f"Required component missing: {src} ({spec['description']})"
-            )
+            raise FileNotFoundError(f"Required component missing: {src} ({spec['description']})")
         components.append(
             BundleComponent(
                 name=spec["name"],
@@ -217,9 +215,7 @@ def validate_bundle(bundle_path: Path, manifest: BundleManifest) -> dict:
         "max_allowed_mb": MAX_BUNDLE_SIZE_MB,
         "size_ok": compressed_mb <= MAX_BUNDLE_SIZE_MB,
         "num_components": len(manifest.components),
-        "required_present": all(
-            c.sha256 for c in manifest.components if c.required
-        ),
+        "required_present": all(c.sha256 for c in manifest.components if c.required),
         "sha256_sidecar_valid": True,  # Verified during build
     }
 

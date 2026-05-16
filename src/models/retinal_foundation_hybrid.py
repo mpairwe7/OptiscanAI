@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 # Mixture-of-Experts Router
 # ---------------------------------------------------------------------------
 
+
 class MoERouter(nn.Module):
     """Mixture-of-Experts router for disease category specialization.
 
@@ -46,8 +47,14 @@ class MoERouter(nn.Module):
     ClinicalKnowledgeGraph taxonomy.
     """
 
-    def __init__(self, input_dim: int, num_experts: int, expert_dim: int,
-                 top_k: int = 2, dropout: float = 0.1):
+    def __init__(
+        self,
+        input_dim: int,
+        num_experts: int,
+        expert_dim: int,
+        top_k: int = 2,
+        dropout: float = 0.1,
+    ):
         super().__init__()
         self.num_experts = num_experts
         self.top_k = min(top_k, num_experts)
@@ -61,16 +68,18 @@ class MoERouter(nn.Module):
         )
 
         # Expert networks (lightweight MLPs)
-        self.experts = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(input_dim, expert_dim),
-                nn.LayerNorm(expert_dim),
-                nn.GELU(),
-                nn.Dropout(dropout),
-                nn.Linear(expert_dim, input_dim),
-            )
-            for _ in range(num_experts)
-        ])
+        self.experts = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Linear(input_dim, expert_dim),
+                    nn.LayerNorm(expert_dim),
+                    nn.GELU(),
+                    nn.Dropout(dropout),
+                    nn.Linear(expert_dim, input_dim),
+                )
+                for _ in range(num_experts)
+            ]
+        )
 
         # Load balancing loss coefficient
         self.load_balance_coeff = 0.01
@@ -85,7 +94,7 @@ class MoERouter(nn.Module):
         aux_loss : torch.Tensor
             Load-balancing auxiliary loss to prevent expert collapse.
         """
-        gate_logits = self.gate(x)                          # [B, num_experts]
+        gate_logits = self.gate(x)  # [B, num_experts]
         gate_probs = F.softmax(gate_logits, dim=-1)
 
         topk_probs, topk_indices = gate_probs.topk(self.top_k, dim=-1)
@@ -94,8 +103,8 @@ class MoERouter(nn.Module):
         # Dispatch to experts
         output = torch.zeros_like(x)
         for k in range(self.top_k):
-            expert_idx = topk_indices[:, k]                 # [B]
-            weight = topk_probs[:, k].unsqueeze(-1)         # [B, 1]
+            expert_idx = topk_indices[:, k]  # [B]
+            weight = topk_probs[:, k].unsqueeze(-1)  # [B, 1]
 
             for e_idx in range(self.num_experts):
                 mask = expert_idx == e_idx
@@ -104,7 +113,7 @@ class MoERouter(nn.Module):
                     output[mask] += weight[mask] * expert_out
 
         # Load-balancing loss: encourage uniform expert usage
-        avg_probs = gate_probs.mean(dim=0)                  # [num_experts]
+        avg_probs = gate_probs.mean(dim=0)  # [num_experts]
         aux_loss = self.load_balance_coeff * self.num_experts * (avg_probs * avg_probs).sum()
 
         return output, aux_loss
@@ -113,6 +122,7 @@ class MoERouter(nn.Module):
 # ---------------------------------------------------------------------------
 # Uncertainty Quantification Module
 # ---------------------------------------------------------------------------
+
 
 class UncertaintyHead(nn.Module):
     """Produces calibrated predictions with epistemic and aleatoric uncertainty.
@@ -123,25 +133,28 @@ class UncertaintyHead(nn.Module):
     - Learned temperature for calibration
     """
 
-    def __init__(self, input_dim: int, num_classes: int, num_heads: int = 3,
-                 mc_dropout: float = 0.15):
+    def __init__(
+        self, input_dim: int, num_classes: int, num_heads: int = 3, mc_dropout: float = 0.15
+    ):
         super().__init__()
         self.num_heads = num_heads
         self.mc_dropout = mc_dropout
         self.num_classes = num_classes
 
         # Deep ensemble heads (diverse classifiers)
-        self.heads = nn.ModuleList([
-            nn.Sequential(
-                nn.Dropout(mc_dropout),
-                nn.Linear(input_dim, 256),
-                nn.LayerNorm(256),
-                nn.GELU(),
-                nn.Dropout(mc_dropout),
-                nn.Linear(256, num_classes),
-            )
-            for _ in range(num_heads)
-        ])
+        self.heads = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Dropout(mc_dropout),
+                    nn.Linear(input_dim, 256),
+                    nn.LayerNorm(256),
+                    nn.GELU(),
+                    nn.Dropout(mc_dropout),
+                    nn.Linear(256, num_classes),
+                )
+                for _ in range(num_heads)
+            ]
+        )
 
         # Learned temperature for Platt scaling
         self.temperature = nn.Parameter(torch.ones(1) * 1.5)
@@ -174,7 +187,7 @@ class UncertaintyHead(nn.Module):
 
         # Stack: [num_samples * num_heads, B, C]
         stacked = torch.stack(all_logits, dim=0)
-        mean_logits = stacked.mean(dim=0)                       # [B, C]
+        mean_logits = stacked.mean(dim=0)  # [B, C]
 
         # Temperature scaling
         temp = self.temperature.clamp(min=0.1)
@@ -183,14 +196,15 @@ class UncertaintyHead(nn.Module):
 
         # Epistemic uncertainty: variance of logits across ensemble/MC samples
         # Use unbiased=False to avoid NaN when n=1 (single head, mc_samples=1)
-        epistemic = stacked.var(dim=0, unbiased=False)           # [B, C]
+        epistemic = stacked.var(dim=0, unbiased=False)  # [B, C]
 
         # Aleatoric uncertainty: mean predictive entropy (binary cross-entropy form)
         probs_all = torch.sigmoid(stacked)
         probs_clamped = probs_all.clamp(min=1e-7, max=1 - 1e-7)
-        entropy = -(probs_clamped * probs_clamped.log() +
-                    (1 - probs_clamped) * (1 - probs_clamped).log())
-        aleatoric = entropy.mean(dim=0)                          # [B, C]
+        entropy = -(
+            probs_clamped * probs_clamped.log() + (1 - probs_clamped) * (1 - probs_clamped).log()
+        )
+        aleatoric = entropy.mean(dim=0)  # [B, C]
 
         # Confidence intervals (5th-95th percentile)
         probs_sorted = probs_all.sort(dim=0).values
@@ -211,6 +225,7 @@ class UncertaintyHead(nn.Module):
 # ---------------------------------------------------------------------------
 # RetinalFoundationHybrid — Main Model
 # ---------------------------------------------------------------------------
+
 
 class RetinalFoundationHybrid(nn.Module):
     """Unified retinal disease classification model for production deployment.
@@ -309,13 +324,15 @@ class RetinalFoundationHybrid(nn.Module):
         nn.init.normal_(self.disease_prototypes, std=0.02)
 
         # Sparse graph attention layers
-        self.graph_layers = nn.ModuleList([
-            SparseTopKAttention(hidden_dim, num_heads=num_heads, dropout=dropout, top_k=32)
-            for _ in range(num_graph_layers)
-        ])
-        self.graph_norms = nn.ModuleList([
-            nn.LayerNorm(hidden_dim) for _ in range(num_graph_layers)
-        ])
+        self.graph_layers = nn.ModuleList(
+            [
+                SparseTopKAttention(hidden_dim, num_heads=num_heads, dropout=dropout, top_k=32)
+                for _ in range(num_graph_layers)
+            ]
+        )
+        self.graph_norms = nn.ModuleList(
+            [nn.LayerNorm(hidden_dim) for _ in range(num_graph_layers)]
+        )
 
         # Disease-aware attention pooling
         self.disease_query = nn.Parameter(torch.randn(num_classes, hidden_dim))
@@ -382,8 +399,8 @@ class RetinalFoundationHybrid(nn.Module):
         batch_size = x.size(0)
 
         # ---- Extract features ----
-        patch_features = self.encoder(x)              # [B, N, D]
-        patch_embeds = self.patch_proj(patch_features) # [B, N, hidden_dim]
+        patch_features = self.encoder(x)  # [B, N, D]
+        patch_embeds = self.patch_proj(patch_features)  # [B, N, hidden_dim]
 
         # ---- Graph message passing ----
         graph_embeds = patch_embeds
@@ -511,11 +528,11 @@ class RetinalFoundationHybrid(nn.Module):
         encoder_total = sum(p.numel() for p in self.encoder.parameters())
         encoder_trainable = sum(p.numel() for p in self.encoder.parameters() if p.requires_grad)
         head_total = sum(
-            p.numel() for n, p in self.named_parameters()
-            if not n.startswith("encoder")
+            p.numel() for n, p in self.named_parameters() if not n.startswith("encoder")
         )
         head_trainable = sum(
-            p.numel() for n, p in self.named_parameters()
+            p.numel()
+            for n, p in self.named_parameters()
             if not n.startswith("encoder") and p.requires_grad
         )
         return {
@@ -536,6 +553,7 @@ class RetinalFoundationHybrid(nn.Module):
 # ---------------------------------------------------------------------------
 # Factory
 # ---------------------------------------------------------------------------
+
 
 def create_hybrid_model(
     num_classes: int = 48,
@@ -575,6 +593,7 @@ def create_hybrid_model(
     """
     if clinical_knowledge_graph is None:
         from src.models.vignn import create_knowledge_graph
+
         clinical_knowledge_graph = create_knowledge_graph()
 
     model = RetinalFoundationHybrid(

@@ -3,6 +3,7 @@
 The hot path is :func:`count_scans_in_period`. It uses the composite index
 ``(organization_id, event_type, occurred_at)`` defined on ``usage_events``.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -65,13 +66,15 @@ async def record_event(
     request_id: Optional[str] = None,
     quantity: int = 1,
 ) -> None:
-    db.add(UsageEvent(
-        organization_id=organization_id,
-        user_id=user_id,
-        event_type=event_type,
-        quantity=quantity,
-        request_id=request_id,
-    ))
+    db.add(
+        UsageEvent(
+            organization_id=organization_id,
+            user_id=user_id,
+            event_type=event_type,
+            quantity=quantity,
+            request_id=request_id,
+        )
+    )
     # Caller's session commits on request end (see backend.app.core.db.get_db).
 
 

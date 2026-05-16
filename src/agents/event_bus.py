@@ -3,6 +3,7 @@
 Events flow between agents without tight coupling. Each agent subscribes
 to event types it cares about, and emits events for others to react to.
 """
+
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -106,6 +107,7 @@ class Event:
             self.timestamp = datetime.now(timezone.utc).isoformat()
         if not self.event_id:
             import uuid
+
             self.event_id = str(uuid.uuid4())[:8]
 
 
@@ -145,15 +147,13 @@ class EventBus:
 
     def unsubscribe(self, event_type: EventType, handler: EventHandler):
         """Remove a handler."""
-        self._handlers[event_type] = [
-            h for h in self._handlers[event_type] if h is not handler
-        ]
+        self._handlers[event_type] = [h for h in self._handlers[event_type] if h is not handler]
 
     async def emit(self, event: Event):
         """Dispatch event to all subscribers. Non-blocking: handler errors are logged, not raised."""
         self._history.append(event)
         if len(self._history) > self._max_history:
-            self._history = self._history[-self._max_history:]
+            self._history = self._history[-self._max_history :]
 
         handlers = self._handlers.get(event.type, [])
         if not handlers:

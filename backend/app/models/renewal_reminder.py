@@ -2,6 +2,7 @@
 
 Used to prevent double-sending and to expose a CSV audit for ops.
 """
+
 from __future__ import annotations
 
 import enum
@@ -28,7 +29,11 @@ class RenewalReminder(Base):
     id: Mapped[str] = uuid_pk()
     subscription_id: Mapped[str] = uuid_fk("subscriptions.id", nullable=False, index=True)
     kind: Mapped[ReminderKind] = mapped_column(
-        Enum(ReminderKind, name="renewal_reminder_kind", values_callable=lambda x: [e.value for e in x]),
+        Enum(
+            ReminderKind,
+            name="renewal_reminder_kind",
+            values_callable=lambda x: [e.value for e in x],
+        ),
         nullable=False,
     )
     # The period_end timestamp this reminder was sent against — lets us send
@@ -42,7 +47,9 @@ class RenewalReminder(Base):
         # One reminder per (subscription, period_end, kind). Renewing the
         # subscription advances period_end so a new set of reminders is allowed.
         UniqueConstraint(
-            "subscription_id", "period_end", "kind",
+            "subscription_id",
+            "period_end",
+            "kind",
             name="uq_renewal_reminder_sub_period_kind",
         ),
     )

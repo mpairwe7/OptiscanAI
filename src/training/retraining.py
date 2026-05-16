@@ -1,4 +1,5 @@
 """Automated retraining triggers based on drift, schedule, and data volume."""
+
 import json
 import logging
 from dataclasses import dataclass
@@ -89,14 +90,10 @@ class RetrainingTrigger:
         priority = "normal"
 
         # Trigger 1: Time-based
-        last_training = datetime.fromisoformat(
-            self._state.get("last_training", now.isoformat())
-        )
+        last_training = datetime.fromisoformat(self._state.get("last_training", now.isoformat()))
         days_elapsed = (now - last_training).days
         if days_elapsed > self.max_days:
-            reasons.append(
-                f"Model is {days_elapsed} days old (threshold: {self.max_days})"
-            )
+            reasons.append(f"Model is {days_elapsed} days old (threshold: {self.max_days})")
             priority = "high"
 
         # Trigger 2: Data volume
@@ -128,9 +125,7 @@ class RetrainingTrigger:
             last_f1 = self._state["last_metrics"].get("f1_macro", 0)
             current_f1 = current_metrics.get("f1_macro", 0)
             if last_f1 > 0 and (last_f1 - current_f1) > self.perf_drop_threshold:
-                reasons.append(
-                    f"F1 dropped from {last_f1:.4f} to {current_f1:.4f}"
-                )
+                reasons.append(f"F1 dropped from {last_f1:.4f} to {current_f1:.4f}")
                 priority = "critical"
 
         should_retrain = len(reasons) > 0
@@ -142,8 +137,6 @@ class RetrainingTrigger:
         )
 
         if should_retrain:
-            logger.warning(
-                f"Retraining triggered ({priority}): {decision.reason}"
-            )
+            logger.warning(f"Retraining triggered ({priority}): {decision.reason}")
 
         return decision

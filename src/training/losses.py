@@ -32,9 +32,7 @@ class FocalLoss(nn.Module):
         self.alpha = alpha
         self.gamma = gamma
         self.label_smoothing = label_smoothing
-        self.register_buffer(
-            "pos_weight", pos_weight if pos_weight is not None else None
-        )
+        self.register_buffer("pos_weight", pos_weight if pos_weight is not None else None)
 
     def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         targets = _smooth_targets(targets, self.label_smoothing)

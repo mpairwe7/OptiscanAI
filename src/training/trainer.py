@@ -77,9 +77,7 @@ class DDPTrainer:
                 model,
                 device_ids=[self.local_rank],
                 output_device=self.local_rank,
-                find_unused_parameters=self.dist_cfg.get(
-                    "find_unused_parameters", False
-                ),
+                find_unused_parameters=self.dist_cfg.get("find_unused_parameters", False),
             )
         else:
             self.model = model
@@ -112,13 +110,9 @@ class DDPTrainer:
 
         # Metrics
         self.default_threshold = self.eval_cfg.get("threshold", 0.5)
-        self.optimal_threshold_search = self.eval_cfg.get(
-            "optimal_threshold_search", False
-        )
+        self.optimal_threshold_search = self.eval_cfg.get("optimal_threshold_search", False)
         self.threshold_search_space = self.eval_cfg.get("threshold_search_space")
-        self.monitor_metric_name = (
-            "f1_macro_opt" if self.optimal_threshold_search else "f1_macro"
-        )
+        self.monitor_metric_name = "f1_macro_opt" if self.optimal_threshold_search else "f1_macro"
         self.train_metrics = MetricTracker(threshold=self.default_threshold)
         self.val_metrics = MetricTracker(threshold=self.default_threshold)
 
@@ -233,9 +227,7 @@ class DDPTrainer:
                 eta_min=1e-7,
             )
         elif sched_name == "step":
-            self.scheduler = StepLR(
-                self.optimizer, step_size=max_epochs // 3, gamma=0.1
-            )
+            self.scheduler = StepLR(self.optimizer, step_size=max_epochs // 3, gamma=0.1)
         elif sched_name == "onecycle":
             self.scheduler = OneCycleLR(
                 self.optimizer,
@@ -303,9 +295,7 @@ class DDPTrainer:
                         self.threshold_search_space
                     )
                     opt_metrics = self.val_metrics.compute(epoch_thresholds)
-                    val_metrics.update(
-                        {f"{k}_opt": v for k, v in opt_metrics.items()}
-                    )
+                    val_metrics.update({f"{k}_opt": v for k, v in opt_metrics.items()})
                 self.val_metrics.reset()
 
             # Current LR
@@ -351,9 +341,7 @@ class DDPTrainer:
                     self.epochs_no_improve = 0
                     self.best_model_state = deepcopy(self._eval_model().state_dict())
                     self.best_thresholds = (
-                        epoch_thresholds.tolist()
-                        if epoch_thresholds is not None
-                        else None
+                        epoch_thresholds.tolist() if epoch_thresholds is not None else None
                     )
                 else:
                     self.epochs_no_improve += 1
@@ -388,9 +376,7 @@ class DDPTrainer:
         elapsed = time.time() - start_time
         if self.is_main:
             logger.info(f"Training complete in {elapsed/60:.1f} minutes")
-            logger.info(
-                f"Best validation {self.monitor_metric_name}: {self.best_metric:.4f}"
-            )
+            logger.info(f"Best validation {self.monitor_metric_name}: {self.best_metric:.4f}")
 
             # Save final artifacts
             self._save_final(history)
@@ -435,16 +421,16 @@ class DDPTrainer:
 
             if (batch_idx + 1) % self.grad_accum_steps == 0:
                 self.scaler.unscale_(self.optimizer)
-                torch.nn.utils.clip_grad_norm_(
-                    self.model.parameters(), self.grad_clip_val
-                )
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip_val)
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
                 self.optimizer.zero_grad()
                 if self.use_ema and self.ema is not None:
                     self.ema.update(self._raw_model())
 
-                if self.scheduler is not None and epoch >= self.cfg["training"].get("warmup_epochs", 2):
+                if self.scheduler is not None and epoch >= self.cfg["training"].get(
+                    "warmup_epochs", 2
+                ):
                     self.scheduler.step()
 
             total_loss += loss.item() * accum_divisor
@@ -458,9 +444,7 @@ class DDPTrainer:
 
         if step_count % self.grad_accum_steps != 0:
             self.scaler.unscale_(self.optimizer)
-            torch.nn.utils.clip_grad_norm_(
-                self.model.parameters(), self.grad_clip_val
-            )
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip_val)
             self.scaler.step(self.optimizer)
             self.scaler.update()
             self.optimizer.zero_grad()

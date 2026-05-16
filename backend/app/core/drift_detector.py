@@ -5,6 +5,7 @@ Wraps the core DataDriftDetector and ModelDriftDetector from
 src/monitoring/drift, adding optional NannyML/Evidently integration,
 automatic periodic checks, webhook alerting, and event-bus emission.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -70,14 +71,10 @@ class EnhancedDriftDetector:
         self._alert_webhook_url: str = cfg.alert_webhook_url
 
         if cfg.nannyml_enabled and not _nannyml_available:
-            logger.warning(
-                "NannyML requested but not installed. "
-                "Install: pip install nannyml"
-            )
+            logger.warning("NannyML requested but not installed. " "Install: pip install nannyml")
         if cfg.evidently_enabled and not _evidently_available:
             logger.warning(
-                "Evidently requested but not installed. "
-                "Install: pip install evidently"
+                "Evidently requested but not installed. " "Install: pip install evidently"
             )
 
         # Internal state
@@ -194,9 +191,7 @@ class EnhancedDriftDetector:
                     loop.run_until_complete(self.check_drift())
             except RuntimeError:
                 # No event loop available (e.g. plain sync context)
-                logger.debug(
-                    "Skipping auto drift check: no running event loop"
-                )
+                logger.debug("Skipping auto drift check: no running event loop")
 
     # ------------------------------------------------------------------
     # Full drift check
@@ -261,9 +256,7 @@ class EnhancedDriftDetector:
             conf_drop = 0.0
             if model_report.details and "dropped" in model_report.details:
                 try:
-                    conf_drop = float(
-                        model_report.details.split("dropped")[-1].strip()
-                    )
+                    conf_drop = float(model_report.details.split("dropped")[-1].strip())
                 except (ValueError, IndexError):
                     pass
 
@@ -422,14 +415,18 @@ class EnhancedDriftDetector:
                 methods=["kolmogorov_smirnov"],
             ).to_df()
 
-            any_drift = bool(drift_flags["alert"].any()) if "alert" in drift_flags.columns else False
+            any_drift = (
+                bool(drift_flags["alert"].any()) if "alert" in drift_flags.columns else False
+            )
 
             return {
                 "method": "nannyml_univariate",
                 "drift_detected": any_drift,
                 "details": {
                     "n_chunks": len(drift_flags),
-                    "n_alerts": int(drift_flags["alert"].sum()) if "alert" in drift_flags.columns else 0,
+                    "n_alerts": (
+                        int(drift_flags["alert"].sum()) if "alert" in drift_flags.columns else 0
+                    ),
                 },
             }
         except Exception as exc:

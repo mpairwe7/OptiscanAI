@@ -15,6 +15,7 @@ from typing import Any, Optional
 
 class SessionPhase(str, Enum):
     """Phases of a voice screening session."""
+
     GREETING = "greeting"
     COLLECTING_HISTORY = "collecting_history"
     AWAITING_IMAGE = "awaiting_image"

@@ -15,6 +15,7 @@ with a unique constraint on (subscription_id, period_end, kind), so re-running
 the cron is a no-op until the subscription's period_end advances after a paid
 renewal.
 """
+
 from __future__ import annotations
 
 import logging
@@ -100,9 +101,7 @@ async def _candidate_subscriptions(db: AsyncSession, now: datetime) -> list[Subs
         select(Subscription)
         .where(
             Subscription.provider.in_(_MOMO_PROVIDERS),
-            Subscription.status.in_(
-                [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING]
-            ),
+            Subscription.status.in_([SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING]),
             Subscription.cancel_at_period_end.is_(False),
             Subscription.current_period_end >= window_start,
             Subscription.current_period_end <= window_end,
@@ -139,9 +138,7 @@ async def send_reminder_for(
     org = await db.get(Organization, subscription.organization_id)
     owner = await db.get(User, org.owner_user_id) if org else None
     if plan is None or org is None or owner is None:
-        raise RuntimeError(
-            f"Reminder skipped — missing plan/org/owner for sub {subscription.id}"
-        )
+        raise RuntimeError(f"Reminder skipped — missing plan/org/owner for sub {subscription.id}")
 
     price_cents = (
         plan.annual_price_cents
@@ -195,7 +192,9 @@ async def run_renewal_reminders(db: AsyncSession) -> RenewalRunResult:
         if kind is None:
             continue
 
-        if await _already_sent(db, subscription_id=str(sub.id), period_end=sub.current_period_end, kind=kind):
+        if await _already_sent(
+            db, subscription_id=str(sub.id), period_end=sub.current_period_end, kind=kind
+        ):
             skipped += 1
             continue
 

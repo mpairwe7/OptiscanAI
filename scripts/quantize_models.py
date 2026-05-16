@@ -65,6 +65,7 @@ GGUF_VARIANTS = ["Q4_K_M", "Q5_K_M", "Q8_0"]
 # Model loading (reuses the project's existing loader pattern)
 # ---------------------------------------------------------------------------
 
+
 def load_model(checkpoint_path: str) -> tuple[nn.Module, dict]:
     """Load a RetinalAI model from a checkpoint.
 
@@ -98,41 +99,49 @@ def load_model(checkpoint_path: str) -> tuple[nn.Module, dict]:
                 checkpoint_path=None,
             )
         except ImportError:
-            logger.warning(
-                "retinal_foundation_hybrid not available -- falling back to vignn"
-            )
+            logger.warning("retinal_foundation_hybrid not available -- falling back to vignn")
             model = create_vignn_model(
-                num_classes=num_classes, clinical_knowledge_graph=kg,
+                num_classes=num_classes,
+                clinical_knowledge_graph=kg,
             )
     elif model_name == "scene_graph_transformer":
         try:
             from src.models.scene_graph_transformer import SceneGraphTransformer
 
             model = SceneGraphTransformer(
-                num_classes=num_classes, hidden_dim=384,
-                num_layers=3, num_heads=4, dropout=0.1,
+                num_classes=num_classes,
+                hidden_dim=384,
+                num_layers=3,
+                num_heads=4,
+                dropout=0.1,
                 clinical_knowledge_graph=kg,
             )
         except ImportError:
             model = create_vignn_model(
-                num_classes=num_classes, clinical_knowledge_graph=kg,
+                num_classes=num_classes,
+                clinical_knowledge_graph=kg,
             )
     elif model_name == "graphclip":
         try:
             from src.models.graphclip import GraphCLIP
 
             model = GraphCLIP(
-                num_classes=num_classes, hidden_dim=384,
-                num_graph_layers=3, num_heads=4, dropout=0.1,
+                num_classes=num_classes,
+                hidden_dim=384,
+                num_graph_layers=3,
+                num_heads=4,
+                dropout=0.1,
                 clinical_knowledge_graph=kg,
             )
         except ImportError:
             model = create_vignn_model(
-                num_classes=num_classes, clinical_knowledge_graph=kg,
+                num_classes=num_classes,
+                clinical_knowledge_graph=kg,
             )
     else:
         model = create_vignn_model(
-            num_classes=num_classes, clinical_knowledge_graph=kg,
+            num_classes=num_classes,
+            clinical_knowledge_graph=kg,
         )
 
     if isinstance(state_dict, dict) and not isinstance(state_dict, nn.Module):
@@ -147,7 +156,8 @@ def load_model(checkpoint_path: str) -> tuple[nn.Module, dict]:
     model.cpu().eval()
     logger.info(
         "Model loaded: %s (%d parameters)",
-        model_name, sum(p.numel() for p in model.parameters()),
+        model_name,
+        sum(p.numel() for p in model.parameters()),
     )
     return model, ckpt if isinstance(ckpt, dict) else {"model_state_dict": ckpt}
 
@@ -155,6 +165,7 @@ def load_model(checkpoint_path: str) -> tuple[nn.Module, dict]:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _model_size_mb(model: nn.Module) -> float:
     """Estimate model size in MB via state_dict serialisation."""
@@ -187,6 +198,7 @@ def _get_reference_output(model: nn.Module) -> tuple[torch.Tensor, np.ndarray]:
 # ---------------------------------------------------------------------------
 # GGUF quantisation
 # ---------------------------------------------------------------------------
+
 
 def quantize_gguf(
     model: nn.Module,
@@ -229,6 +241,7 @@ def quantize_gguf(
 
     try:
         import llama_cpp  # noqa: F401
+
         _has_llama_cpp = True
     except ImportError:
         _has_llama_cpp = False
@@ -240,6 +253,7 @@ def quantize_gguf(
 
     try:
         import ctransformers  # noqa: F401
+
         _has_ctransformers = True
     except ImportError:
         _has_ctransformers = False
@@ -257,7 +271,8 @@ def quantize_gguf(
                 # Proxy: dynamic quantisation + custom header
                 logger.info(
                     "Producing GGUF proxy for %s (%d-bit) ...",
-                    variant, _variant_bits.get(variant, 8),
+                    variant,
+                    _variant_bits.get(variant, 8),
                 )
                 model_copy = copy.deepcopy(model).cpu().eval()
                 bits = _variant_bits.get(variant, 8)
@@ -265,15 +280,21 @@ def quantize_gguf(
                 if bits <= 4:
                     # 4-bit: quantise Linear to qint8 then prune small weights
                     quantized = torch.quantization.quantize_dynamic(
-                        model_copy, {nn.Linear}, dtype=torch.qint8,
+                        model_copy,
+                        {nn.Linear},
+                        dtype=torch.qint8,
                     )
                 elif bits <= 5:
                     quantized = torch.quantization.quantize_dynamic(
-                        model_copy, {nn.Linear}, dtype=torch.qint8,
+                        model_copy,
+                        {nn.Linear},
+                        dtype=torch.qint8,
                     )
                 else:
                     quantized = torch.quantization.quantize_dynamic(
-                        model_copy, {nn.Linear}, dtype=torch.qint8,
+                        model_copy,
+                        {nn.Linear},
+                        dtype=torch.qint8,
                     )
 
                 # Save with GGUF-style metadata header
@@ -288,35 +309,44 @@ def quantize_gguf(
             export_time = time.perf_counter() - t0
             size_mb = _file_size_mb(out_path)
 
-            results.append({
-                "format": f"gguf_{variant}",
-                "status": "OK",
-                "path": str(out_path),
-                "size_mb": round(size_mb, 2),
-                "export_time_s": round(export_time, 2),
-                "native_gguf": _has_llama_cpp,
-            })
+            results.append(
+                {
+                    "format": f"gguf_{variant}",
+                    "status": "OK",
+                    "path": str(out_path),
+                    "size_mb": round(size_mb, 2),
+                    "export_time_s": round(export_time, 2),
+                    "native_gguf": _has_llama_cpp,
+                }
+            )
             logger.info(
-                "GGUF %s: %.2f MB in %.2fs", variant, size_mb, export_time,
+                "GGUF %s: %.2f MB in %.2fs",
+                variant,
+                size_mb,
+                export_time,
             )
 
         except Exception as exc:
-            results.append({
-                "format": f"gguf_{variant}",
-                "status": "FAILED",
-                "error": str(exc),
-                "path": str(out_path),
-                "size_mb": 0.0,
-                "export_time_s": round(time.perf_counter() - t0, 2),
-                "native_gguf": False,
-            })
+            results.append(
+                {
+                    "format": f"gguf_{variant}",
+                    "status": "FAILED",
+                    "error": str(exc),
+                    "path": str(out_path),
+                    "size_mb": 0.0,
+                    "export_time_s": round(time.perf_counter() - t0, 2),
+                    "native_gguf": False,
+                }
+            )
             logger.error("GGUF %s failed: %s", variant, exc)
 
     return results
 
 
 def _convert_gguf_native(
-    model: nn.Module, out_path: Path, variant: str,
+    model: nn.Module,
+    out_path: Path,
+    variant: str,
 ) -> None:
     """Native GGUF conversion via llama-cpp-python.
 
@@ -369,6 +399,7 @@ def _convert_gguf_native(
 # AWQ 4-bit quantisation
 # ---------------------------------------------------------------------------
 
+
 def quantize_awq(
     model: nn.Module,
     output_dir: Path,
@@ -399,6 +430,7 @@ def quantize_awq(
 
     try:
         from awq import AutoAWQForCausalLM  # noqa: F401
+
         _has_awq = True
     except ImportError:
         _has_awq = False
@@ -417,21 +449,29 @@ def quantize_awq(
             # AWQ works on linear layers; apply per-channel scaling
             model_copy = copy.deepcopy(model).cpu().eval()
             _apply_awq_quantisation(model_copy, calibration_data)
-            torch.save({
-                "quantization": "awq_4bit",
-                "state_dict": model_copy.state_dict(),
-            }, str(out_path))
+            torch.save(
+                {
+                    "quantization": "awq_4bit",
+                    "state_dict": model_copy.state_dict(),
+                },
+                str(out_path),
+            )
         else:
             # Proxy path: dynamic INT8
             model_copy = copy.deepcopy(model).cpu().eval()
             quantized = torch.quantization.quantize_dynamic(
-                model_copy, {nn.Linear}, dtype=torch.qint8,
+                model_copy,
+                {nn.Linear},
+                dtype=torch.qint8,
             )
-            torch.save({
-                "quantization": "awq_4bit_proxy",
-                "note": "Proxy via dynamic INT8 -- install autoawq for native AWQ",
-                "state_dict": quantized.state_dict(),
-            }, str(out_path))
+            torch.save(
+                {
+                    "quantization": "awq_4bit_proxy",
+                    "note": "Proxy via dynamic INT8 -- install autoawq for native AWQ",
+                    "state_dict": quantized.state_dict(),
+                },
+                str(out_path),
+            )
 
         export_time = time.perf_counter() - t0
         size_mb = _file_size_mb(out_path)
@@ -460,7 +500,8 @@ def quantize_awq(
 
 
 def _apply_awq_quantisation(
-    model: nn.Module, calibration_data: list[torch.Tensor],
+    model: nn.Module,
+    calibration_data: list[torch.Tensor],
 ) -> None:
     """Apply AWQ-style activation-aware weight quantisation in-place.
 
@@ -480,11 +521,10 @@ def _apply_awq_quantisation(
                 if isinstance(x, torch.Tensor):
                     mag = x.abs().mean(dim=0)
                     if name in activation_stats:
-                        activation_stats[name] = (
-                            activation_stats[name] + mag
-                        )
+                        activation_stats[name] = activation_stats[name] + mag
                     else:
                         activation_stats[name] = mag
+
         return hook
 
     for name, module in model.named_modules():
@@ -516,6 +556,7 @@ def _apply_awq_quantisation(
 # GPTQ 4-bit quantisation
 # ---------------------------------------------------------------------------
 
+
 def quantize_gptq(
     model: nn.Module,
     output_dir: Path,
@@ -546,6 +587,7 @@ def quantize_gptq(
 
     try:
         from auto_gptq import AutoGPTQForCausalLM  # noqa: F401
+
         _has_gptq = True
     except ImportError:
         _has_gptq = False
@@ -561,10 +603,13 @@ def quantize_gptq(
             if calibration_data is None:
                 calibration_data = [torch.randn(1, 3, 224, 224) for _ in range(32)]
             _apply_gptq_quantisation(model_copy, calibration_data)
-            torch.save({
-                "quantization": "gptq_4bit",
-                "state_dict": model_copy.state_dict(),
-            }, str(out_path))
+            torch.save(
+                {
+                    "quantization": "gptq_4bit",
+                    "state_dict": model_copy.state_dict(),
+                },
+                str(out_path),
+            )
         else:
             # Proxy path with Hessian approximation
             logger.info("Producing GPTQ proxy via Hessian-weighted INT8 ...")
@@ -578,14 +623,19 @@ def quantize_gptq(
 
             # Dynamic quantisation as proxy
             quantized = torch.quantization.quantize_dynamic(
-                model_copy, {nn.Linear}, dtype=torch.qint8,
+                model_copy,
+                {nn.Linear},
+                dtype=torch.qint8,
             )
-            torch.save({
-                "quantization": "gptq_4bit_proxy",
-                "note": "Proxy via Hessian-weighted INT8 -- install auto-gptq for native GPTQ",
-                "hessian_info": {k: v.tolist() for k, v in hessian_info.items()},
-                "state_dict": quantized.state_dict(),
-            }, str(out_path))
+            torch.save(
+                {
+                    "quantization": "gptq_4bit_proxy",
+                    "note": "Proxy via Hessian-weighted INT8 -- install auto-gptq for native GPTQ",
+                    "hessian_info": {k: v.tolist() for k, v in hessian_info.items()},
+                    "state_dict": quantized.state_dict(),
+                },
+                str(out_path),
+            )
 
         export_time = time.perf_counter() - t0
         size_mb = _file_size_mb(out_path)
@@ -614,7 +664,8 @@ def quantize_gptq(
 
 
 def _apply_gptq_quantisation(
-    model: nn.Module, calibration_data: list[torch.Tensor],
+    model: nn.Module,
+    calibration_data: list[torch.Tensor],
 ) -> None:
     """Apply GPTQ-style quantisation via auto-gptq internals.
 
@@ -633,6 +684,7 @@ def _apply_gptq_quantisation(
                 if name not in layer_inputs:
                     layer_inputs[name] = []
                 layer_inputs[name].append(inp[0].detach())
+
         return hook
 
     for name, module in model.named_modules():
@@ -663,7 +715,8 @@ def _apply_gptq_quantisation(
 
 
 def _collect_hessian_diag(
-    model: nn.Module, calibration_data: list[torch.Tensor],
+    model: nn.Module,
+    calibration_data: list[torch.Tensor],
 ) -> dict[str, torch.Tensor]:
     """Approximate per-layer Hessian diagonals from calibration data.
 
@@ -680,13 +733,14 @@ def _collect_hessian_diag(
             if isinstance(inp, tuple) and len(inp) > 0 and isinstance(inp[0], torch.Tensor):
                 x = inp[0].detach().float()
                 # Hessian diagonal approx = E[x^2] per input feature
-                h = (x ** 2).mean(dim=0)
+                h = (x**2).mean(dim=0)
                 if h.dim() > 1:
                     h = h.mean(dim=list(range(h.dim() - 1)))
                 if name in hessians:
                     hessians[name] = hessians[name] + h
                 else:
                     hessians[name] = h
+
         return hook
 
     for name, module in model.named_modules():
@@ -714,6 +768,7 @@ def _collect_hessian_diag(
 # ---------------------------------------------------------------------------
 # ONNX optimised export
 # ---------------------------------------------------------------------------
+
 
 def quantize_onnx(
     model: nn.Module,
@@ -790,16 +845,12 @@ def quantize_onnx(
 
             sess_options = ort.SessionOptions()
             sess_options.optimized_model_filepath = str(optimised_path)
-            sess_options.graph_optimization_level = (
-                ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-            )
+            sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
             ort.InferenceSession(str(base_path), sess_options)
             opt_size = _file_size_mb(optimised_path)
             logger.info("Optimised ONNX: %.2f MB", opt_size)
         except ImportError:
-            logger.info(
-                "onnxruntime not installed -- skipping graph optimisation"
-            )
+            logger.info("onnxruntime not installed -- skipping graph optimisation")
         except Exception as exc:
             logger.warning("ONNX graph optimisation failed: %s", exc)
 
@@ -818,9 +869,7 @@ def quantize_onnx(
             int8_size = _file_size_mb(int8_path)
             logger.info("ONNX INT8: %.2f MB", int8_size)
         except ImportError:
-            logger.info(
-                "onnxruntime.quantization not available -- skipping INT8"
-            )
+            logger.info("onnxruntime.quantization not available -- skipping INT8")
         except Exception as exc:
             logger.warning("ONNX INT8 quantisation failed: %s", exc)
 
@@ -865,6 +914,7 @@ def quantize_onnx(
 # TensorRT-LLM export (placeholder)
 # ---------------------------------------------------------------------------
 
+
 def quantize_tensorrt(
     model: nn.Module,
     output_dir: Path,
@@ -899,6 +949,7 @@ def quantize_tensorrt(
 
     try:
         import torch_tensorrt  # noqa: F401
+
         _has_trt = True
     except ImportError:
         _has_trt = False
@@ -920,10 +971,12 @@ def quantize_tensorrt(
             model_gpu = model_copy.cuda()
             trt_module = torch_tensorrt.compile(
                 model_gpu,
-                inputs=[torch_tensorrt.Input(
-                    shape=[1, 3, 224, 224],
-                    dtype=torch.float32,
-                )],
+                inputs=[
+                    torch_tensorrt.Input(
+                        shape=[1, 3, 224, 224],
+                        dtype=torch.float32,
+                    )
+                ],
                 enabled_precisions={torch.float16},
             )
             torch.jit.save(trt_module, str(out_path))
@@ -963,6 +1016,7 @@ def quantize_tensorrt(
 # Calibration data loader
 # ---------------------------------------------------------------------------
 
+
 def load_calibration_data(
     calibration_path: Optional[str],
     num_samples: int = 64,
@@ -989,14 +1043,16 @@ def load_calibration_data(
                 from PIL import Image
                 from torchvision import transforms
 
-                transform = transforms.Compose([
-                    transforms.Resize((224, 224)),
-                    transforms.ToTensor(),
-                    transforms.Normalize(
-                        mean=[0.485, 0.456, 0.406],
-                        std=[0.229, 0.224, 0.225],
-                    ),
-                ])
+                transform = transforms.Compose(
+                    [
+                        transforms.Resize((224, 224)),
+                        transforms.ToTensor(),
+                        transforms.Normalize(
+                            mean=[0.485, 0.456, 0.406],
+                            std=[0.229, 0.224, 0.225],
+                        ),
+                    ]
+                )
 
                 images: list[torch.Tensor] = []
                 extensions = {".jpg", ".jpeg", ".png", ".bmp", ".tiff"}
@@ -1010,7 +1066,8 @@ def load_calibration_data(
                 if images:
                     logger.info(
                         "Loaded %d calibration images from %s",
-                        len(images), cal_dir,
+                        len(images),
+                        cal_dir,
                     )
                     return images
 
@@ -1032,6 +1089,7 @@ def load_calibration_data(
 # ---------------------------------------------------------------------------
 # Summary printer
 # ---------------------------------------------------------------------------
+
 
 def print_summary(results: list[dict], fp32_size_mb: float) -> None:
     """Print a formatted size comparison table of all quantised artefacts."""
@@ -1074,9 +1132,7 @@ def print_summary(results: list[dict], fp32_size_mb: float) -> None:
         else:
             ratio_str = "--"
 
-        time_str = (
-            f"{r['export_time_s']:.2f}" if r.get("export_time_s") else "--"
-        )
+        time_str = f"{r['export_time_s']:.2f}" if r.get("export_time_s") else "--"
 
         print(
             f"{r['format']:<{fmt_w}} | "
@@ -1092,6 +1148,7 @@ def print_summary(results: list[dict], fp32_size_mb: float) -> None:
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -1158,7 +1215,8 @@ def main() -> None:
     # -----------------------------------------------------------------------
     print("[2/4] Preparing calibration data ...")
     calibration_data = load_calibration_data(
-        args.calibration_data, num_samples=args.num_calibration_samples,
+        args.calibration_data,
+        num_samples=args.num_calibration_samples,
     )
 
     # -----------------------------------------------------------------------
@@ -1229,7 +1287,8 @@ def main() -> None:
     if failed:
         logger.warning(
             "%d format(s) failed: %s",
-            len(failed), [r["format"] for r in failed],
+            len(failed),
+            [r["format"] for r in failed],
         )
         sys.exit(1)
 

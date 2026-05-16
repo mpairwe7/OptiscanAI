@@ -51,6 +51,7 @@ class SamplingStrategy(str, Enum):
 @dataclass
 class ReviewCase:
     """A single case flagged for human review."""
+
     case_id: str
     image_path: str
     model_predictions: Dict[str, float]
@@ -270,8 +271,9 @@ class ActiveLearningManager:
     # Sampling strategies
     # ------------------------------------------------------------------
 
-    def _compute_priority(self, predictions: Dict[str, float],
-                          uncertainty: Dict[str, float]) -> str:
+    def _compute_priority(
+        self, predictions: Dict[str, float], uncertainty: Dict[str, float]
+    ) -> str:
         """Compute review priority based on clinical severity and uncertainty."""
         # Urgent: sight-threatening conditions
         urgent_codes = {"DR", "CRVO", "CRAO", "VH"}
@@ -291,8 +293,9 @@ class ActiveLearningManager:
 
         return "normal"
 
-    def _get_sampling_reason(self, predictions: Dict[str, float],
-                             uncertainty: Dict[str, float]) -> str:
+    def _get_sampling_reason(
+        self, predictions: Dict[str, float], uncertainty: Dict[str, float]
+    ) -> str:
         max_conf = max(predictions.values()) if predictions else 0
         mean_unc = np.mean(list(uncertainty.get("epistemic", {0: 0}).values()))
 
@@ -318,12 +321,14 @@ class ActiveLearningManager:
 
         manifest = []
         for case in self.fine_tune_queue:
-            manifest.append({
-                "image_path": case.image_path,
-                "labels": case.corrected_labels,
-                "reviewer_id": case.reviewer_id,
-                "original_predictions": case.model_predictions,
-            })
+            manifest.append(
+                {
+                    "image_path": case.image_path,
+                    "labels": case.corrected_labels,
+                    "reviewer_id": case.reviewer_id,
+                    "original_predictions": case.model_predictions,
+                }
+            )
 
         manifest_path = export_path / f"manifest_{int(time.time())}.json"
         with open(manifest_path, "w") as f:
@@ -385,9 +390,7 @@ class ActiveLearningManager:
         if self.pending_queue:
             priority_order = {"urgent": 0, "high": 1, "normal": 2, "low": 3}
             # Sort ascending: urgent(0) first, low(3) last. pop() removes last = lowest priority.
-            self.pending_queue.sort(
-                key=lambda c: (priority_order.get(c.priority, 99), c.timestamp)
-            )
+            self.pending_queue.sort(key=lambda c: (priority_order.get(c.priority, 99), c.timestamp))
             self.pending_queue.pop()
             self.stats["cases_evicted"] += 1
 

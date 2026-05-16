@@ -1,4 +1,5 @@
 """Adds unique request ID to each request for tracing."""
+
 import logging
 import time
 import uuid
@@ -18,6 +19,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         # Phase 1: Bridge request ID into OpenTelemetry span context
         try:
             from backend.app.core.telemetry import inject_request_id
+
             inject_request_id(request_id)
         except Exception:
             pass
@@ -31,6 +33,11 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
 
         logger.info(
             f"{request.method} {request.url.path} {response.status_code} {elapsed_ms:.1f}ms",
-            extra={"request_id": request_id, "latency_ms": elapsed_ms, "endpoint": request.url.path, "status_code": response.status_code},
+            extra={
+                "request_id": request_id,
+                "latency_ms": elapsed_ms,
+                "endpoint": request.url.path,
+                "status_code": response.status_code,
+            },
         )
         return response

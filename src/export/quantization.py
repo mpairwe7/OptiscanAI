@@ -1,6 +1,7 @@
 """
 FP16 and INT8 quantization with accuracy/latency comparison.
 """
+
 from __future__ import annotations
 
 import json
@@ -67,7 +68,8 @@ class QuantizationBenchmark:
         model_fp32 = model.to(self.device).eval()
         lat = self._benchmark_latency(model_fp32, dummy_gpu, n_runs)
         results["FP32_GPU"] = {
-            "mean_ms": float(lat.mean()), "p95_ms": float(np.percentile(lat, 95)),
+            "mean_ms": float(lat.mean()),
+            "p95_ms": float(np.percentile(lat, 95)),
             "size_MB": sum(p.numel() * 4 for p in model_fp32.parameters()) / 1e6,
         }
 
@@ -77,7 +79,8 @@ class QuantizationBenchmark:
             dummy_fp16 = dummy_gpu.half()
             lat = self._benchmark_latency(model_fp16, dummy_fp16, n_runs)
             results["FP16_GPU"] = {
-                "mean_ms": float(lat.mean()), "p95_ms": float(np.percentile(lat, 95)),
+                "mean_ms": float(lat.mean()),
+                "p95_ms": float(np.percentile(lat, 95)),
                 "size_MB": sum(p.numel() * 2 for p in model_fp16.parameters()) / 1e6,
             }
 
@@ -86,7 +89,8 @@ class QuantizationBenchmark:
             model_int8 = self.dynamic_quantize_int8(model)
             lat = self._benchmark_latency(model_int8, dummy_cpu, n_runs, device=torch.device("cpu"))
             results["INT8_CPU"] = {
-                "mean_ms": float(lat.mean()), "p95_ms": float(np.percentile(lat, 95)),
+                "mean_ms": float(lat.mean()),
+                "p95_ms": float(np.percentile(lat, 95)),
                 "size_MB": "dynamic",
             }
         except Exception as e:

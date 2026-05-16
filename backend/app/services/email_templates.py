@@ -8,6 +8,7 @@ All templates return a :class:`RenderedEmail` carrying:
   - body_text (always required, used as fallback for clients that strip HTML)
   - body_html (None for plain-only)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -29,7 +30,15 @@ _BRAND_COLOR = "#0d9488"  # accent teal
 _BRAND_DARK = "#0f172a"
 
 
-def _html_layout(*, heading: str, intro: str, cta_label: Optional[str], cta_url: Optional[str], body_html: str, support_email: str = "support@makstartup.com") -> str:
+def _html_layout(
+    *,
+    heading: str,
+    intro: str,
+    cta_label: Optional[str],
+    cta_url: Optional[str],
+    body_html: str,
+    support_email: str = "support@makstartup.com",
+) -> str:
     cta_block = (
         f"""
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin: 24px 0;">
@@ -97,7 +106,21 @@ def _html_layout(*, heading: str, intro: str, cta_label: Optional[str], cta_url:
 """
 
 
-_HONORIFICS = {"dr", "dr.", "prof", "prof.", "professor", "mr", "mr.", "mrs", "mrs.", "ms", "ms.", "mx", "mx."}
+_HONORIFICS = {
+    "dr",
+    "dr.",
+    "prof",
+    "prof.",
+    "professor",
+    "mr",
+    "mr.",
+    "mrs",
+    "mrs.",
+    "ms",
+    "ms.",
+    "mx",
+    "mx.",
+}
 
 
 def _first_name(full_name: str) -> str:
@@ -178,7 +201,14 @@ def password_reset(*, full_name: Optional[str], token: str) -> RenderedEmail:
     return RenderedEmail(subject="Reset your OptiscanAI password", body_text=text, body_html=html)
 
 
-def org_invite(*, inviter_name: Optional[str], inviter_email: str, organization_name: str, role: str, token: str) -> RenderedEmail:
+def org_invite(
+    *,
+    inviter_name: Optional[str],
+    inviter_email: str,
+    organization_name: str,
+    role: str,
+    token: str,
+) -> RenderedEmail:
     who = inviter_name or inviter_email
     link = _app_url(f"/sign-up?invite={token}")
     text = (
@@ -193,7 +223,11 @@ def org_invite(*, inviter_name: Optional[str], inviter_email: str, organization_
         cta_url=link,
         body_html='<p style="margin:0;font-size:13px;color:#64748b;">This invite expires in 7 days. If you weren&rsquo;t expecting this, you can safely ignore it.</p>',
     )
-    return RenderedEmail(subject=f"You're invited to {organization_name} on OptiscanAI", body_text=text, body_html=html)
+    return RenderedEmail(
+        subject=f"You're invited to {organization_name} on OptiscanAI",
+        body_text=text,
+        body_html=html,
+    )
 
 
 def renewal_reminder(

@@ -1,4 +1,5 @@
 """Dataset Card / Datasheet generator following Gebru et al. (2021) framework."""
+
 import json
 import logging
 from dataclasses import asdict, dataclass, field
@@ -15,7 +16,9 @@ class DatasetCard:
     # Motivation
     name: str = "RFMiD - Retinal Fundus Multi-Disease Image Dataset"
     purpose: str = "Multi-label retinal disease classification for automated screening"
-    creators: str = "Originally collected by RFMiD project team; curated for MLOps by project maintainers"
+    creators: str = (
+        "Originally collected by RFMiD project team; curated for MLOps by project maintainers"
+    )
     funding: str = ""
 
     # Composition
@@ -37,11 +40,13 @@ class DatasetCard:
 
     # Uses
     intended_use: str = "Training and evaluating retinal disease classification models for research"
-    not_suitable_for: list[str] = field(default_factory=lambda: [
-        "Clinical diagnosis without clinician oversight",
-        "Populations not represented in the dataset",
-        "Non-fundus imaging modalities",
-    ])
+    not_suitable_for: list[str] = field(
+        default_factory=lambda: [
+            "Clinical diagnosis without clinician oversight",
+            "Populations not represented in the dataset",
+            "Non-fundus imaging modalities",
+        ]
+    )
 
     # Distribution
     license: str = "CC-BY-4.0"
@@ -49,13 +54,17 @@ class DatasetCard:
 
     # Maintenance
     maintainer: str = ""
-    last_updated: str = field(default_factory=lambda: datetime.now(timezone.utc).strftime("%Y-%m-%d"))
-    known_issues: list[str] = field(default_factory=lambda: [
-        "Severe class imbalance - some diseases have <5 samples",
-        "Demographic information (age, sex, ethnicity) not available per image",
-        "Image quality varies across collection sites",
-        "Some images may have been captured with different camera systems",
-    ])
+    last_updated: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    )
+    known_issues: list[str] = field(
+        default_factory=lambda: [
+            "Severe class imbalance - some diseases have <5 samples",
+            "Demographic information (age, sex, ethnicity) not available per image",
+            "Image quality varies across collection sites",
+            "Some images may have been captured with different camera systems",
+        ]
+    )
 
     def populate_from_dataframe(self, df: pd.DataFrame, disease_columns: list[str]):
         """Auto-populate statistics from the dataset."""
@@ -102,17 +111,26 @@ class DatasetCard:
         ]
 
         if self.multi_label_stats:
-            lines += ["### Multi-label Statistics",
-                       f"- Mean labels per sample: {self.multi_label_stats.get('mean_labels_per_sample', 0):.2f}",
-                       f"- Max labels per sample: {self.multi_label_stats.get('max_labels_per_sample', 0)}",
-                       f"- Samples with no disease: {self.multi_label_stats.get('samples_with_no_disease', 0)}",
-                       f"- Samples with multiple diseases: {self.multi_label_stats.get('samples_with_multiple_diseases', 0)}\n"]
+            lines += [
+                "### Multi-label Statistics",
+                f"- Mean labels per sample: {self.multi_label_stats.get('mean_labels_per_sample', 0):.2f}",
+                f"- Max labels per sample: {self.multi_label_stats.get('max_labels_per_sample', 0)}",
+                f"- Samples with no disease: {self.multi_label_stats.get('samples_with_no_disease', 0)}",
+                f"- Samples with multiple diseases: {self.multi_label_stats.get('samples_with_multiple_diseases', 0)}\n",
+            ]
 
-        lines += ["## Collection", f"- **Process:** {self.collection_process}",
-                   f"- **Geography:** {self.geography}", f"- **Consent:** {self.consent}\n",
-                   "## Preprocessing", f"- {self.preprocessing}", f"- Split: {self.splitting}\n",
-                   "## Intended Use", f"{self.intended_use}\n",
-                   "### Not Suitable For"]
+        lines += [
+            "## Collection",
+            f"- **Process:** {self.collection_process}",
+            f"- **Geography:** {self.geography}",
+            f"- **Consent:** {self.consent}\n",
+            "## Preprocessing",
+            f"- {self.preprocessing}",
+            f"- Split: {self.splitting}\n",
+            "## Intended Use",
+            f"{self.intended_use}\n",
+            "### Not Suitable For",
+        ]
         for ns in self.not_suitable_for:
             lines.append(f"- {ns}")
 
@@ -124,7 +142,9 @@ class DatasetCard:
 
         if self.class_distribution:
             lines += ["\n## Class Distribution (Top 20)"]
-            sorted_classes = sorted(self.class_distribution.items(), key=lambda x: x[1], reverse=True)[:20]
+            sorted_classes = sorted(
+                self.class_distribution.items(), key=lambda x: x[1], reverse=True
+            )[:20]
             lines += ["| Disease | Count |", "|---------|-------|"]
             for disease, count in sorted_classes:
                 lines.append(f"| {disease} | {count} |")

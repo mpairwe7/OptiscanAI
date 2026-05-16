@@ -1,4 +1,5 @@
 """Logs all predictions for audit trail and monitoring."""
+
 import json
 import logging
 from datetime import datetime, timezone

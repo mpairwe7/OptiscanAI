@@ -1,4 +1,5 @@
 """Subscription model — one per Organization."""
+
 from __future__ import annotations
 
 import enum
@@ -45,7 +46,11 @@ class Subscription(Base):
     plan_id: Mapped[str] = uuid_fk("plans.id", nullable=False)
 
     status: Mapped[SubscriptionStatus] = mapped_column(
-        Enum(SubscriptionStatus, name="subscription_status", values_callable=lambda x: [e.value for e in x]),
+        Enum(
+            SubscriptionStatus,
+            name="subscription_status",
+            values_callable=lambda x: [e.value for e in x],
+        ),
         default=SubscriptionStatus.ACTIVE,
         nullable=False,
     )
@@ -55,13 +60,17 @@ class Subscription(Base):
         nullable=False,
     )
     provider: Mapped[PaymentProvider] = mapped_column(
-        Enum(PaymentProvider, name="payment_provider", values_callable=lambda x: [e.value for e in x]),
+        Enum(
+            PaymentProvider, name="payment_provider", values_callable=lambda x: [e.value for e in x]
+        ),
         default=PaymentProvider.MANUAL,
         nullable=False,
     )
 
     # Usage window — the quota check uses this period
-    current_period_start: Mapped[datetime] = mapped_column(TimestampTZ, default=utcnow, nullable=False)
+    current_period_start: Mapped[datetime] = mapped_column(
+        TimestampTZ, default=utcnow, nullable=False
+    )
     current_period_end: Mapped[datetime] = mapped_column(TimestampTZ, nullable=False)
 
     cancel_at_period_end: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -80,7 +89,9 @@ class Subscription(Base):
     stripe_seat_item_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(TimestampTZ, default=utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(TimestampTZ, default=utcnow, onupdate=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        TimestampTZ, default=utcnow, onupdate=utcnow, nullable=False
+    )
 
     organization: Mapped["Organization"] = relationship(back_populates="subscription")
     plan: Mapped["Plan"] = relationship()

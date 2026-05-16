@@ -1,6 +1,7 @@
 """
 ONNX export with validation and optimization.
 """
+
 from __future__ import annotations
 
 import logging
@@ -31,7 +32,9 @@ class ONNXExporter:
         dummy = torch.randn(*input_shape, device=device)
 
         torch.onnx.export(
-            model, dummy, str(output_path),
+            model,
+            dummy,
+            str(output_path),
             opset_version=opset_version,
             input_names=["input"],
             output_names=["output"],

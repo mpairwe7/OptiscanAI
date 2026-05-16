@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ClinicalValidationSummary:
     """Clinical performance metrics for MoH review."""
+
     dataset: str = "RFMiD v2 (1920 samples)"
     num_classes: int = 28
     total_samples: int = 1920
@@ -33,6 +34,7 @@ class ClinicalValidationSummary:
 @dataclass
 class DeviceCompatibility:
     """Device compatibility matrix."""
+
     tested_devices: list[str] = field(default_factory=list)
     min_android_version: str = "12"
     min_ram_gb: int = 4
@@ -44,6 +46,7 @@ class DeviceCompatibility:
 @dataclass
 class MoHSubmissionPackage:
     """Complete MoH regulatory submission package."""
+
     submission_date: str = ""
     product_name: str = "RetinalAI Clinical Screening Platform"
     product_version: str = "1.0.0"
@@ -54,25 +57,31 @@ class MoHSubmissionPackage:
     )
     target_population: str = "Adults in Uganda requiring retinal screening"
     classification: str = "IEC 62304 Class B (non-serious injury potential with mitigation)"
-    clinical_validation: ClinicalValidationSummary = field(default_factory=ClinicalValidationSummary)
+    clinical_validation: ClinicalValidationSummary = field(
+        default_factory=ClinicalValidationSummary
+    )
     device_compatibility: DeviceCompatibility = field(default_factory=DeviceCompatibility)
     language_support: list[str] = field(default_factory=lambda: ["English", "Luganda"])
     bias_audit_passed: bool = False
     max_f1_disparity: float = 0.0
     pdp_act_compliant: bool = True
-    data_governance: dict = field(default_factory=lambda: {
-        "consent_required": True,
-        "data_retention_days": 730,
-        "cross_border_restrictions": "Data stored in Uganda. Transfer only to EAC countries.",
-        "anonymization": "PII stripped for aggregate reporting and research",
-        "audit_trail": "SHA-256 hash-chain audit for all predictions",
-    })
-    post_market_plan: dict = field(default_factory=lambda: {
-        "monitoring": "Continuous drift detection, fairness monitoring, and bias auditing",
-        "update_mechanism": "Delta sync for model and threshold updates",
-        "incident_reporting": "Automated alerts for performance degradation",
-        "re_validation_schedule": "Quarterly clinical validation review",
-    })
+    data_governance: dict = field(
+        default_factory=lambda: {
+            "consent_required": True,
+            "data_retention_days": 730,
+            "cross_border_restrictions": "Data stored in Uganda. Transfer only to EAC countries.",
+            "anonymization": "PII stripped for aggregate reporting and research",
+            "audit_trail": "SHA-256 hash-chain audit for all predictions",
+        }
+    )
+    post_market_plan: dict = field(
+        default_factory=lambda: {
+            "monitoring": "Continuous drift detection, fairness monitoring, and bias auditing",
+            "update_mechanism": "Delta sync for model and threshold updates",
+            "incident_reporting": "Automated alerts for performance degradation",
+            "re_validation_schedule": "Quarterly clinical validation review",
+        }
+    )
 
     def __post_init__(self):
         if not self.submission_date:
@@ -91,10 +100,13 @@ def generate_submission_package(
     package = MoHSubmissionPackage()
 
     if clinical_metrics:
-        package.clinical_validation = ClinicalValidationSummary(**{
-            k: v for k, v in clinical_metrics.items()
-            if k in ClinicalValidationSummary.__dataclass_fields__
-        })
+        package.clinical_validation = ClinicalValidationSummary(
+            **{
+                k: v
+                for k, v in clinical_metrics.items()
+                if k in ClinicalValidationSummary.__dataclass_fields__
+            }
+        )
 
     if bias_report:
         package.bias_audit_passed = bias_report.get("max_f1_disparity", 1.0) < 0.08
@@ -102,8 +114,11 @@ def generate_submission_package(
 
     package.device_compatibility = DeviceCompatibility(
         tested_devices=[
-            "Tecno Spark 10", "Tecno Camon 20", "Infinix Hot 30",
-            "Samsung Galaxy A14", "Clinical fundus camera",
+            "Tecno Spark 10",
+            "Tecno Camon 20",
+            "Infinix Hot 30",
+            "Samsung Galaxy A14",
+            "Clinical fundus camera",
         ],
     )
 

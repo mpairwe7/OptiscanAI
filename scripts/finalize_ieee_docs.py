@@ -100,7 +100,11 @@ def sanitize_extended_properties():
         tmp = DOCX.with_suffix(".docx.tmp")
         with zipfile.ZipFile(tmp, "w", compression=zipfile.ZIP_DEFLATED) as dst:
             for item in src.infolist():
-                data = updated_app_xml if item.filename == "docProps/app.xml" else src.read(item.filename)
+                data = (
+                    updated_app_xml
+                    if item.filename == "docProps/app.xml"
+                    else src.read(item.filename)
+                )
                 dst.writestr(item, data)
 
     tmp.replace(DOCX)

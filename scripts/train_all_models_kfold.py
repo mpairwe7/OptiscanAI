@@ -45,13 +45,13 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 CONFIG_PATH = "configs/train.yaml"
 BACKBONE = "vit_large_patch16_224"  # RETFound retinal foundation model
-IMG_SIZE = 224                      # RETFound native resolution
+IMG_SIZE = 224  # RETFound native resolution
 K_FOLDS = 3
 MAX_EPOCHS = 25
 EARLY_STOP_PATIENCE = 3
-BATCH_SIZE = 8                      # Reduced for ViT-L memory across all models
-BACKBONE_LR = 5e-6                  # Gentle fine-tuning for pretrained backbone
-HEAD_LR = 5e-4                      # Standard LR for graph/attention heads
+BATCH_SIZE = 8  # Reduced for ViT-L memory across all models
+BACKBONE_LR = 5e-6  # Gentle fine-tuning for pretrained backbone
+HEAD_LR = 5e-4  # Standard LR for graph/attention heads
 NUM_WORKERS = 0
 
 ALL_MODELS = ["vignn", "graphclip", "visual_language_gnn", "scene_graph_transformer"]
@@ -68,8 +68,10 @@ class MultiDirDataset(torch.utils.data.Dataset):
         self.disease_columns = disease_columns
         self.transform = transform
         self.labels_array = (
-            labels_df[disease_columns].apply(pd.to_numeric, errors="coerce")
-            .fillna(0).values.astype(np.float32)
+            labels_df[disease_columns]
+            .apply(pd.to_numeric, errors="coerce")
+            .fillna(0)
+            .values.astype(np.float32)
         )
         self.image_ids = labels_df["ID"].values
 
@@ -104,6 +106,7 @@ class MultiDirDataset(torch.utils.data.Dataset):
         neg = len(self) - pos
         return torch.from_numpy(np.clip(neg / pos, 0.5, 50.0).astype(np.float32))
 
+
 # ============================================================================
 # Seeds
 # ============================================================================
@@ -121,6 +124,7 @@ def set_seed(seed: int = 42):
 # ============================================================================
 def build_model(model_name: str, num_classes: int, cfg: dict) -> nn.Module:
     from src.models.vignn import ClinicalKnowledgeGraph
+
     names = DISEASE_COLUMNS[:num_classes]
     kg = ClinicalKnowledgeGraph(disease_names=names)
     h = cfg["model"].get("hidden_dim", 384)
@@ -131,24 +135,52 @@ def build_model(model_name: str, num_classes: int, cfg: dict) -> nn.Module:
 
     if model_name == "vignn":
         from src.models.vignn import ViGNN
-        return ViGNN(num_classes=num_classes, hidden_dim=h,
-                     num_graph_layers=layers, num_heads=heads, dropout=drop,
-                     clinical_knowledge_graph=kg, **common)
+
+        return ViGNN(
+            num_classes=num_classes,
+            hidden_dim=h,
+            num_graph_layers=layers,
+            num_heads=heads,
+            dropout=drop,
+            clinical_knowledge_graph=kg,
+            **common,
+        )
     elif model_name == "graphclip":
         from src.models.graphclip import GraphCLIP
-        return GraphCLIP(num_classes=num_classes, hidden_dim=h,
-                         num_graph_layers=layers, num_heads=heads,
-                         dropout=drop, clinical_knowledge_graph=kg, **common)
+
+        return GraphCLIP(
+            num_classes=num_classes,
+            hidden_dim=h,
+            num_graph_layers=layers,
+            num_heads=heads,
+            dropout=drop,
+            clinical_knowledge_graph=kg,
+            **common,
+        )
     elif model_name == "visual_language_gnn":
         from src.models.visual_language_gnn import VisualLanguageGNN
-        return VisualLanguageGNN(num_classes=num_classes, hidden_dim=h,
-                                 num_layers=layers, num_heads=heads,
-                                 dropout=drop, clinical_knowledge_graph=kg, **common)
+
+        return VisualLanguageGNN(
+            num_classes=num_classes,
+            hidden_dim=h,
+            num_layers=layers,
+            num_heads=heads,
+            dropout=drop,
+            clinical_knowledge_graph=kg,
+            **common,
+        )
     elif model_name == "scene_graph_transformer":
         from src.models.scene_graph_transformer import SceneGraphTransformer
-        return SceneGraphTransformer(num_classes=num_classes, hidden_dim=h,
-                                      num_layers=layers, num_heads=heads,
-                                      dropout=drop, clinical_knowledge_graph=kg, **common)
+
+        return SceneGraphTransformer(
+            num_classes=num_classes,
+            hidden_dim=h,
+            num_layers=layers,
+            num_heads=heads,
+            dropout=drop,
+            clinical_knowledge_graph=kg,
+            **common,
+        )
     raise ValueError(f"Unknown model: {model_name}")
 
 
@@ -173,10 +205,13 @@ def train_one_fold(
             backbone_params.append(param)
         else:
             head_params.append(param)
-    optimizer = torch.optim.AdamW([
-        {"params": backbone_params, "lr": BACKBONE_LR},
-        {"params": head_params, "lr": HEAD_LR},
-    ], weight_decay=cfg["training"]["weight_decay"])
+    optimizer = torch.optim.AdamW(
+        [
+            {"params": backbone_params, "lr": BACKBONE_LR},
+            {"params": head_params, "lr": HEAD_LR},
+        ],
+        weight_decay=cfg["training"]["weight_decay"],
+    )
 
     # Cosine scheduler
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
@@ -352,7 +387,9 @@ def train_model_kfold(
             model = nn.DataParallel(model)
 
         t0 = time.time()
-        metrics = train_one_fold(model, train_loader, val_loader, criterion, device, cfg, fold, model_name)
+        metrics = train_one_fold(
+            model, train_loader, val_loader, criterion, device, cfg, fold, model_name
+        )
         fold_time = time.time() - t0
         total_time += fold_time
 
@@ -405,21 +442,25 @@ def print_leaderboard(all_results: list[dict]):
     # Build table
     rows = []
     for r in all_results:
-        rows.append({
-            "Model": r["model"],
-            "F1": r["mean_f1_macro"],
-            "AUC-ROC": r["mean_auc_roc"],
-            "Precision": r["mean_precision_macro"],
-            "Recall": r["mean_recall_macro"],
-            "Parameters (M)": r["params_M"],
-            "Time (min)": r["total_time_min"],
-            "F1 Std": r["std_f1_macro"],
-        })
+        rows.append(
+            {
+                "Model": r["model"],
+                "F1": r["mean_f1_macro"],
+                "AUC-ROC": r["mean_auc_roc"],
+                "Precision": r["mean_precision_macro"],
+                "Recall": r["mean_recall_macro"],
+                "Parameters (M)": r["params_M"],
+                "Time (min)": r["total_time_min"],
+                "F1 Std": r["std_f1_macro"],
+            }
+        )
 
     df = pd.DataFrame(rows)
 
     # Print table
-    print(f"\n{'Model':<28} {'F1':>8} {'AUC-ROC':>8} {'Prec':>8} {'Recall':>8} {'Params':>8} {'Time':>8}")
+    print(
+        f"\n{'Model':<28} {'F1':>8} {'AUC-ROC':>8} {'Prec':>8} {'Recall':>8} {'Params':>8} {'Time':>8}"
+    )
     print("-" * 90)
     for _, row in df.iterrows():
         print(
@@ -434,10 +475,10 @@ def print_leaderboard(all_results: list[dict]):
     for _, row in df.iterrows():
         name = row["Model"]
         scores[name] = (
-            0.40 * row["F1"] +
-            0.30 * row["AUC-ROC"] +
-            0.15 * row["Precision"] +
-            0.15 * row["Recall"]
+            0.40 * row["F1"]
+            + 0.30 * row["AUC-ROC"]
+            + 0.15 * row["Precision"]
+            + 0.15 * row["Recall"]
         )
 
     best_model = max(scores, key=scores.get)
@@ -525,7 +566,9 @@ def main():
     logger.info(f"Disease classes: {num_classes}")
     logger.info(f"Backbone: {BACKBONE} | img_size: {IMG_SIZE}")
     logger.info(f"Models: {ALL_MODELS}")
-    logger.info(f"K-Folds: {K_FOLDS} | Max Epochs: {MAX_EPOCHS} | Early Stop: {EARLY_STOP_PATIENCE}")
+    logger.info(
+        f"K-Folds: {K_FOLDS} | Max Epochs: {MAX_EPOCHS} | Early Stop: {EARLY_STOP_PATIENCE}"
+    )
     logger.info(f"Batch Size: {BATCH_SIZE} | GPUs: {n_gpus}")
     logger.info(f"LR: backbone={BACKBONE_LR} head={HEAD_LR}")
 
@@ -548,6 +591,7 @@ def main():
         except Exception as e:
             logger.error(f"FAILED: {model_name} - {e}")
             import traceback
+
             traceback.print_exc()
 
     if not all_results:
@@ -563,18 +607,23 @@ def main():
 
     # Save recommendation
     with open(OUTPUT_DIR / "recommendation.json", "w") as f:
-        json.dump({
-            "best_model": best_model,
-            "score": scores[best_model],
-            "all_scores": scores,
-            "config": {
-                "k_folds": K_FOLDS,
-                "max_epochs": MAX_EPOCHS,
-                "early_stop_patience": EARLY_STOP_PATIENCE,
-                "batch_size": BATCH_SIZE,
-                "scoring_weights": "F1:40%, AUC:30%, Prec:15%, Rec:15%",
+        json.dump(
+            {
+                "best_model": best_model,
+                "score": scores[best_model],
+                "all_scores": scores,
+                "config": {
+                    "k_folds": K_FOLDS,
+                    "max_epochs": MAX_EPOCHS,
+                    "early_stop_patience": EARLY_STOP_PATIENCE,
+                    "batch_size": BATCH_SIZE,
+                    "scoring_weights": "F1:40%, AUC:30%, Prec:15%, Rec:15%",
+                },
             },
-        }, f, indent=2, default=str)
+            f,
+            indent=2,
+            default=str,
+        )
 
     logger.info(f"Results saved to {OUTPUT_DIR}")
     logger.info("Done.")

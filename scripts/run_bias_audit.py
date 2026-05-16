@@ -29,14 +29,22 @@ def main():
     parser.add_argument("--output", type=str, default="outputs/bias_report.json")
     parser.add_argument("--dp-threshold", type=float, default=0.1)
     parser.add_argument("--eo-threshold", type=float, default=0.1)
-    parser.add_argument("--uganda", action="store_true",
-                        help="Run Uganda-specific bias audit with device/lighting/geographic subgroups")
-    parser.add_argument("--f1-threshold", type=float, default=0.08,
-                        help="Max F1 disparity across subgroups (Uganda audit, default 0.08)")
+    parser.add_argument(
+        "--uganda",
+        action="store_true",
+        help="Run Uganda-specific bias audit with device/lighting/geographic subgroups",
+    )
+    parser.add_argument(
+        "--f1-threshold",
+        type=float,
+        default=0.08,
+        help="Max F1 disparity across subgroups (Uganda audit, default 0.08)",
+    )
     args = parser.parse_args()
 
     if args.uganda:
         from src.governance.bias_auditor import UgandaBiasAuditor
+
         auditor = UgandaBiasAuditor(f1_disparity_threshold=args.f1_threshold)
         logger.info("Running Uganda-specific bias audit (F1 threshold=%.2f)", args.f1_threshold)
     else:

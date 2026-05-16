@@ -1,4 +1,5 @@
 """Model loading and inference service - singleton lifecycle."""
+
 from __future__ import annotations
 
 import logging
@@ -22,44 +23,90 @@ from src.models.vignn import ClinicalKnowledgeGraph, create_vignn_model
 
 # V2 disease columns (24 classes after ultra-rare filtering)
 V2_DISEASE_COLUMNS = [
-    "DR", "ARMD", "MH", "DN", "MYA", "BRVO", "TSLN", "ERM", "LS", "MS",
-    "CSR", "ODC", "CRVO", "AH", "ODP", "ODE", "AION", "PT", "RT", "RS",
-    "CRS", "EDN", "RPEC", "MHL",
+    "DR",
+    "ARMD",
+    "MH",
+    "DN",
+    "MYA",
+    "BRVO",
+    "TSLN",
+    "ERM",
+    "LS",
+    "MS",
+    "CSR",
+    "ODC",
+    "CRVO",
+    "AH",
+    "ODP",
+    "ODE",
+    "AION",
+    "PT",
+    "RT",
+    "RS",
+    "CRS",
+    "EDN",
+    "RPEC",
+    "MHL",
 ]
 
 logger = logging.getLogger(__name__)
 
 # Disease full names
 DISEASE_NAMES = {
-    "DR": "Diabetic Retinopathy", "ARMD": "Age-Related Macular Degeneration",
-    "MH": "Macular Hole", "DN": "Diabetic Neuropathy",
-    "MYA": "Myopic Retinopathy", "BRVO": "Branch Retinal Vein Occlusion",
-    "TSLN": "Tessellation", "ERM": "Epiretinal Membrane",
-    "LS": "Laser Scars", "MS": "Macular Scars",
-    "CSR": "Central Serous Retinopathy", "ODC": "Optic Disc Cupping",
-    "CRVO": "Central Retinal Vein Occlusion", "TV": "Tortuous Vessels",
-    "AH": "Asteroid Hyalosis", "ODP": "Optic Disc Pallor",
-    "ODE": "Optic Disc Edema", "ST": "Optociliary Shunt Vessels",
-    "AION": "Anterior Ischemic Optic Neuropathy", "PT": "Parafoveal Telangiectasia",
-    "RT": "Retinal Traction", "RS": "Retinitis", "CRS": "Chorioretinal Scars",
-    "EDN": "Exudative Detachment", "RPEC": "RPE Changes",
-    "MHL": "Lamellar Macular Hole", "RP": "Retinitis Pigmentosa",
-    "CWS": "Cotton Wool Spots", "CB": "Coats Disease",
-    "ODPM": "Optic Disc Pit Maculopathy", "PRH": "Preretinal Hemorrhage",
-    "MNF": "Myelinated Nerve Fibers", "HR": "Hemorrhagic Retinopathy",
-    "CRAO": "Central Retinal Artery Occlusion", "TD": "Tilted Disc",
-    "CME": "Cystoid Macular Edema", "PTCR": "Post-Traumatic Chorioretinopathy",
-    "CF": "Choroidal Folds", "VH": "Vitreous Hemorrhage",
-    "MCA": "Retinal Macroaneurysm", "VS": "Vasculitis",
-    "BRAO": "Branch Retinal Artery Occlusion", "PLQ": "Optic Disc Drusen",
-    "HPED": "Hemorrhagic PED", "CL": "Choroidal Lesion",
+    "DR": "Diabetic Retinopathy",
+    "ARMD": "Age-Related Macular Degeneration",
+    "MH": "Macular Hole",
+    "DN": "Diabetic Neuropathy",
+    "MYA": "Myopic Retinopathy",
+    "BRVO": "Branch Retinal Vein Occlusion",
+    "TSLN": "Tessellation",
+    "ERM": "Epiretinal Membrane",
+    "LS": "Laser Scars",
+    "MS": "Macular Scars",
+    "CSR": "Central Serous Retinopathy",
+    "ODC": "Optic Disc Cupping",
+    "CRVO": "Central Retinal Vein Occlusion",
+    "TV": "Tortuous Vessels",
+    "AH": "Asteroid Hyalosis",
+    "ODP": "Optic Disc Pallor",
+    "ODE": "Optic Disc Edema",
+    "ST": "Optociliary Shunt Vessels",
+    "AION": "Anterior Ischemic Optic Neuropathy",
+    "PT": "Parafoveal Telangiectasia",
+    "RT": "Retinal Traction",
+    "RS": "Retinitis",
+    "CRS": "Chorioretinal Scars",
+    "EDN": "Exudative Detachment",
+    "RPEC": "RPE Changes",
+    "MHL": "Lamellar Macular Hole",
+    "RP": "Retinitis Pigmentosa",
+    "CWS": "Cotton Wool Spots",
+    "CB": "Coats Disease",
+    "ODPM": "Optic Disc Pit Maculopathy",
+    "PRH": "Preretinal Hemorrhage",
+    "MNF": "Myelinated Nerve Fibers",
+    "HR": "Hemorrhagic Retinopathy",
+    "CRAO": "Central Retinal Artery Occlusion",
+    "TD": "Tilted Disc",
+    "CME": "Cystoid Macular Edema",
+    "PTCR": "Post-Traumatic Chorioretinopathy",
+    "CF": "Choroidal Folds",
+    "VH": "Vitreous Hemorrhage",
+    "MCA": "Retinal Macroaneurysm",
+    "VS": "Vasculitis",
+    "BRAO": "Branch Retinal Artery Occlusion",
+    "PLQ": "Optic Disc Drusen",
+    "HPED": "Hemorrhagic PED",
+    "CL": "Choroidal Lesion",
 }
 
-_transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-])
+_transform = transforms.Compose(
+    [
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ]
+)
 
 
 class ModelService:
@@ -88,8 +135,10 @@ class ModelService:
 
         self.disease_codes = DISEASE_COLUMNS
         self.kg = ClinicalKnowledgeGraph(disease_names=self.disease_codes)
-        logger.info(f"Knowledge graph: {len(self.disease_codes)} diseases, "
-                     f"{self.kg.get_edge_count()} relationships")
+        logger.info(
+            f"Knowledge graph: {len(self.disease_codes)} diseases, "
+            f"{self.kg.get_edge_count()} relationships"
+        )
 
         model_path = PROJECT_ROOT / settings.model_path
         if model_path.exists():
@@ -101,6 +150,7 @@ class ModelService:
             if model_name == "hybrid_v2" or "disease_columns" in checkpoint:
                 # V2 precision-rescue model
                 from src.models.retinal_foundation_hybrid_v2 import create_hybrid_v2
+
                 v2_columns = checkpoint.get("disease_columns", V2_DISEASE_COLUMNS)
                 nc = checkpoint.get("num_classes", len(v2_columns))
                 self.disease_codes = v2_columns
@@ -120,25 +170,41 @@ class ModelService:
                 logger.info(f"Loaded HybridV2 model ({nc} classes)")
             elif model_name == "scene_graph_transformer":
                 from src.models.scene_graph_transformer import SceneGraphTransformer
+
                 self.model = SceneGraphTransformer(
-                    num_classes=nc, hidden_dim=384, num_layers=3, num_heads=4,
-                    dropout=0.1, clinical_knowledge_graph=self.kg,
+                    num_classes=nc,
+                    hidden_dim=384,
+                    num_layers=3,
+                    num_heads=4,
+                    dropout=0.1,
+                    clinical_knowledge_graph=self.kg,
                 )
             elif model_name == "graphclip":
                 from src.models.graphclip import GraphCLIP
+
                 self.model = GraphCLIP(
-                    num_classes=nc, hidden_dim=384, num_graph_layers=3, num_heads=4,
-                    dropout=0.1, clinical_knowledge_graph=self.kg,
+                    num_classes=nc,
+                    hidden_dim=384,
+                    num_graph_layers=3,
+                    num_heads=4,
+                    dropout=0.1,
+                    clinical_knowledge_graph=self.kg,
                 )
             elif model_name == "visual_language_gnn":
                 from src.models.visual_language_gnn import VisualLanguageGNN
+
                 self.model = VisualLanguageGNN(
-                    num_classes=nc, hidden_dim=384, num_layers=3, num_heads=4,
-                    dropout=0.1, clinical_knowledge_graph=self.kg,
+                    num_classes=nc,
+                    hidden_dim=384,
+                    num_layers=3,
+                    num_heads=4,
+                    dropout=0.1,
+                    clinical_knowledge_graph=self.kg,
                 )
             else:
                 self.model = create_vignn_model(
-                    num_classes=nc, clinical_knowledge_graph=self.kg,
+                    num_classes=nc,
+                    clinical_knowledge_graph=self.kg,
                 )
 
             if "model_state_dict" in checkpoint:
@@ -173,9 +239,8 @@ class ModelService:
         if gate_path.exists():
             try:
                 from src.data.fundus_gate_learned import LearnedFundusGate
-                self.fundus_gate = LearnedFundusGate(
-                    weights_path=str(gate_path), threshold=0.5
-                )
+
+                self.fundus_gate = LearnedFundusGate(weights_path=str(gate_path), threshold=0.5)
                 self.fundus_gate.eval()
                 logger.info(f"Learned fundus gate loaded from {gate_path}")
             except Exception as e:
@@ -192,9 +257,7 @@ class ModelService:
         self._loaded = False
         logger.info("Model unloaded")
 
-    def _resolve_thresholds(
-        self, threshold: Optional[float]
-    ) -> tuple[np.ndarray, float, str]:
+    def _resolve_thresholds(self, threshold: Optional[float]) -> tuple[np.ndarray, float, str]:
         """Resolve scalar or learned per-class thresholds for inference."""
         if threshold is not None:
             scalar = float(threshold)
@@ -264,7 +327,11 @@ class ModelService:
             pred_dict = {code: float(probs[i]) for i, code in enumerate(self.disease_codes)}
             with tracer.start_as_current_span("retinalai.kg.clinical_reasoning"):
                 refined = self.kg.apply_clinical_reasoning(pred_dict) if self.kg else pred_dict
-                referral = self.kg.get_referral_priority([d["code"] for d in detected]) if self.kg and detected else "FOLLOW_UP"
+                referral = (
+                    self.kg.get_referral_priority([d["code"] for d in detected])
+                    if self.kg and detected
+                    else "FOLLOW_UP"
+                )
 
             # OTEL span attributes
             max_conf = float(probs.max()) if len(probs) > 0 else 0.0

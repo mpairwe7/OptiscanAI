@@ -82,7 +82,9 @@ class PilotReadinessValidator:
             "backend/app/core/vad_engine.py",
         ]
         missing = [f for f in files if not Path(f).exists()]
-        return self._check("Voice backend", len(missing) == 0, f"Missing: {missing}" if missing else "All present")
+        return self._check(
+            "Voice backend", len(missing) == 0, f"Missing: {missing}" if missing else "All present"
+        )
 
     def check_luganda_support(self) -> bool:
         """Verify Luganda language files."""
@@ -177,7 +179,9 @@ def main():
         json.dump(report, f, indent=2)
 
     print(f"\n{'=' * 60}")
-    print(f"PILOT READINESS: {'READY' if report['ready'] else 'NOT READY'} ({report['passed']}/{report['total']})")
+    print(
+        f"PILOT READINESS: {'READY' if report['ready'] else 'NOT READY'} ({report['passed']}/{report['total']})"
+    )
     print(f"{'=' * 60}")
     for check in report["checks"]:
         status = "PASS" if check["passed"] else "FAIL"

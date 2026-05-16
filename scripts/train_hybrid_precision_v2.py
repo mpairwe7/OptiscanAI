@@ -95,8 +95,7 @@ def build_weighted_sampler(labels_df, disease_columns):
     return sampler
 
 
-def train_one_epoch(model, loader, criterion, optimizer, scaler, device, epoch,
-                    col_indices=None):
+def train_one_epoch(model, loader, criterion, optimizer, scaler, device, epoch, col_indices=None):
     """Train for one epoch."""
     model.train()
     total_loss = 0.0
@@ -148,7 +147,7 @@ def validate(model, loader, device, col_indices=None):
         all_probs.append(probs)
         lbl = labels.numpy()
         if col_indices is not None:
-            lbl = lbl[:, col_indices.cpu().numpy() if hasattr(col_indices, 'cpu') else col_indices]
+            lbl = lbl[:, col_indices.cpu().numpy() if hasattr(col_indices, "cpu") else col_indices]
         all_targets.append(lbl)
 
     probs = np.concatenate(all_probs, axis=0)
@@ -179,7 +178,11 @@ def main():
     min_samples = cfg.get("class_filtering", {}).get("min_samples", 10)
     disease_columns = filter_rare_classes(
         datamodule.disease_columns,
-        datamodule.train_dataset.labels_df if hasattr(datamodule.train_dataset, 'labels_df') else None,
+        (
+            datamodule.train_dataset.labels_df
+            if hasattr(datamodule.train_dataset, "labels_df")
+            else None
+        ),
         min_samples=min_samples,
     )
 
@@ -262,15 +265,21 @@ def main():
         # Staged unfreezing
         if epoch == unfreeze_epoch + 1:
             logger.info(f"Unfreezing last {unfreeze_blocks} backbone blocks at lr={backbone_lr}")
-            new_groups = model.unfreeze_backbone_blocks(
-                num_blocks=unfreeze_blocks, lr=backbone_lr
-            )
+            new_groups = model.unfreeze_backbone_blocks(num_blocks=unfreeze_blocks, lr=backbone_lr)
             for group in new_groups:
                 optimizer.add_param_group(group)
 
         # Train
-        train_loss = train_one_epoch(model, train_loader, criterion, optimizer, scaler, device, epoch,
-                                     col_indices=col_indices_t)
+        train_loss = train_one_epoch(
+            model,
+            train_loader,
+            criterion,
+            optimizer,
+            scaler,
+            device,
+            epoch,
+            col_indices=col_indices_t,
+        )
 
         # Validate
         val_probs, val_targets = validate(model, val_loader, device, col_indices=col_indices_t)
@@ -293,14 +302,17 @@ def main():
             best_metric = current_metric
             patience_counter = 0
 
-            torch.save({
-                "epoch": epoch,
-                "model_state_dict": model.state_dict(),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "metrics": val_metrics,
-                "disease_columns": disease_columns,
-                "num_classes": num_classes,
-            }, ckpt_dir / "best.pth")
+            torch.save(
+                {
+                    "epoch": epoch,
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "metrics": val_metrics,
+                    "disease_columns": disease_columns,
+                    "num_classes": num_classes,
+                },
+                ckpt_dir / "best.pth",
+            )
             logger.info(f"  New best precision: {best_metric:.4f} (saved)")
         else:
             patience_counter += 1
@@ -319,7 +331,8 @@ def main():
 
     min_precision_floor = cfg.get("threshold_optimization", {}).get("min_precision", 0.10)
     thresholds, report = optimize_thresholds_with_precision_floor(
-        val_probs, val_targets,
+        val_probs,
+        val_targets,
         min_precision=min_precision_floor,
         disease_names=disease_columns,
     )
@@ -343,13 +356,16 @@ def main():
     )
 
     # Save final model with thresholds embedded
-    torch.save({
-        "model_state_dict": model.state_dict(),
-        "disease_columns": disease_columns,
-        "num_classes": num_classes,
-        "thresholds": thresholds.tolist(),
-        "metrics": final_metrics,
-    }, ckpt_dir / "final_with_thresholds.pth")
+    torch.save(
+        {
+            "model_state_dict": model.state_dict(),
+            "disease_columns": disease_columns,
+            "num_classes": num_classes,
+            "thresholds": thresholds.tolist(),
+            "metrics": final_metrics,
+        },
+        ckpt_dir / "final_with_thresholds.pth",
+    )
 
     logger.info(f"Training complete. Checkpoints in {ckpt_dir}")
 

@@ -26,7 +26,9 @@ logger = logging.getLogger(__name__)
 
 def main():
     parser = argparse.ArgumentParser(description="Benchmark RetinalFoundationHybrid")
-    parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
+    parser.add_argument(
+        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+    )
     parser.add_argument("--batch-sizes", nargs="+", type=int, default=[1, 8, 32])
     parser.add_argument("--fp16", action="store_true")
     parser.add_argument("--warmup", type=int, default=20)

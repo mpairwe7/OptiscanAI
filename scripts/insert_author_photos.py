@@ -22,7 +22,7 @@ OUTPUT = "docs/IEEE_Concept_Paper_Final.docx"
 IEEE_WIDTH_IN = 1.0
 IEEE_HEIGHT_IN = 1.25
 TARGET_DPI = 300
-TARGET_W_PX = int(IEEE_WIDTH_IN * TARGET_DPI)   # 300
+TARGET_W_PX = int(IEEE_WIDTH_IN * TARGET_DPI)  # 300
 TARGET_H_PX = int(IEEE_HEIGHT_IN * TARGET_DPI)  # 375
 
 # Author photos mapped to bio names
@@ -41,12 +41,12 @@ def prepare_photo(src_path, author_name):
     img = Image.open(src_path)
 
     # Convert RGBA to RGB (white background)
-    if img.mode == 'RGBA':
-        bg = Image.new('RGB', img.size, (255, 255, 255))
+    if img.mode == "RGBA":
+        bg = Image.new("RGB", img.size, (255, 255, 255))
         bg.paste(img, mask=img.split()[3])
         img = bg
-    elif img.mode != 'RGB':
-        img = img.convert('RGB')
+    elif img.mode != "RGB":
+        img = img.convert("RGB")
 
     w, h = img.size
     target_aspect = IEEE_HEIGHT_IN / IEEE_WIDTH_IN  # 1.25
@@ -67,16 +67,18 @@ def prepare_photo(src_path, author_name):
     img = img.resize((TARGET_W_PX, TARGET_H_PX), Image.LANCZOS)
 
     # Save with 300 DPI metadata
-    safe_name = author_name.lower().replace(' ', '_')
+    safe_name = author_name.lower().replace(" ", "_")
     out_path = PROCESSED_DIR / f"{safe_name}.png"
     img.save(str(out_path), dpi=(TARGET_DPI, TARGET_DPI))
 
     # Verify
     check = Image.open(out_path)
-    print(f"  {author_name}: {check.size[0]}x{check.size[1]} px, "
-          f"DPI={check.info.get('dpi', (0,0))}, "
-          f"mode={check.mode}, "
-          f"print: {check.size[0]/TARGET_DPI:.2f}\"x{check.size[1]/TARGET_DPI:.2f}\"")
+    print(
+        f"  {author_name}: {check.size[0]}x{check.size[1]} px, "
+        f"DPI={check.info.get('dpi', (0,0))}, "
+        f"mode={check.mode}, "
+        f'print: {check.size[0]/TARGET_DPI:.2f}"x{check.size[1]/TARGET_DPI:.2f}"'
+    )
     check.close()
 
     return out_path
@@ -84,7 +86,7 @@ def prepare_photo(src_path, author_name):
 
 def insert_photos(doc):
     """Insert author photos before their biography paragraphs."""
-    WNS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+    WNS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
     body = doc.element.body
     inserted = 0
 
@@ -95,7 +97,7 @@ def insert_photos(doc):
         # Find the AU_Bios paragraph for this author
         target_para = None
         for i, p in enumerate(doc.paragraphs):
-            if p.style.name == 'AU_Bios' and author_name in p.text.upper():
+            if p.style.name == "AU_Bios" and author_name in p.text.upper():
                 target_para = p
                 break
 
@@ -116,10 +118,11 @@ def insert_photos(doc):
         bio_elem.addprevious(photo_elem)
 
         # Set the photo paragraph style to AU_Bios to maintain spacing
-        pPr = photo_elem.find(f'{{{WNS}}}pPr')
+        pPr = photo_elem.find(f"{{{WNS}}}pPr")
         if pPr is None:
             from docx.oxml import parse_xml
             from docx.oxml.ns import nsdecls
+
             pPr = parse_xml(f'<w:pPr {nsdecls("w")}><w:pStyle w:val="AUBios"/></w:pPr>')
             photo_elem.insert(0, pPr)
 
@@ -131,32 +134,34 @@ def insert_photos(doc):
 
 def verify(doc):
     """Verify author photos are properly placed."""
-    WNS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
-    WPNS = 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing'
+    WNS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    WPNS = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
 
     print("\nVerification:")
 
     # Count images near bio sections
     bio_photos = 0
     for i, p in enumerate(doc.paragraphs):
-        drawings = p._element.findall(f'.//{{{WNS}}}drawing')
+        drawings = p._element.findall(f".//{{{WNS}}}drawing")
         if drawings:
             # Check if next paragraph is a bio
             if i + 1 < len(doc.paragraphs):
                 next_p = doc.paragraphs[i + 1]
-                if next_p.style.name == 'AU_Bios':
+                if next_p.style.name == "AU_Bios":
                     bio_photos += 1
 
                     # Check image size
-                    extents = p._element.findall(f'.//{{{WPNS}}}extent')
+                    extents = p._element.findall(f".//{{{WPNS}}}extent")
                     if extents:
-                        cx = int(extents[0].get('cx', 0)) / 914400
-                        cy = int(extents[0].get('cy', 0)) / 914400
+                        cx = int(extents[0].get("cx", 0)) / 914400
+                        cy = int(extents[0].get("cy", 0)) / 914400
                         w_ok = abs(cx - IEEE_WIDTH_IN) < 0.05
                         h_ok = abs(cy - IEEE_HEIGHT_IN) < 0.1
-                        print(f"  Photo before '{next_p.text[:30]}...': "
-                              f"{cx:.2f}\"x{cy:.2f}\" "
-                              f"{'OK' if w_ok and h_ok else 'SIZE ISSUE'}")
+                        print(
+                            f"  Photo before '{next_p.text[:30]}...': "
+                            f'{cx:.2f}"x{cy:.2f}" '
+                            f"{'OK' if w_ok and h_ok else 'SIZE ISSUE'}"
+                        )
 
     print(f"  Author photos found before bios: {bio_photos}/3")
     return bio_photos == 3
@@ -164,8 +169,10 @@ def verify(doc):
 
 def main():
     print("Preparing author photos for IEEE standards...")
-    print(f"  Target: {TARGET_W_PX}x{TARGET_H_PX} px "
-          f"({IEEE_WIDTH_IN}\"x{IEEE_HEIGHT_IN}\") at {TARGET_DPI} DPI\n")
+    print(
+        f"  Target: {TARGET_W_PX}x{TARGET_H_PX} px "
+        f'({IEEE_WIDTH_IN}"x{IEEE_HEIGHT_IN}") at {TARGET_DPI} DPI\n'
+    )
 
     print(f"Opening {INPUT}...")
     doc = Document(INPUT)
@@ -181,15 +188,17 @@ def main():
 
     print("Regenerating PDF...")
     result = subprocess.run(
-        ['libreoffice', '--headless', '--convert-to', 'pdf',
-         '--outdir', 'docs/', OUTPUT],
-        capture_output=True, timeout=120)
+        ["libreoffice", "--headless", "--convert-to", "pdf", "--outdir", "docs/", OUTPUT],
+        capture_output=True,
+        timeout=120,
+    )
     if result.returncode == 0:
         print("PDF regenerated.")
     else:
         print(f"PDF warning: {result.stderr.decode()[:200]}")
 
     import os
+
     print(f"\n  docx: {os.path.getsize(OUTPUT)/1024:.1f} KB")
     print(f"  pdf:  {os.path.getsize('docs/IEEE_Concept_Paper_Final.pdf')/1024:.1f} KB")
     print("\nDone!")

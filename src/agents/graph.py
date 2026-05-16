@@ -10,6 +10,7 @@ The graph has 6 nodes:
 
 Claude decides at the 'triage' and 'report' nodes. Everything else is deterministic.
 """
+
 import logging
 from datetime import datetime, timezone
 from typing import Any, Literal, TypedDict
@@ -24,8 +25,10 @@ logger = logging.getLogger(__name__)
 
 # ── Graph State ──
 
+
 class ScreeningState(TypedDict, total=False):
     """State that flows through the LangGraph screening pipeline."""
+
     # Input
     scan_id: str
     image: Any  # PIL.Image
@@ -71,6 +74,7 @@ class ScreeningState(TypedDict, total=False):
 
 
 # ── Node functions ──
+
 
 async def classify_node(state: ScreeningState) -> dict:
     """Node 1: Run model inference. Always deterministic (GPU inference)."""
@@ -169,6 +173,7 @@ Respond with exactly this JSON format (no markdown):
 
         if not response["fallback"]:
             import json
+
             try:
                 # Parse Claude's structured response
                 text = response["text"].strip()
@@ -238,12 +243,14 @@ async def reason_node(state: ScreeningState) -> dict:
         if code in probs:
             diff = refined[code] - probs[code]
             if abs(diff) > 0.001:
-                adjustments.append({
-                    "code": code,
-                    "original": round(probs[code], 4),
-                    "refined": round(refined[code], 4),
-                    "boost": round(diff, 4),
-                })
+                adjustments.append(
+                    {
+                        "code": code,
+                        "original": round(probs[code], 4),
+                        "refined": round(refined[code], 4),
+                        "boost": round(diff, 4),
+                    }
+                )
 
     return {
         "reasoning": {
@@ -280,15 +287,19 @@ async def review_node(state: ScreeningState) -> dict:
     scan_id = state.get("scan_id", "unknown")
 
     # Emit review event
-    await event_bus.emit(Event(
-        type=EventType.REVIEW_REQUIRED,
-        source="screening_graph",
-        data={
-            "scan_id": scan_id,
-            "reason": triage.get("reasoning", ""),
-            "priority": "urgent" if triage.get("priority") in ("EMERGENCY", "URGENT") else "medium",
-        },
-    ))
+    await event_bus.emit(
+        Event(
+            type=EventType.REVIEW_REQUIRED,
+            source="screening_graph",
+            data={
+                "scan_id": scan_id,
+                "reason": triage.get("reasoning", ""),
+                "priority": (
+                    "urgent" if triage.get("priority") in ("EMERGENCY", "URGENT") else "medium"
+                ),
+            },
+        )
+    )
 
     return {
         "review": {
@@ -317,7 +328,11 @@ async def report_node(state: ScreeningState) -> dict:
     if llm.is_available() and len(predictions) > 0:
         disease_list = ", ".join(f"{p['name']} ({p['probability']:.0%})" for p in predictions[:8])
         adjustments = reasoning.get("adjustments", [])
-        adj_text = "; ".join(f"{a['code']} boosted +{a['boost']:.1%}" for a in adjustments[:5]) if adjustments else "none"
+        adj_text = (
+            "; ".join(f"{a['code']} boosted +{a['boost']:.1%}" for a in adjustments[:5])
+            if adjustments
+            else "none"
+        )
 
         prompt = f"""Write a concise clinical screening report (3-4 sentences) for this retinal scan.
 
@@ -344,7 +359,8 @@ Be specific about disease codes and probabilities. End with a clear recommendati
             {"code": p["code"], "name": p["name"], "probability": round(p["probability"], 3)}
             for p in predictions[:10]
         ],
-        "clinical_narrative": clinical_narrative or _template_narrative(predictions, referral, triage),
+        "clinical_narrative": clinical_narrative
+        or _template_narrative(predictions, referral, triage),
         "triage": triage,
         "kg_adjustments": len(reasoning.get("adjustments", [])),
         "explainability_run": state.get("explainability") is not None,
@@ -354,17 +370,19 @@ Be specific about disease codes and probabilities. End with a clear recommendati
     }
 
     # Emit final event
-    await event_bus.emit(Event(
-        type=EventType.SCAN_ANALYZED,
-        source="screening_graph",
-        data={
-            "scan_id": scan_id,
-            "diseases_detected": len(predictions),
-            "referral_priority": report["referral_priority"],
-            "claude_used": state.get("claude_used", False),
-            "steps": len(report["steps_completed"]),
-        },
-    ))
+    await event_bus.emit(
+        Event(
+            type=EventType.SCAN_ANALYZED,
+            source="screening_graph",
+            data={
+                "scan_id": scan_id,
+                "diseases_detected": len(predictions),
+                "referral_priority": report["referral_priority"],
+                "claude_used": state.get("claude_used", False),
+                "steps": len(report["steps_completed"]),
+            },
+        )
+    )
 
     return {"report": report}
 
@@ -385,6 +403,7 @@ def _template_narrative(predictions, referral, triage) -> str:
 
 # ── Routing functions ──
 
+
 def route_after_reason(state: ScreeningState) -> Literal["explain", "review", "report"]:
     """Route after clinical reasoning: explain, review, or straight to report."""
     triage = state.get("triage", {})
@@ -404,6 +423,7 @@ def route_after_explain(state: ScreeningState) -> Literal["review", "report"]:
 
 
 # ── Build the graph ──
+
 
 def build_screening_graph() -> StateGraph:
     """Construct the LangGraph screening workflow.
@@ -431,17 +451,25 @@ def build_screening_graph() -> StateGraph:
     graph.add_edge("triage", "reason")
 
     # After reason: 3-way branch (explain, review-only, or report)
-    graph.add_conditional_edges("reason", route_after_reason, {
-        "explain": "explain",
-        "review": "review",
-        "report": "report",
-    })
+    graph.add_conditional_edges(
+        "reason",
+        route_after_reason,
+        {
+            "explain": "explain",
+            "review": "review",
+            "report": "report",
+        },
+    )
 
     # After explain: review or report
-    graph.add_conditional_edges("explain", route_after_explain, {
-        "review": "review",
-        "report": "report",
-    })
+    graph.add_conditional_edges(
+        "explain",
+        route_after_explain,
+        {
+            "review": "review",
+            "report": "report",
+        },
+    )
 
     # Review always goes to report
     graph.add_edge("review", "report")

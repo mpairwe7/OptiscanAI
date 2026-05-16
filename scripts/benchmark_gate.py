@@ -65,11 +65,13 @@ def benchmark_v2_gate(image: Image.Image, warmup: int, runs: int) -> list[float]
 
 def print_stats(name: str, latencies: list[float]):
     arr = np.array(latencies)
-    print(f"  {name:30s}  p50={np.percentile(arr, 50):6.1f}ms  "
-          f"p95={np.percentile(arr, 95):6.1f}ms  "
-          f"p99={np.percentile(arr, 99):6.1f}ms  "
-          f"mean={arr.mean():6.1f}ms  "
-          f"throughput={1000/arr.mean():5.0f} img/s")
+    print(
+        f"  {name:30s}  p50={np.percentile(arr, 50):6.1f}ms  "
+        f"p95={np.percentile(arr, 95):6.1f}ms  "
+        f"p99={np.percentile(arr, 99):6.1f}ms  "
+        f"mean={arr.mean():6.1f}ms  "
+        f"throughput={1000/arr.mean():5.0f} img/s"
+    )
 
 
 def main():
@@ -85,6 +87,7 @@ def main():
     # Memory baseline
     try:
         import psutil
+
         proc = psutil.Process()
         mem_before = proc.memory_info().rss / (1024 * 1024)
     except ImportError:
@@ -101,7 +104,9 @@ def main():
     # Memory after
     if mem_before is not None:
         mem_after = proc.memory_info().rss / (1024 * 1024)
-        print(f"\n  Memory: before={mem_before:.0f}MB, after={mem_after:.0f}MB, delta={mem_after - mem_before:.0f}MB")
+        print(
+            f"\n  Memory: before={mem_before:.0f}MB, after={mem_after:.0f}MB, delta={mem_after - mem_before:.0f}MB"
+        )
 
     # Targets
     print("\n  Targets:")

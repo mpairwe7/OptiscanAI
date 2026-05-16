@@ -1,4 +1,5 @@
 """PaymentIntent — tracks a pending payment with a provider."""
+
 from __future__ import annotations
 
 import enum
@@ -30,17 +31,28 @@ class PaymentIntent(Base):
     invoice_id: Mapped[Optional[str]] = uuid_fk("invoices.id", nullable=True)
 
     provider: Mapped[PaymentProvider] = mapped_column(
-        Enum(PaymentProvider, name="payment_provider", create_type=False, values_callable=lambda x: [e.value for e in x]),
+        Enum(
+            PaymentProvider,
+            name="payment_provider",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
         nullable=False,
     )
-    provider_intent_id: Mapped[Optional[str]] = mapped_column(String(200), unique=True, nullable=True)
+    provider_intent_id: Mapped[Optional[str]] = mapped_column(
+        String(200), unique=True, nullable=True
+    )
     idempotency_key: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
 
     amount_cents: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="USD", nullable=False)
 
     status: Mapped[PaymentIntentStatus] = mapped_column(
-        Enum(PaymentIntentStatus, name="payment_intent_status", values_callable=lambda x: [e.value for e in x]),
+        Enum(
+            PaymentIntentStatus,
+            name="payment_intent_status",
+            values_callable=lambda x: [e.value for e in x],
+        ),
         default=PaymentIntentStatus.REQUIRES_ACTION,
         nullable=False,
     )

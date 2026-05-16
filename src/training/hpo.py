@@ -1,4 +1,5 @@
 """Hyperparameter optimization with Optuna for retinal disease models."""
+
 import logging
 from copy import deepcopy
 from typing import Optional
@@ -174,9 +175,7 @@ def run_hpo(
     )
     best_cfg["training"]["loss"] = best_params.get("loss", best_cfg["training"]["loss"])
     best_cfg["model"]["dropout"] = best_params.get("dropout", best_cfg["model"]["dropout"])
-    best_cfg["model"]["hidden_dim"] = best_params.get(
-        "hidden_dim", best_cfg["model"]["hidden_dim"]
-    )
+    best_cfg["model"]["hidden_dim"] = best_params.get("hidden_dim", best_cfg["model"]["hidden_dim"])
     best_cfg["training"]["scheduler"] = best_params.get(
         "scheduler", best_cfg["training"]["scheduler"]
     )

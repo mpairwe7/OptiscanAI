@@ -5,6 +5,7 @@ When `settings.database.enabled` is False the engine is not initialized and
 but the rest of the API continues to work, preserving the on-prem/research
 deployment story.
 """
+
 from __future__ import annotations
 
 import logging

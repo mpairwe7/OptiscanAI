@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 class TrackedEntity(BaseModel):
     """DHIS2 Tracked Entity Instance (patient)."""
+
     tei_id: str = ""
     org_unit: str = ""
     attributes: dict[str, str] = Field(default_factory=dict)
@@ -20,6 +21,7 @@ class TrackedEntity(BaseModel):
 
 class PatientRegistration(BaseModel):
     """Data for registering a new patient in DHIS2."""
+
     org_unit: str
     first_name: str
     last_name: str
@@ -31,6 +33,7 @@ class PatientRegistration(BaseModel):
 
 class ReferralEvent(BaseModel):
     """Screening referral event for DHIS2."""
+
     program: str = "RETINAL_SCREENING"
     org_unit: str
     tei_id: str
@@ -41,6 +44,7 @@ class ReferralEvent(BaseModel):
 
 class AggregateReport(BaseModel):
     """Monthly aggregate screening report for DHIS2."""
+
     data_set: str
     period: str  # e.g., "202605"
     org_unit: str

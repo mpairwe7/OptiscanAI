@@ -1,4 +1,5 @@
 """Human-in-the-loop review API endpoints."""
+
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -51,7 +52,9 @@ async def resolve_review(request_id: str, body: ReviewDecisionRequest):
     try:
         decision = ReviewDecision(body.decision)
     except ValueError:
-        raise HTTPException(400, f"Invalid decision. Must be one of: {[d.value for d in ReviewDecision]}")
+        raise HTTPException(
+            400, f"Invalid decision. Must be one of: {[d.value for d in ReviewDecision]}"
+        )
 
     success = review_gate.resolve(request_id, body.reviewer, decision, body.notes)
     if not success:
@@ -75,6 +78,7 @@ async def resolve_review(request_id: str, body: ReviewDecisionRequest):
                 )
         except Exception as e:
             import logging
+
             logging.getLogger(__name__).error(
                 f"Active learning hook failed (non-fatal): {e}", exc_info=True
             )
@@ -82,6 +86,7 @@ async def resolve_review(request_id: str, body: ReviewDecisionRequest):
     # Phase 1: Record review metric in OpenTelemetry
     try:
         from backend.app.core.telemetry import record_review_metric
+
         record_review_metric(body.decision)
     except Exception:
         pass

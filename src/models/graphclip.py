@@ -2,6 +2,7 @@
 GraphCLIP - Graph-Enhanced CLIP for retinal disease classification.
 Extracted from notebook cell 47. ~45M parameters, mobile-friendly.
 """
+
 import torch
 import torch.nn as nn
 
@@ -14,9 +15,18 @@ class GraphCLIP(nn.Module):
     Uses sparse attention and dynamic graph learning for efficiency.
     REQUIRES: clinical_knowledge_graph (ClinicalKnowledgeGraph instance)
     """
-    def __init__(self, num_classes=45, hidden_dim=384, num_graph_layers=2,
-                 num_heads=4, dropout=0.1, clinical_knowledge_graph=None,
-                 backbone='vit_small_patch16_224', img_size=224):
+
+    def __init__(
+        self,
+        num_classes=45,
+        hidden_dim=384,
+        num_graph_layers=2,
+        num_heads=4,
+        dropout=0.1,
+        clinical_knowledge_graph=None,
+        backbone="vit_small_patch16_224",
+        img_size=224,
+    ):
         super().__init__()
         if clinical_knowledge_graph is None:
             raise ValueError("GraphCLIP requires clinical_knowledge_graph parameter")
@@ -24,30 +34,42 @@ class GraphCLIP(nn.Module):
 
         self.visual_encoder = MultiResolutionEncoder(backbone, hidden_dim, img_size=img_size)
         self.visual_proj = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim), nn.LayerNorm(hidden_dim),
-            nn.GELU(), nn.Dropout(dropout),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.GELU(),
+            nn.Dropout(dropout),
         )
 
         self.disease_embeddings = nn.Parameter(torch.randn(num_classes, hidden_dim))
         nn.init.normal_(self.disease_embeddings, std=0.02)
 
         self.graph_weight_generator = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim // 2), nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.ReLU(),
             nn.Linear(hidden_dim // 2, num_classes),
         )
 
-        self.graph_layers = nn.ModuleList([
-            SparseTopKAttention(hidden_dim, num_heads=num_heads, dropout=dropout, top_k=16)
-            for _ in range(num_graph_layers)
-        ])
-        self.graph_norms = nn.ModuleList([nn.LayerNorm(hidden_dim) for _ in range(num_graph_layers)])
+        self.graph_layers = nn.ModuleList(
+            [
+                SparseTopKAttention(hidden_dim, num_heads=num_heads, dropout=dropout, top_k=16)
+                for _ in range(num_graph_layers)
+            ]
+        )
+        self.graph_norms = nn.ModuleList(
+            [nn.LayerNorm(hidden_dim) for _ in range(num_graph_layers)]
+        )
 
-        self.cross_attn = SparseTopKAttention(hidden_dim, num_heads=num_heads, dropout=dropout, top_k=24)
+        self.cross_attn = SparseTopKAttention(
+            hidden_dim, num_heads=num_heads, dropout=dropout, top_k=24
+        )
         self.cross_norm = nn.LayerNorm(hidden_dim)
 
         self.classifier = nn.Sequential(
-            nn.Linear(hidden_dim * 2, 256), nn.LayerNorm(256), nn.GELU(),
-            nn.Dropout(dropout * 2), nn.Linear(256, num_classes),
+            nn.Linear(hidden_dim * 2, 256),
+            nn.LayerNorm(256),
+            nn.GELU(),
+            nn.Dropout(dropout * 2),
+            nn.Linear(256, num_classes),
         )
 
     def forward(self, x):

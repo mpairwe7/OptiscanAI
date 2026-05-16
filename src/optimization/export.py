@@ -207,7 +207,7 @@ def export_coreml(
 
     ml_model = ct.convert(
         traced,
-        inputs=[ct.ImageType(name="retinal_image", shape=input_shape, scale=1/255.0)],
+        inputs=[ct.ImageType(name="retinal_image", shape=input_shape, scale=1 / 255.0)],
         convert_to="mlprogram",
         minimum_deployment_target=ct.target.macOS14,
     )
@@ -304,6 +304,7 @@ def export_tensorrt(
 # One-command export all
 # ---------------------------------------------------------------------------
 
+
 def export_all(
     model: nn.Module,
     output_dir: str = "outputs/export",
@@ -362,9 +363,7 @@ def export_all(
 
     if "coreml" in formats:
         try:
-            paths["coreml"] = export_coreml(
-                model, os.path.join(output_dir, "model.mlpackage")
-            )
+            paths["coreml"] = export_coreml(model, os.path.join(output_dir, "model.mlpackage"))
         except Exception as e:
             logger.error(f"Core ML export failed: {e}")
 

@@ -15,6 +15,7 @@ The Subscription's ``current_period_end`` advances by 30 or 365 days from now
 (not from the previous period_end) — this keeps it consistent with our quota
 windows. Renewals are user-initiated (we email a reminder + a re-checkout link).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -81,6 +82,7 @@ def _client() -> MobileMoneyClient:
 
 # ── Initiate ──
 
+
 async def initiate_momo_payment(
     db: AsyncSession,
     *,
@@ -104,7 +106,9 @@ async def initiate_momo_payment(
         raise HTTPException(status_code=400, detail="Contact-sales plan cannot be charged via MoMo")
 
     price_cents = (
-        plan.annual_price_cents if billing_cycle == BillingCycle.ANNUAL else plan.monthly_price_cents
+        plan.annual_price_cents
+        if billing_cycle == BillingCycle.ANNUAL
+        else plan.monthly_price_cents
     )
     if not price_cents:
         raise HTTPException(status_code=400, detail="Plan has no price configured")
@@ -135,7 +139,10 @@ async def initiate_momo_payment(
         phone_msisdn=phone,
         plan_code=plan_code,
         billing_cycle=billing_cycle.value,
-        raw_callback={"initiated_amount_ugx": amount_ugx, "fx_rate": settings.mobile_money.ugx_per_usd},
+        raw_callback={
+            "initiated_amount_ugx": amount_ugx,
+            "fx_rate": settings.mobile_money.ugx_per_usd,
+        },
     )
     db.add(intent)
     await db.flush()
@@ -144,11 +151,16 @@ async def initiate_momo_payment(
 
 # ── Poll status (when no callback arrives) ──
 
+
 async def poll_momo_status(db: AsyncSession, intent_id: str) -> PaymentIntent:
     intent = await db.get(PaymentIntent, intent_id)
     if intent is None:
         raise HTTPException(status_code=404, detail="Intent not found")
-    if intent.status in {PaymentIntentStatus.SUCCEEDED, PaymentIntentStatus.FAILED, PaymentIntentStatus.CANCELED}:
+    if intent.status in {
+        PaymentIntentStatus.SUCCEEDED,
+        PaymentIntentStatus.FAILED,
+        PaymentIntentStatus.CANCELED,
+    }:
         return intent
 
     client = _client()
@@ -165,6 +177,7 @@ async def poll_momo_status(db: AsyncSession, intent_id: str) -> PaymentIntent:
 
 
 # ── Confirm (callback or successful poll) ──
+
 
 async def _confirm_intent(
     db: AsyncSession,
@@ -190,9 +203,7 @@ async def _confirm_intent(
     intent.status = PaymentIntentStatus.SUCCEEDED
     intent.confirmed_at = _utcnow()
 
-    plan = (
-        await db.execute(select(Plan).where(Plan.code == intent.plan_code))
-    ).scalar_one()
+    plan = (await db.execute(select(Plan).where(Plan.code == intent.plan_code))).scalar_one()
     cycle = BillingCycle(intent.billing_cycle or "monthly")
     period_start = _utcnow()
     period_end = period_start + _period_delta(cycle)
@@ -299,6 +310,7 @@ async def confirm_by_tx_ref(
 
 # ── HMAC signature verification ──
 
+
 def verify_hmac_signature(body: bytes, presented_sig: str, secret: str) -> bool:
     """Verify a hex-encoded HMAC-SHA256 signature against shared secret."""
     if not secret or not presented_sig:
@@ -308,6 +320,7 @@ def verify_hmac_signature(body: bytes, presented_sig: str, secret: str) -> bool:
 
 
 # ── Flutterwave initiate (no PIN push — it's a hosted redirect) ──
+
 
 async def initiate_flutterwave_payment(
     db: AsyncSession,
@@ -326,10 +339,14 @@ async def initiate_flutterwave_payment(
     if plan is None:
         raise HTTPException(status_code=404, detail=f"Unknown plan {plan_code}")
     if plan.is_contact_sales:
-        raise HTTPException(status_code=400, detail="Contact-sales plan cannot be charged via Flutterwave")
+        raise HTTPException(
+            status_code=400, detail="Contact-sales plan cannot be charged via Flutterwave"
+        )
 
     price_cents = (
-        plan.annual_price_cents if billing_cycle == BillingCycle.ANNUAL else plan.monthly_price_cents
+        plan.annual_price_cents
+        if billing_cycle == BillingCycle.ANNUAL
+        else plan.monthly_price_cents
     )
     if not price_cents:
         raise HTTPException(status_code=400, detail="Plan has no price configured")
@@ -354,7 +371,9 @@ async def initiate_flutterwave_payment(
 
     from backend.app.integrations.flutterwave import client as flw
 
-    redirect_url = f"{settings.public_app_url}/app/checkout/success?provider=flutterwave&tx_ref={tx_ref}"
+    redirect_url = (
+        f"{settings.public_app_url}/app/checkout/success?provider=flutterwave&tx_ref={tx_ref}"
+    )
     body = await flw.initiate_payment(
         tx_ref=tx_ref,
         amount=price_cents / 100.0,

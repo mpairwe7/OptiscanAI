@@ -1,4 +1,5 @@
 """Auth flows: register, login, refresh, magic-link, email-verify, password reset."""
+
 from __future__ import annotations
 
 import logging
@@ -57,6 +58,7 @@ def slugify(name: str) -> str:
 
 # ── Tokens ──
 
+
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -93,11 +95,15 @@ async def revoke_refresh_token(db: AsyncSession, token: str) -> None:
         row.revoked_at = _utcnow()
 
 
-async def rotate_refresh_token(db: AsyncSession, presented: str) -> tuple[User, Organization, str, str]:
+async def rotate_refresh_token(
+    db: AsyncSession, presented: str
+) -> tuple[User, Organization, str, str]:
     stmt = select(RefreshToken).where(RefreshToken.token_hash == hash_token(presented))
     row = (await db.execute(stmt)).scalar_one_or_none()
     if row is None or row.revoked_at is not None or row.expires_at < _utcnow():
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
+        )
     user = await db.get(User, row.user_id)
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User inactive")
@@ -120,10 +126,13 @@ async def rotate_refresh_token(db: AsyncSession, presented: str) -> tuple[User, 
 
 # ── Registration & personal org bootstrap ──
 
+
 async def get_plan_by_code(db: AsyncSession, code: str) -> Plan:
     plan = (await db.execute(select(Plan).where(Plan.code == code))).scalar_one_or_none()
     if plan is None:
-        raise HTTPException(status_code=500, detail=f"Plan {code!r} not seeded — run alembic upgrade head")
+        raise HTTPException(
+            status_code=500, detail=f"Plan {code!r} not seeded — run alembic upgrade head"
+        )
     return plan
 
 
@@ -193,14 +202,17 @@ async def register_user(
 
 # ── Email verification ──
 
+
 async def issue_email_verification(db: AsyncSession, user: User) -> str:
     token = generate_email_token()
-    db.add(EmailVerificationToken(
-        id=uuid.uuid4(),
-        user_id=user.id,
-        token_hash=hash_token(token),
-        expires_at=_utcnow() + timedelta(seconds=settings.email.verification_link_ttl_seconds),
-    ))
+    db.add(
+        EmailVerificationToken(
+            id=uuid.uuid4(),
+            user_id=user.id,
+            token_hash=hash_token(token),
+            expires_at=_utcnow() + timedelta(seconds=settings.email.verification_link_ttl_seconds),
+        )
+    )
     await send_rendered(
         to=user.email,
         email=email_templates.email_verification(full_name=user.full_name, token=token),
@@ -228,6 +240,7 @@ async def consume_email_verification(db: AsyncSession, token: str) -> User:
 
 # ── Password reset ──
 
+
 async def issue_password_reset(db: AsyncSession, email: str) -> Optional[str]:
     email_norm = normalize_email(email)
     user = (
@@ -236,12 +249,14 @@ async def issue_password_reset(db: AsyncSession, email: str) -> Optional[str]:
     if user is None:
         return None  # silent — don't leak account existence
     token = generate_email_token()
-    db.add(PasswordResetToken(
-        id=uuid.uuid4(),
-        user_id=user.id,
-        token_hash=hash_token(token),
-        expires_at=_utcnow() + timedelta(seconds=settings.email.password_reset_ttl_seconds),
-    ))
+    db.add(
+        PasswordResetToken(
+            id=uuid.uuid4(),
+            user_id=user.id,
+            token_hash=hash_token(token),
+            expires_at=_utcnow() + timedelta(seconds=settings.email.password_reset_ttl_seconds),
+        )
+    )
     await send_rendered(
         to=user.email,
         email=email_templates.password_reset(full_name=user.full_name, token=token),
@@ -267,15 +282,18 @@ async def consume_password_reset(db: AsyncSession, token: str, new_password: str
 
 # ── Magic link ──
 
+
 async def issue_magic_link(db: AsyncSession, email: str) -> str:
     email_norm = normalize_email(email)
     token = generate_email_token()
-    db.add(MagicLinkToken(
-        id=uuid.uuid4(),
-        email=email_norm,
-        token_hash=hash_token(token),
-        expires_at=_utcnow() + timedelta(seconds=settings.email.magic_link_ttl_seconds),
-    ))
+    db.add(
+        MagicLinkToken(
+            id=uuid.uuid4(),
+            email=email_norm,
+            token_hash=hash_token(token),
+            expires_at=_utcnow() + timedelta(seconds=settings.email.magic_link_ttl_seconds),
+        )
+    )
     await send_rendered(
         to=email,
         email=email_templates.magic_link(email=email_norm, token=token),
@@ -286,7 +304,9 @@ async def issue_magic_link(db: AsyncSession, email: str) -> str:
 async def consume_magic_link(db: AsyncSession, token: str) -> tuple[User, Organization, bool]:
     """Return (user, org, was_created). Creates user + personal org if first sign-in."""
     row = (
-        await db.execute(select(MagicLinkToken).where(MagicLinkToken.token_hash == hash_token(token)))
+        await db.execute(
+            select(MagicLinkToken).where(MagicLinkToken.token_hash == hash_token(token))
+        )
     ).scalar_one_or_none()
     if row is None or row.used_at is not None or row.expires_at < _utcnow():
         raise HTTPException(status_code=400, detail="Invalid or expired magic link")
@@ -318,12 +338,19 @@ async def consume_magic_link(db: AsyncSession, token: str) -> tuple[User, Organi
 
 # ── Password login ──
 
-async def authenticate_password(db: AsyncSession, email: str, password: str) -> tuple[User, Organization, str]:
+
+async def authenticate_password(
+    db: AsyncSession, email: str, password: str
+) -> tuple[User, Organization, str]:
     email_norm = normalize_email(email)
     user = (
         await db.execute(select(User).where(User.email_normalized == email_norm))
     ).scalar_one_or_none()
-    if user is None or user.password_hash is None or not verify_password(password, user.password_hash):
+    if (
+        user is None
+        or user.password_hash is None
+        or not verify_password(password, user.password_hash)
+    ):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account disabled")

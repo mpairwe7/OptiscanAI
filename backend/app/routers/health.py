@@ -1,4 +1,5 @@
 """Health, monitoring, and metadata router."""
+
 from dataclasses import asdict
 
 import torch
@@ -37,6 +38,7 @@ async def gate_health():
     from dataclasses import asdict as _asdict
 
     from src.monitoring.gate_monitor import gate_monitor
+
     return _asdict(gate_monitor.metrics())
 
 

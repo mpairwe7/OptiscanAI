@@ -1,4 +1,5 @@
 """Subscription lifecycle: plan changes, cancel/resume, period roll-forward."""
+
 from __future__ import annotations
 
 import logging
@@ -118,6 +119,7 @@ async def change_plan_immediately(
             import stripe
 
             from backend.app.core.config import settings as _settings
+
             stripe.api_key = _settings.stripe.api_key
             stripe.Subscription.delete(
                 sub.stripe_subscription_id,
@@ -238,13 +240,16 @@ async def write_invoice(
 
 # ── Stripe event reconciliation ──
 
+
 def _from_unix(ts: int | None) -> Optional[datetime]:
     if ts is None:
         return None
     return datetime.fromtimestamp(ts, tz=timezone.utc)
 
 
-def _seat_quantity_from_items(stripe_subscription: dict, extra_seat_price_ids: set[str]) -> tuple[int, Optional[str]]:
+def _seat_quantity_from_items(
+    stripe_subscription: dict, extra_seat_price_ids: set[str]
+) -> tuple[int, Optional[str]]:
     """Inspect Stripe subscription items, return (extra_seat_qty, seat_item_id)."""
     items = stripe_subscription.get("items", {}).get("data", []) or []
     for it in items:
@@ -269,12 +274,17 @@ async def apply_stripe_subscription_event(
     metadata = stripe_subscription.get("metadata") or {}
     organization_id = metadata.get("organization_id")
     if not organization_id:
-        logger.warning("Stripe subscription missing organization_id metadata: %s", stripe_subscription.get("id"))
+        logger.warning(
+            "Stripe subscription missing organization_id metadata: %s",
+            stripe_subscription.get("id"),
+        )
         return None
 
     plan_code = plan_code or metadata.get("plan_code")
     if not plan_code:
-        logger.warning("Stripe subscription missing plan_code metadata: %s", stripe_subscription.get("id"))
+        logger.warning(
+            "Stripe subscription missing plan_code metadata: %s", stripe_subscription.get("id")
+        )
         return None
 
     plan = await get_plan(db, plan_code)
@@ -325,6 +335,7 @@ async def apply_stripe_subscription_event(
 
     # Sync extra-seat quantity from Stripe items
     from backend.app.core.config import settings as _settings
+
     seat_price_ids = {
         _settings.stripe.practice_extra_seat_monthly_price_id,
         _settings.stripe.practice_extra_seat_annual_price_id,
@@ -354,15 +365,20 @@ async def apply_stripe_invoice_paid(
     sub: Optional[Subscription] = None
     if subscription_id_stripe:
         from sqlalchemy import select as _select
+
         sub = (
             await db.execute(
-                _select(Subscription).where(Subscription.stripe_subscription_id == subscription_id_stripe)
+                _select(Subscription).where(
+                    Subscription.stripe_subscription_id == subscription_id_stripe
+                )
             )
         ).scalar_one_or_none()
     if sub is None and organization_id:
         sub = await get_active_subscription(db, organization_id)
     if sub is None:
-        logger.warning("Stripe invoice cannot be linked to a subscription: %s", stripe_invoice.get("id"))
+        logger.warning(
+            "Stripe invoice cannot be linked to a subscription: %s", stripe_invoice.get("id")
+        )
         return None
 
     amount = stripe_invoice.get("amount_paid") or stripe_invoice.get("amount_due") or 0

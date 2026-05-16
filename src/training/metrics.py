@@ -30,9 +30,7 @@ def _normalize_thresholds(
 
     thresholds = np.asarray(threshold, dtype=np.float32).reshape(-1)
     if thresholds.size != num_classes:
-        raise ValueError(
-            f"Expected {num_classes} thresholds, got {thresholds.size}"
-        )
+        raise ValueError(f"Expected {num_classes} thresholds, got {thresholds.size}")
     return thresholds
 
 
@@ -47,36 +45,20 @@ def compute_multilabel_metrics(
 
     metrics = {}
 
-    metrics["f1_macro"] = f1_score(
-        targets, preds, average="macro", zero_division=0
-    )
-    metrics["f1_micro"] = f1_score(
-        targets, preds, average="micro", zero_division=0
-    )
-    metrics["f1_samples"] = f1_score(
-        targets, preds, average="samples", zero_division=0
-    )
+    metrics["f1_macro"] = f1_score(targets, preds, average="macro", zero_division=0)
+    metrics["f1_micro"] = f1_score(targets, preds, average="micro", zero_division=0)
+    metrics["f1_samples"] = f1_score(targets, preds, average="samples", zero_division=0)
 
-    metrics["precision_macro"] = precision_score(
-        targets, preds, average="macro", zero_division=0
-    )
-    metrics["recall_macro"] = recall_score(
-        targets, preds, average="macro", zero_division=0
-    )
+    metrics["precision_macro"] = precision_score(targets, preds, average="macro", zero_division=0)
+    metrics["recall_macro"] = recall_score(targets, preds, average="macro", zero_division=0)
 
-    metrics["precision_micro"] = precision_score(
-        targets, preds, average="micro", zero_division=0
-    )
-    metrics["recall_micro"] = recall_score(
-        targets, preds, average="micro", zero_division=0
-    )
+    metrics["precision_micro"] = precision_score(targets, preds, average="micro", zero_division=0)
+    metrics["recall_micro"] = recall_score(targets, preds, average="micro", zero_division=0)
 
     # Subset accuracy: fraction of samples where ALL labels match exactly
     metrics["accuracy_subset"] = float((preds == targets).all(axis=1).mean())
     # Sample accuracy: average per-sample label match rate
-    metrics["accuracy_sample"] = float(
-        ((preds == targets).sum(axis=1) / targets.shape[1]).mean()
-    )
+    metrics["accuracy_sample"] = float(((preds == targets).sum(axis=1) / targets.shape[1]).mean())
 
     # Per-class accuracy averaged (macro): mean of per-class (TP+TN)/(TP+TN+FP+FN)
     per_class_acc = []
@@ -85,9 +67,7 @@ def compute_multilabel_metrics(
     metrics["accuracy_macro"] = float(np.mean(per_class_acc))
 
     # Micro accuracy: total correct label predictions / total label predictions
-    metrics["accuracy_micro"] = float(
-        (preds == targets).sum() / max(targets.size, 1)
-    )
+    metrics["accuracy_micro"] = float((preds == targets).sum() / max(targets.size, 1))
 
     # Overall accuracy (Jaccard-style): mean IoU across samples
     intersection = (preds * targets).sum(axis=1)

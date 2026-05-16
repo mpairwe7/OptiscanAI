@@ -11,12 +11,14 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class ValidationResult:
     passed: bool
     check_name: str
     details: str
     severity: str = "error"  # error | warning | info
+
 
 @dataclass
 class ValidationReport:
@@ -31,14 +33,28 @@ class ValidationReport:
         total = len(self.results)
         passed = sum(1 for r in self.results if r.passed)
         failed = total - passed
-        return {"total": total, "passed": passed, "failed": failed, "pass_rate": passed/max(total,1)}
+        return {
+            "total": total,
+            "passed": passed,
+            "failed": failed,
+            "pass_rate": passed / max(total, 1),
+        }
 
     def to_dict(self) -> dict:
         return {
             "passed": self.passed,
             "summary": self.summary,
-            "checks": [{"check": r.check_name, "passed": r.passed, "details": r.details, "severity": r.severity} for r in self.results]
+            "checks": [
+                {
+                    "check": r.check_name,
+                    "passed": r.passed,
+                    "details": r.details,
+                    "severity": r.severity,
+                }
+                for r in self.results
+            ],
         }
+
 
 class DataValidator:
     """Validates training data quality for retinal disease classification."""
@@ -53,7 +69,7 @@ class DataValidator:
         return ValidationResult(
             passed=passed,
             check_name="schema_validation",
-            details=f"Missing columns: {missing}" if not passed else "All required columns present"
+            details=f"Missing columns: {missing}" if not passed else "All required columns present",
         )
 
     def validate_label_range(self, df: pd.DataFrame) -> ValidationResult:
@@ -67,7 +83,7 @@ class DataValidator:
         return ValidationResult(
             passed=passed,
             check_name="label_range",
-            details=f"Invalid values found: {invalid}" if not passed else "All labels are binary"
+            details=f"Invalid values found: {invalid}" if not passed else "All labels are binary",
         )
 
     def validate_no_null_ids(self, df: pd.DataFrame) -> ValidationResult:
@@ -77,10 +93,12 @@ class DataValidator:
         return ValidationResult(
             passed=passed,
             check_name="null_id_check",
-            details=f"{null_count} null IDs found" if not passed else "No null IDs"
+            details=f"{null_count} null IDs found" if not passed else "No null IDs",
         )
 
-    def validate_class_distribution(self, df: pd.DataFrame, min_samples: int = 1) -> ValidationResult:
+    def validate_class_distribution(
+        self, df: pd.DataFrame, min_samples: int = 1
+    ) -> ValidationResult:
         """Check each class has minimum samples."""
         class_counts = df[self.disease_columns].sum()
         empty_classes = class_counts[class_counts < min_samples].index.tolist()
@@ -88,8 +106,12 @@ class DataValidator:
         return ValidationResult(
             passed=passed,
             check_name="class_distribution",
-            details=f"Classes with <{min_samples} samples: {empty_classes}" if not passed else "All classes have sufficient samples",
-            severity="warning"
+            details=(
+                f"Classes with <{min_samples} samples: {empty_classes}"
+                if not passed
+                else "All classes have sufficient samples"
+            ),
+            severity="warning",
         )
 
     def validate_no_duplicate_ids(self, df: pd.DataFrame) -> ValidationResult:
@@ -99,10 +121,12 @@ class DataValidator:
         return ValidationResult(
             passed=passed,
             check_name="duplicate_id_check",
-            details=f"{dup_count} duplicate IDs" if not passed else "No duplicate IDs"
+            details=f"{dup_count} duplicate IDs" if not passed else "No duplicate IDs",
         )
 
-    def validate_label_correlations(self, df: pd.DataFrame, max_correlation: float = 0.99) -> ValidationResult:
+    def validate_label_correlations(
+        self, df: pd.DataFrame, max_correlation: float = 0.99
+    ) -> ValidationResult:
         """Check for suspiciously high label correlations (potential leakage)."""
         corr_matrix = df[self.disease_columns].corr()
         np.fill_diagonal(corr_matrix.values, 0)
@@ -111,11 +135,17 @@ class DataValidator:
         return ValidationResult(
             passed=passed,
             check_name="label_correlation",
-            details=f"Max label correlation: {max_corr:.4f}" if not passed else f"Max correlation {max_corr:.4f} within bounds",
-            severity="warning"
+            details=(
+                f"Max label correlation: {max_corr:.4f}"
+                if not passed
+                else f"Max correlation {max_corr:.4f} within bounds"
+            ),
+            severity="warning",
         )
 
-    def validate_image_directory(self, img_dir: Path, df: pd.DataFrame, extensions: list[str] = None) -> ValidationResult:
+    def validate_image_directory(
+        self, img_dir: Path, df: pd.DataFrame, extensions: list[str] = None
+    ) -> ValidationResult:
         """Check that images exist for all IDs."""
         if extensions is None:
             extensions = [".png", ".jpg", ".jpeg"]
@@ -128,7 +158,11 @@ class DataValidator:
         return ValidationResult(
             passed=passed,
             check_name="image_existence",
-            details=f"{len(missing)} images missing (checked first 100)" if not passed else "All checked images exist"
+            details=(
+                f"{len(missing)} images missing (checked first 100)"
+                if not passed
+                else "All checked images exist"
+            ),
         )
 
     def validate_all(self, df: pd.DataFrame, img_dir: Path = None) -> ValidationReport:

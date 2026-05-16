@@ -5,6 +5,7 @@ the underlying :class:`AuthContext` on success; raises HTTP 403 with a
 ``feature_locked`` payload on failure so the frontend can show the upsell
 sheet with the cheapest unlocking tier pre-selected.
 """
+
 from __future__ import annotations
 
 from typing import Callable, Optional

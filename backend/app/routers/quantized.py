@@ -3,6 +3,7 @@
 Provides model listing, quantization status, and performance metrics
 for GGUF/AWQ/GPTQ/ONNX quantized model variants.
 """
+
 from __future__ import annotations
 
 import logging
@@ -26,7 +27,9 @@ router = APIRouter(prefix="/api/v1/models", tags=["quantized-models"])
 class QuantizedModelInfo(BaseModel):
     """Information about a single quantized model variant."""
 
-    format: str = Field(..., description="Quantization format (gguf_q4_k_m, awq_4bit, gptq_4bit, onnx, int8, fp16)")
+    format: str = Field(
+        ..., description="Quantization format (gguf_q4_k_m, awq_4bit, gptq_4bit, onnx, int8, fp16)"
+    )
     filename: str = Field(..., description="Model filename")
     size_mb: float = Field(..., description="File size in MB")
     path: str = Field(..., description="Relative path from models directory")
@@ -123,15 +126,17 @@ def _discover_quantized_models() -> list[QuantizedModelInfo]:
 
                     desc = _format_description(fmt_name)
 
-                    models.append(QuantizedModelInfo(
-                        format=fmt_name,
-                        filename=fpath.name,
-                        size_mb=round(size_mb, 2),
-                        path=rel_path,
-                        available=True,
-                        quantization_bits=bits,
-                        description=desc,
-                    ))
+                    models.append(
+                        QuantizedModelInfo(
+                            format=fmt_name,
+                            filename=fpath.name,
+                            size_mb=round(size_mb, 2),
+                            path=rel_path,
+                            available=True,
+                            quantization_bits=bits,
+                            description=desc,
+                        )
+                    )
 
     return sorted(models, key=lambda m: m.size_mb)
 
@@ -206,13 +211,27 @@ async def get_optimization_status() -> ServerOptimizationStatus:
     quantization_cfg = getattr(settings, "quantization", None)
 
     return ServerOptimizationStatus(
-        torch_compile_enabled=getattr(quantization_cfg, "torch_compile_enabled", False) if quantization_cfg else False,
-        torch_compile_mode=getattr(quantization_cfg, "torch_compile_mode", "") if quantization_cfg else "",
-        prefix_cache_enabled=getattr(quantization_cfg, "prefix_cache_enabled", False) if quantization_cfg else False,
-        speculative_decoding_enabled=getattr(quantization_cfg, "speculative_decoding_enabled", False) if quantization_cfg else False,
+        torch_compile_enabled=(
+            getattr(quantization_cfg, "torch_compile_enabled", False) if quantization_cfg else False
+        ),
+        torch_compile_mode=(
+            getattr(quantization_cfg, "torch_compile_mode", "") if quantization_cfg else ""
+        ),
+        prefix_cache_enabled=(
+            getattr(quantization_cfg, "prefix_cache_enabled", False) if quantization_cfg else False
+        ),
+        speculative_decoding_enabled=(
+            getattr(quantization_cfg, "speculative_decoding_enabled", False)
+            if quantization_cfg
+            else False
+        ),
         vllm_enabled=settings.ray.enabled,
         vllm_batch_size=settings.ray.batch_max_size,
-        quantized_model_loaded=getattr(quantization_cfg, "active_format", "") if quantization_cfg else "",
-        quantized_embedder_loaded=getattr(quantization_cfg, "embedder_format", "") if quantization_cfg else "",
+        quantized_model_loaded=(
+            getattr(quantization_cfg, "active_format", "") if quantization_cfg else ""
+        ),
+        quantized_embedder_loaded=(
+            getattr(quantization_cfg, "embedder_format", "") if quantization_cfg else ""
+        ),
         memory_usage_mb=memory_mb,
     )

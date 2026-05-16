@@ -1,4 +1,5 @@
 """Billing routes: public plans catalog + authenticated subscription/usage ops."""
+
 from __future__ import annotations
 
 import logging
@@ -41,14 +42,17 @@ router = APIRouter(prefix="/api/v1/billing", tags=["billing"])
 
 # ── Public ──
 
+
 @router.get("/plans", response_model=list[PlanResponse])
 async def list_plans(db: AsyncSession = Depends(get_db)) -> list[PlanResponse]:
     stmt = select(Plan).where(Plan.is_active.is_(True)).order_by(Plan.sort_order)
     plans = (await db.execute(stmt)).scalars().all()
     return [
         PlanResponse(
-            code=p.code, display_name=p.display_name,
-            description=p.description, tagline=p.tagline,
+            code=p.code,
+            display_name=p.display_name,
+            description=p.description,
+            tagline=p.tagline,
             monthly_price_cents=p.monthly_price_cents,
             annual_price_cents=p.annual_price_cents,
             currency=p.currency,
@@ -63,6 +67,7 @@ async def list_plans(db: AsyncSession = Depends(get_db)) -> list[PlanResponse]:
 
 
 # ── Subscription ──
+
 
 @router.get("/subscription", response_model=SubscriptionResponse)
 async def get_subscription(
@@ -121,12 +126,17 @@ async def change_subscription(
         )
 
     sub = await change_plan_immediately(
-        db, organization=ctx.organization, plan_code=body.plan_code, cycle=cycle,
+        db,
+        organization=ctx.organization,
+        plan_code=body.plan_code,
+        cycle=cycle,
     )
     plan = await db.get(Plan, sub.plan_id)
     return SubscriptionResponse(
-        plan_code=plan.code, plan_display_name=plan.display_name,
-        status=sub.status.value, billing_cycle=sub.billing_cycle.value,
+        plan_code=plan.code,
+        plan_display_name=plan.display_name,
+        status=sub.status.value,
+        billing_cycle=sub.billing_cycle.value,
         provider=sub.provider.value,
         current_period_start=sub.current_period_start,
         current_period_end=sub.current_period_end,
@@ -145,8 +155,10 @@ async def cancel_subscription(
     sub = await cancel_at_period_end(db, ctx.organization)
     plan = await db.get(Plan, sub.plan_id)
     return SubscriptionResponse(
-        plan_code=plan.code, plan_display_name=plan.display_name,
-        status=sub.status.value, billing_cycle=sub.billing_cycle.value,
+        plan_code=plan.code,
+        plan_display_name=plan.display_name,
+        status=sub.status.value,
+        billing_cycle=sub.billing_cycle.value,
         provider=sub.provider.value,
         current_period_start=sub.current_period_start,
         current_period_end=sub.current_period_end,
@@ -165,8 +177,10 @@ async def resume(
     sub = await resume_subscription(db, ctx.organization)
     plan = await db.get(Plan, sub.plan_id)
     return SubscriptionResponse(
-        plan_code=plan.code, plan_display_name=plan.display_name,
-        status=sub.status.value, billing_cycle=sub.billing_cycle.value,
+        plan_code=plan.code,
+        plan_display_name=plan.display_name,
+        status=sub.status.value,
+        billing_cycle=sub.billing_cycle.value,
         provider=sub.provider.value,
         current_period_start=sub.current_period_start,
         current_period_end=sub.current_period_end,
@@ -176,6 +190,7 @@ async def resume(
 
 
 # ── Usage ──
+
 
 @router.get("/usage", response_model=UsageResponse)
 async def get_usage(
@@ -203,14 +218,16 @@ async def get_usage(
     )
 
     seats_used = int(
-        (await db.execute(
-            select(func.count())
-            .select_from(Membership)
-            .where(
-                Membership.organization_id == ctx.organization.id,
-                Membership.status == MembershipStatus.ACTIVE,
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(Membership)
+                .where(
+                    Membership.organization_id == ctx.organization.id,
+                    Membership.status == MembershipStatus.ACTIVE,
+                )
             )
-        )).scalar_one()
+        ).scalar_one()
     )
 
     return UsageResponse(
@@ -218,7 +235,9 @@ async def get_usage(
         period_end=sub.current_period_end,
         scan_limit=plan.scan_limit_monthly,
         scans_used=used,
-        scans_remaining=None if plan.scan_limit_monthly is None else max(0, plan.scan_limit_monthly - used),
+        scans_remaining=(
+            None if plan.scan_limit_monthly is None else max(0, plan.scan_limit_monthly - used)
+        ),
         seat_limit=plan.seat_limit,
         seats_used=seats_used,
         breakdown=breakdown,
@@ -226,6 +245,7 @@ async def get_usage(
 
 
 # ── Invoices ──
+
 
 @router.get("/invoices", response_model=list[InvoiceResponse])
 async def get_invoices(
@@ -286,6 +306,7 @@ async def get_seats(
     db: AsyncSession = Depends(get_db),
 ) -> SeatStateResponse:
     from backend.app.services.seat_service import get_seat_state
+
     sub = await get_active_subscription(db, str(ctx.organization.id))
     if sub is None:
         raise HTTPException(status_code=404, detail="No subscription")
@@ -302,6 +323,7 @@ async def update_seats(
     if ctx.role not in {MembershipRole.OWNER.value, MembershipRole.ADMIN.value}:
         raise HTTPException(status_code=403, detail="Only owners/admins can change seat count")
     from backend.app.services.seat_service import get_seat_state, update_seat_quantity
+
     sub = await update_seat_quantity(
         db,
         organization=ctx.organization,
@@ -374,6 +396,7 @@ async def get_webhook_event(
 ) -> dict:
     """Full payload for one event — for the JSON drawer."""
     from backend.app.models.webhook_event import WebhookEvent
+
     row = await db.get(WebhookEvent, event_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -396,10 +419,12 @@ async def replay_webhook_event(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     from backend.app.services.webhook_replay_service import replay_webhook
+
     return await replay_webhook(db, event_id)
 
 
 # ── Admin: manual renewal-reminder trigger ──
+
 
 @router.post("/admin/run-renewal-reminders", include_in_schema=False)
 async def admin_run_renewal_reminders(
@@ -412,5 +437,6 @@ async def admin_run_renewal_reminders(
     Restricted to platform superusers (User.is_superuser).
     """
     from backend.app.services.renewal_service import run_renewal_reminders
+
     result = await run_renewal_reminders(db)
     return {"status": "ok", **result.as_dict()}

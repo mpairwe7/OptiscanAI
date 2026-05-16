@@ -1,5 +1,6 @@
 """Fairness evaluation for medical AI models.
 Checks for demographic parity and performance equity across subgroups."""
+
 import logging
 from dataclasses import dataclass, field
 
@@ -32,8 +33,14 @@ class FairnessReport:
         return {
             "overall_f1": self.overall_f1,
             "subgroups": [
-                {"name": s.name, "size": s.size, "f1_macro": s.f1_macro,
-                 "auc_roc": s.auc_roc, "precision": s.precision, "recall": s.recall}
+                {
+                    "name": s.name,
+                    "size": s.size,
+                    "f1_macro": s.f1_macro,
+                    "auc_roc": s.auc_roc,
+                    "precision": s.precision,
+                    "recall": s.recall,
+                }
                 for s in self.subgroup_metrics
             ],
             "max_f1_disparity": self.max_f1_disparity,
@@ -56,8 +63,27 @@ class FairnessEvaluator:
             "DEGENERATIVE": ["ARMD", "MH", "DN", "MYA", "ERM", "MHL", "RP"],
             "GLAUCOMATOUS": ["ODC", "ODP", "ODE", "ODPM"],
             "INFLAMMATORY": ["RS", "CRS", "CWS", "CB", "RPEC"],
-            "OTHER": ["TSLN", "LS", "MS", "CSR", "TV", "AH", "ST", "AION", "PT", "RT",
-                       "EDN", "MNF", "TD", "CME", "PTCR", "CF", "PLQ", "HPED", "CL"],
+            "OTHER": [
+                "TSLN",
+                "LS",
+                "MS",
+                "CSR",
+                "TV",
+                "AH",
+                "ST",
+                "AION",
+                "PT",
+                "RT",
+                "EDN",
+                "MNF",
+                "TD",
+                "CME",
+                "PTCR",
+                "CF",
+                "PLQ",
+                "HPED",
+                "CL",
+            ],
         }
 
     def evaluate_category_fairness(
@@ -83,21 +109,42 @@ class FairnessEvaluator:
             if valid.sum() < 1:
                 continue
 
-            cat_f1 = float(f1_score(cat_targets[:, valid], cat_preds[:, valid], average="macro", zero_division=0))
+            cat_f1 = float(
+                f1_score(
+                    cat_targets[:, valid], cat_preds[:, valid], average="macro", zero_division=0
+                )
+            )
 
             try:
-                cat_auc = float(roc_auc_score(cat_targets[:, valid], cat_probs[:, valid], average="macro"))
+                cat_auc = float(
+                    roc_auc_score(cat_targets[:, valid], cat_probs[:, valid], average="macro")
+                )
             except ValueError:
                 cat_auc = 0.0
 
             from sklearn.metrics import precision_score, recall_score
-            cat_prec = float(precision_score(cat_targets[:, valid], cat_preds[:, valid], average="macro", zero_division=0))
-            cat_rec = float(recall_score(cat_targets[:, valid], cat_preds[:, valid], average="macro", zero_division=0))
 
-            report.subgroup_metrics.append(SubgroupMetrics(
-                name=category, size=int(cat_targets[:, valid].sum()),
-                f1_macro=cat_f1, auc_roc=cat_auc, precision=cat_prec, recall=cat_rec,
-            ))
+            cat_prec = float(
+                precision_score(
+                    cat_targets[:, valid], cat_preds[:, valid], average="macro", zero_division=0
+                )
+            )
+            cat_rec = float(
+                recall_score(
+                    cat_targets[:, valid], cat_preds[:, valid], average="macro", zero_division=0
+                )
+            )
+
+            report.subgroup_metrics.append(
+                SubgroupMetrics(
+                    name=category,
+                    size=int(cat_targets[:, valid].sum()),
+                    f1_macro=cat_f1,
+                    auc_roc=cat_auc,
+                    precision=cat_prec,
+                    recall=cat_rec,
+                )
+            )
 
         # Compute disparities
         if len(report.subgroup_metrics) >= 2:
@@ -119,7 +166,11 @@ class FairnessEvaluator:
                 "Review per-class metrics and consider targeted data augmentation."
             )
 
-        worst = min(report.subgroup_metrics, key=lambda s: s.f1_macro) if report.subgroup_metrics else None
+        worst = (
+            min(report.subgroup_metrics, key=lambda s: s.f1_macro)
+            if report.subgroup_metrics
+            else None
+        )
         if worst and worst.f1_macro < 0.3:
             report.recommendations.append(
                 f"HIGH: Category '{worst.name}' has F1={worst.f1_macro:.3f}. "
@@ -127,7 +178,9 @@ class FairnessEvaluator:
             )
 
         if not report.recommendations:
-            report.recommendations.append("Performance is relatively balanced across disease categories.")
+            report.recommendations.append(
+                "Performance is relatively balanced across disease categories."
+            )
 
         return report
 
@@ -161,15 +214,25 @@ class FairnessEvaluator:
             if valid.sum() < 1:
                 continue
 
-            b_f1 = float(f1_score(b_targets[:, valid], b_preds[:, valid], average="macro", zero_division=0))
+            b_f1 = float(
+                f1_score(b_targets[:, valid], b_preds[:, valid], average="macro", zero_division=0)
+            )
             try:
-                b_auc = float(roc_auc_score(b_targets[:, valid], b_probs[:, valid], average="macro"))
+                b_auc = float(
+                    roc_auc_score(b_targets[:, valid], b_probs[:, valid], average="macro")
+                )
             except ValueError:
                 b_auc = 0.0
 
-            report.subgroup_metrics.append(SubgroupMetrics(
-                name=bucket_name, size=int(b_targets.sum()),
-                f1_macro=b_f1, auc_roc=b_auc, precision=0.0, recall=0.0,
-            ))
+            report.subgroup_metrics.append(
+                SubgroupMetrics(
+                    name=bucket_name,
+                    size=int(b_targets.sum()),
+                    f1_macro=b_f1,
+                    auc_roc=b_auc,
+                    precision=0.0,
+                    recall=0.0,
+                )
+            )
 
         return report

@@ -31,8 +31,9 @@ logger = logging.getLogger(__name__)
 def main():
     parser = argparse.ArgumentParser(description="Export RetinalFoundationHybrid")
     parser.add_argument("--checkpoint", type=str, default=None, help="Model checkpoint path")
-    parser.add_argument("--formats", nargs="+", default=["onnx", "torchscript"],
-                        help="Export formats")
+    parser.add_argument(
+        "--formats", nargs="+", default=["onnx", "torchscript"], help="Export formats"
+    )
     parser.add_argument("--output-dir", type=str, default="outputs/export")
     parser.add_argument("--quantize", action="store_true", help="Run quantization pipeline")
     parser.add_argument("--benchmark", action="store_true", help="Run latency benchmarks")
@@ -75,7 +76,9 @@ def main():
         logger.info("Running latency benchmarks...")
         for bs in [1, 32]:
             result = benchmark_latency(model, input_shape=(bs, 3, 224, 224), use_fp16=True)
-            logger.info(f"  Batch={bs}: mean={result['mean_ms']:.2f}ms p99={result['p99_ms']:.2f}ms")
+            logger.info(
+                f"  Batch={bs}: mean={result['mean_ms']:.2f}ms p99={result['p99_ms']:.2f}ms"
+            )
 
     logger.info("Export complete.")
 

@@ -8,6 +8,7 @@ ophthalmology passages.  Designed for fully offline operation with:
 - Thread-safe singleton pattern
 - Structured logging and latency/cache metrics
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -33,24 +34,28 @@ _sentence_transformers = None
 
 try:
     import numpy as np
+
     _np = np
 except ImportError:
     pass
 
 try:
     import faiss  # type: ignore[import-untyped]
+
     _faiss = faiss
 except ImportError:
     logger.info("FAISS not available -- offline RAG search will be disabled")
 
 try:
     import onnxruntime  # type: ignore[import-untyped]
+
     _onnxruntime = onnxruntime
 except ImportError:
     logger.debug("ONNX Runtime not available -- will try sentence-transformers")
 
 try:
     import sentence_transformers  # type: ignore[import-untyped]
+
     _sentence_transformers = sentence_transformers
 except Exception:
     logger.debug("sentence-transformers not available")
@@ -64,6 +69,7 @@ except Exception:
 @dataclass
 class SearchResult:
     """A single search result from the offline RAG index."""
+
     passage_id: str
     text: str
     score: float
@@ -73,6 +79,7 @@ class SearchResult:
 @dataclass
 class PipelineMetrics:
     """Accumulated metrics for the offline RAG pipeline."""
+
     total_searches: int = 0
     total_embeddings: int = 0
     cache_hits: int = 0
@@ -131,11 +138,16 @@ class OfflineRAGPipeline:
         similarity_threshold: float = 0.45,
         cache_size: int = 256,
     ) -> None:
-        self._index_dir = Path(index_dir or os.getenv(
-            "OFFLINE_RAG_INDEX_DIR", "data/offline_rag/index",
-        ))
+        self._index_dir = Path(
+            index_dir
+            or os.getenv(
+                "OFFLINE_RAG_INDEX_DIR",
+                "data/offline_rag/index",
+            )
+        )
         self._embedder_path = embedder_path or os.getenv(
-            "OFFLINE_RAG_EMBEDDER", "models/embedder/bge-m3-quantized.onnx",
+            "OFFLINE_RAG_EMBEDDER",
+            "models/embedder/bge-m3-quantized.onnx",
         )
         self._top_k = top_k
         self._similarity_threshold = similarity_threshold
@@ -197,7 +209,9 @@ class OfflineRAGPipeline:
                 with open(passages_path, "r") as f:
                     self._passages = json.load(f)
                 logger.info(
-                    "Loaded %d passages from %s", len(self._passages), passages_path,
+                    "Loaded %d passages from %s",
+                    len(self._passages),
+                    passages_path,
                 )
             except Exception as exc:
                 logger.error("Failed to load passages: %s", exc)
@@ -213,7 +227,8 @@ class OfflineRAGPipeline:
                 self._embed_dim = self._index.d
                 logger.info(
                     "FAISS index loaded: %d vectors, dim=%d",
-                    self._index.ntotal, self._embed_dim,
+                    self._index.ntotal,
+                    self._embed_dim,
                 )
             except Exception as exc:
                 logger.error("Failed to load FAISS index: %s", exc)
@@ -229,7 +244,9 @@ class OfflineRAGPipeline:
         if self._loaded:
             logger.info(
                 "Offline RAG pipeline ready (version=%s, embedder=%s, passages=%d)",
-                self._bundle_version, self._embedder_type, len(self._passages),
+                self._bundle_version,
+                self._embedder_type,
+                len(self._passages),
             )
 
     def _load_embedder(self) -> None:
@@ -243,7 +260,8 @@ class OfflineRAGPipeline:
                 )
                 sess_opts.intra_op_num_threads = min(os.cpu_count() or 2, 4)
                 self._embedder = _onnxruntime.InferenceSession(
-                    self._embedder_path, sess_opts,
+                    self._embedder_path,
+                    sess_opts,
                     providers=["CPUExecutionProvider"],
                 )
                 self._embedder_type = "onnx"
@@ -256,7 +274,8 @@ class OfflineRAGPipeline:
         if _sentence_transformers is not None:
             try:
                 model_name = os.getenv(
-                    "OFFLINE_RAG_ST_MODEL", "BAAI/bge-m3",
+                    "OFFLINE_RAG_ST_MODEL",
+                    "BAAI/bge-m3",
                 )
                 self._embedder = _sentence_transformers.SentenceTransformer(model_name)
                 self._embedder_type = "sentence-transformers"
@@ -284,7 +303,9 @@ class OfflineRAGPipeline:
                 vec = self._embed_onnx(query)
             elif self._embedder_type == "sentence-transformers":
                 vec = self._embedder.encode(
-                    [query], normalize_embeddings=True, show_progress_bar=False,
+                    [query],
+                    normalize_embeddings=True,
+                    show_progress_bar=False,
                 )[0]
             else:
                 return None
@@ -399,12 +420,14 @@ class OfflineRAGPipeline:
                 if score < threshold:
                     continue
                 passage = self._passages[idx]
-                results.append(SearchResult(
-                    passage_id=passage.get("id", str(idx)),
-                    text=passage.get("text", ""),
-                    score=round(score, 4),
-                    metadata=passage.get("metadata", {}),
-                ))
+                results.append(
+                    SearchResult(
+                        passage_id=passage.get("id", str(idx)),
+                        text=passage.get("text", ""),
+                        score=round(score, 4),
+                        metadata=passage.get("metadata", {}),
+                    )
+                )
                 if len(results) >= top_k:
                     break
 
@@ -424,7 +447,10 @@ class OfflineRAGPipeline:
 
         logger.debug(
             "Offline RAG search: query=%r top_k=%d results=%d latency=%.1fms",
-            query[:60], top_k, len(results), latency_ms,
+            query[:60],
+            top_k,
+            len(results),
+            latency_ms,
         )
         return results
 
@@ -454,9 +480,7 @@ class OfflineRAGPipeline:
                 for r in results
             ],
             "result_count": len(results),
-            "context_summary": (
-                " ".join(passages_text[:3])[:500] if passages_text else ""
-            ),
+            "context_summary": (" ".join(passages_text[:3])[:500] if passages_text else ""),
             "pipeline_version": self._bundle_version,
             "embedder_type": self._embedder_type,
         }
@@ -531,8 +555,8 @@ class OfflineRAGPipeline:
                 self._search_latencies = self._search_latencies[-500:]
             self._metrics.total_searches += 1
             self._metrics.last_search_latency_ms = ms
-            self._metrics.avg_search_latency_ms = (
-                sum(self._search_latencies) / len(self._search_latencies)
+            self._metrics.avg_search_latency_ms = sum(self._search_latencies) / len(
+                self._search_latencies
             )
 
     def _record_embed_latency(self, ms: float) -> None:
@@ -541,6 +565,6 @@ class OfflineRAGPipeline:
             if len(self._embed_latencies) > 1000:
                 self._embed_latencies = self._embed_latencies[-500:]
             self._metrics.total_embeddings += 1
-            self._metrics.avg_embed_latency_ms = (
-                sum(self._embed_latencies) / len(self._embed_latencies)
+            self._metrics.avg_embed_latency_ms = sum(self._embed_latencies) / len(
+                self._embed_latencies
             )

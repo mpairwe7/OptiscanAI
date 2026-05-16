@@ -12,6 +12,7 @@ GET  /v1/offline/bundle       -- download the current bundle archive
 GET  /v1/offline/bundle/info  -- bundle metadata (version, size, hash)
 POST /v1/offline/search       -- offline RAG search
 """
+
 from __future__ import annotations
 
 import logging
@@ -44,10 +45,14 @@ def _is_enabled() -> bool:
     global _ENABLED
     if _ENABLED is None:
         # Prefer the pydantic settings value; fall back to raw env var
-        _ENABLED = getattr(settings, "offline_rag", None) is not None and settings.offline_rag.enabled
+        _ENABLED = (
+            getattr(settings, "offline_rag", None) is not None and settings.offline_rag.enabled
+        )
         if not _ENABLED:
             _ENABLED = os.getenv("OFFLINE_RAG__ENABLED", "false").lower() in (
-                "1", "true", "yes",
+                "1",
+                "true",
+                "yes",
             )
     return _ENABLED
 
@@ -74,6 +79,7 @@ def _get_pipeline():
     global _pipeline
     if _pipeline is None:
         from backend.app.offline_rag import OfflineRAGPipeline
+
         _pipeline = OfflineRAGPipeline.get_instance()
     return _pipeline
 
@@ -82,6 +88,7 @@ def _get_sync_engine():
     global _sync_engine
     if _sync_engine is None:
         from backend.app.offline_sync import DeltaSyncEngine
+
         _sync_engine = DeltaSyncEngine()
     return _sync_engine
 
@@ -90,6 +97,7 @@ def _get_bundle_manager():
     global _bundle_manager
     if _bundle_manager is None:
         from backend.app.offline_bundle import OfflineBundleManager
+
         _bundle_manager = OfflineBundleManager()
     return _bundle_manager
 
@@ -101,15 +109,20 @@ def _get_bundle_manager():
 
 class SearchRequest(BaseModel):
     """Request body for offline RAG search."""
+
     query: str = Field(..., min_length=1, max_length=2000, description="Search query")
     top_k: int = Field(5, ge=1, le=50, description="Number of results to return")
     threshold: float = Field(
-        0.45, ge=0.0, le=1.0, description="Minimum similarity threshold",
+        0.45,
+        ge=0.0,
+        le=1.0,
+        description="Minimum similarity threshold",
     )
 
 
 class SearchResultItem(BaseModel):
     """A single passage result."""
+
     passage_id: str
     text: str
     score: float
@@ -118,6 +131,7 @@ class SearchResultItem(BaseModel):
 
 class SearchResponse(BaseModel):
     """Response for offline RAG search."""
+
     query: str
     results: List[SearchResultItem]
     result_count: int
@@ -128,17 +142,20 @@ class SearchResponse(BaseModel):
 
 class SyncTriggerRequest(BaseModel):
     """Optional body for sync trigger."""
+
     force: bool = Field(False, description="Force sync even if recently synced")
 
 
 class SyncTriggerResponse(BaseModel):
     """Response after triggering a sync."""
+
     status: str
     message: str
 
 
 class BundleInfoResponse(BaseModel):
     """Bundle metadata response."""
+
     version: Optional[str] = None
     path: Optional[str] = None
     size_bytes: Optional[int] = None
@@ -152,6 +169,7 @@ class BundleInfoResponse(BaseModel):
 
 class OfflineStatusResponse(BaseModel):
     """Aggregated status for the entire offline subsystem."""
+
     enabled: bool
     pipeline: Dict[str, Any]
     sync: Dict[str, Any]
@@ -256,10 +274,7 @@ async def download_bundle(
             detail=f"Bundle not found (version={version or 'latest'})",
         )
 
-    content_type = (
-        "application/zstd" if path.name.endswith(".tar.zst")
-        else "application/gzip"
-    )
+    content_type = "application/zstd" if path.name.endswith(".tar.zst") else "application/gzip"
 
     def _iter_file():
         with open(path, "rb") as f:
@@ -324,6 +339,7 @@ async def verify_bundle(
 
 class DeltaRequest(BaseModel):
     """Client sends its current bundle state for delta computation."""
+
     current_version: str = Field(..., description="Client's current bundle version")
     component_hashes: Dict[str, str] = Field(
         default_factory=dict,
@@ -333,6 +349,7 @@ class DeltaRequest(BaseModel):
 
 class DeltaComponent(BaseModel):
     """A single component that needs updating."""
+
     filename: str
     action: str = Field(..., description="add | update | delete")
     sha256: str = ""
@@ -342,6 +359,7 @@ class DeltaComponent(BaseModel):
 
 class DeltaResponse(BaseModel):
     """Server response with components that changed."""
+
     current_version: str
     target_version: str
     changed_components: List[DeltaComponent]
@@ -390,36 +408,46 @@ async def compute_bundle_delta(body: DeltaRequest) -> Dict[str, Any]:
 
     for filename, server_hash in server_files.items():
         client_hash = body.component_hashes.get(filename)
-        size = server_manifest.get("file_sizes", {}).get(filename, 0) if isinstance(server_manifest, dict) else 0
+        size = (
+            server_manifest.get("file_sizes", {}).get(filename, 0)
+            if isinstance(server_manifest, dict)
+            else 0
+        )
 
         if client_hash is None:
             # New component
-            changed.append(DeltaComponent(
-                filename=filename,
-                action="add",
-                sha256=server_hash if isinstance(server_hash, str) else "",
-                size_bytes=size,
-                download_url=f"/api/v1/offline/bundle/component/{filename}",
-            ))
+            changed.append(
+                DeltaComponent(
+                    filename=filename,
+                    action="add",
+                    sha256=server_hash if isinstance(server_hash, str) else "",
+                    size_bytes=size,
+                    download_url=f"/api/v1/offline/bundle/component/{filename}",
+                )
+            )
             total_bytes += size
         elif client_hash != server_hash:
             # Updated component
-            changed.append(DeltaComponent(
-                filename=filename,
-                action="update",
-                sha256=server_hash if isinstance(server_hash, str) else "",
-                size_bytes=size,
-                download_url=f"/api/v1/offline/bundle/component/{filename}",
-            ))
+            changed.append(
+                DeltaComponent(
+                    filename=filename,
+                    action="update",
+                    sha256=server_hash if isinstance(server_hash, str) else "",
+                    size_bytes=size,
+                    download_url=f"/api/v1/offline/bundle/component/{filename}",
+                )
+            )
             total_bytes += size
 
     # Check for deleted components
     for client_file in body.component_hashes:
         if client_file not in server_files:
-            changed.append(DeltaComponent(
-                filename=client_file,
-                action="delete",
-            ))
+            changed.append(
+                DeltaComponent(
+                    filename=client_file,
+                    action="delete",
+                )
+            )
 
     is_full = len(changed) > len(server_files) * 0.5
 
@@ -457,7 +485,8 @@ async def offline_search(body: SearchRequest) -> Dict[str, Any]:
 
     logger.info(
         "Offline search: query=%r results=%d",
-        body.query[:60], response["result_count"],
+        body.query[:60],
+        response["result_count"],
     )
 
     return response

@@ -147,9 +147,9 @@ class MobileStudentV1(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass returning raw logits for loss computation."""
-        features = self.backbone(x)             # [B, 960]
-        projected = self.projection(features)   # [B, 512]
-        logits = self.classifier(projected)     # [B, C]
+        features = self.backbone(x)  # [B, 960]
+        projected = self.projection(features)  # [B, 512]
+        logits = self.classifier(projected)  # [B, C]
         return logits
 
     def get_features(self, x: torch.Tensor) -> torch.Tensor:
@@ -187,9 +187,7 @@ class MobileStudentV1(nn.Module):
             "predictions": preds,
         }
 
-    def apply_thresholds(
-        self, probabilities: torch.Tensor
-    ) -> torch.Tensor:
+    def apply_thresholds(self, probabilities: torch.Tensor) -> torch.Tensor:
         """Apply per-class thresholds to probability tensor."""
         return (probabilities >= self.thresholds.unsqueeze(0)).float()
 
@@ -211,8 +209,7 @@ class MobileStudentV1(nn.Module):
 
         if len(vals) != self.num_classes:
             logger.warning(
-                "Threshold count mismatch: file has %d, model has %d. "
-                "Using first %d values.",
+                "Threshold count mismatch: file has %d, model has %d. " "Using first %d values.",
                 len(vals),
                 self.num_classes,
                 min(len(vals), self.num_classes),

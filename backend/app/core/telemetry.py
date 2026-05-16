@@ -11,6 +11,7 @@ Provides distributed tracing, custom metrics, and log correlation for:
 All instrumentation is opt-in via TELEMETRY__ENABLED=true. When disabled,
 get_tracer() and get_meter() return no-op instances with zero overhead.
 """
+
 from __future__ import annotations
 
 import functools
@@ -70,12 +71,14 @@ def init_telemetry(app: Any = None) -> None:
     cfg = settings.telemetry
 
     # Resource identifies this service in traces/metrics
-    resource = Resource.create({
-        ResourceAttributes.SERVICE_NAME: cfg.service_name,
-        ResourceAttributes.SERVICE_VERSION: settings.app_version,
-        "deployment.environment": settings.environment,
-        "deployment.region": settings.deployment_region,
-    })
+    resource = Resource.create(
+        {
+            ResourceAttributes.SERVICE_NAME: cfg.service_name,
+            ResourceAttributes.SERVICE_VERSION: settings.app_version,
+            "deployment.environment": settings.environment,
+            "deployment.region": settings.deployment_region,
+        }
+    )
 
     # ── Tracing ──
     try:
@@ -174,6 +177,7 @@ def get_tracer():
         return _tracer
     try:
         from opentelemetry import trace
+
         return trace.get_tracer("retinalai")
     except ImportError:
         return _NoOpTracer()
@@ -186,6 +190,7 @@ def get_meter():
         return _meter
     try:
         from opentelemetry import metrics
+
         return metrics.get_meter("retinalai")
     except ImportError:
         return _NoOpMeter()
@@ -259,7 +264,9 @@ def record_prediction_metrics(
         _instruments["prediction_count"].add(1, attrs)
         _instruments["inference_duration"].record(inference_ms, {"model_version": model_version})
         _instruments["model_confidence"].record(max_confidence, {"model_version": model_version})
-        _instruments["diseases_detected"].record(diseases_detected, {"model_version": model_version})
+        _instruments["diseases_detected"].record(
+            diseases_detected, {"model_version": model_version}
+        )
     except Exception:
         pass  # metrics are best-effort
 
@@ -341,10 +348,12 @@ def traced(
         async def invoke_claude(prompt):
             ...
     """
+
     def decorator(fn: F) -> F:
         import asyncio
 
         if asyncio.iscoroutinefunction(fn):
+
             @functools.wraps(fn)
             async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
                 tracer = get_tracer()
@@ -359,8 +368,10 @@ def traced(
                         span.set_attribute("error", True)
                         span.set_attribute("error.message", str(e))
                         raise
+
             return async_wrapper  # type: ignore[return-value]
         else:
+
             @functools.wraps(fn)
             def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
                 tracer = get_tracer()
@@ -375,6 +386,7 @@ def traced(
                         span.set_attribute("error", True)
                         span.set_attribute("error.message", str(e))
                         raise
+
             return sync_wrapper  # type: ignore[return-value]
 
     return decorator

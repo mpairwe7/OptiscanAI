@@ -5,6 +5,7 @@ endpoint but routes inference through the ``EdgeRuntime`` instead of
 the standard ``ModelService``.  Each format returns 501 if the
 corresponding model has not been loaded.
 """
+
 from __future__ import annotations
 
 import io
@@ -85,6 +86,7 @@ def _get_runtime():
 # Shared image validation
 # ---------------------------------------------------------------------------
 
+
 async def _validate_and_open(file: UploadFile) -> Image.Image:
     """Read, validate, and return a PIL Image from an upload.
 
@@ -119,14 +121,10 @@ async def _validate_and_open(file: UploadFile) -> Image.Image:
         image = Image.open(io.BytesIO(contents))  # re-open after verify
     except (OSError, SyntaxError) as exc:
         logger.warning("Invalid image upload: %s", exc)
-        raise HTTPException(
-            status_code=400, detail=f"Invalid image file: {exc}"
-        )
+        raise HTTPException(status_code=400, detail=f"Invalid image file: {exc}")
 
     if image.width < 32 or image.height < 32:
-        raise HTTPException(
-            status_code=400, detail="Image too small (minimum 32x32)."
-        )
+        raise HTTPException(status_code=400, detail="Image too small (minimum 32x32).")
 
     return image
 
@@ -219,10 +217,7 @@ async def predict_quantized(
     if not any(f.startswith("quantized") for f in loaded):
         raise HTTPException(
             status_code=501,
-            detail=(
-                "Quantized model is not loaded. "
-                "Enable via EDGE__QUANTIZED_ENABLED=true."
-            ),
+            detail=("Quantized model is not loaded. " "Enable via EDGE__QUANTIZED_ENABLED=true."),
         )
 
     image = await _validate_and_open(file)

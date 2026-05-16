@@ -4,6 +4,7 @@ Uses argon2 for password hashing (industry standard, OWASP-recommended) and
 PyJWT for signed tokens. Refresh tokens are opaque random bytes — only the
 SHA-256 hash is stored in `refresh_tokens` so a DB leak cannot replay sessions.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -25,6 +26,7 @@ _hasher = PasswordHasher()
 
 # ── Passwords ──
 
+
 def hash_password(plain: str) -> str:
     return _hasher.hash(plain)
 
@@ -44,6 +46,7 @@ def password_needs_rehash(stored_hash: str) -> bool:
 
 
 # ── JWT (access tokens) ──
+
 
 def encode_access_token(
     *,
@@ -79,6 +82,7 @@ def decode_access_token(token: str) -> dict[str, Any] | None:
 
 # ── Refresh tokens (opaque, hashed-at-rest) ──
 
+
 def generate_refresh_token() -> str:
     """Return a fresh 256-bit URL-safe token. Caller must hash before DB write."""
     return secrets.token_urlsafe(32)
@@ -90,6 +94,7 @@ def hash_token(token: str) -> str:
 
 
 # ── Single-use email tokens (magic link, verify email, password reset, invite) ──
+
 
 def generate_email_token() -> str:
     return secrets.token_urlsafe(32)

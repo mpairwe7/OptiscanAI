@@ -1,6 +1,7 @@
 """
 Gradient and weight monitoring visualizations.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -17,7 +18,8 @@ from src.visualization.ieee_style import (
 
 
 def plot_gradient_norms(
-    grad_norms: list[float], save_dir: Path,
+    grad_norms: list[float],
+    save_dir: Path,
 ):
     """Gradient norm over training steps."""
     with ieee_style():
@@ -28,7 +30,9 @@ def plot_gradient_norms(
         if len(grad_norms) > 20:
             kernel = max(len(grad_norms) // 50, 5)
             smoothed = np.convolve(grad_norms, np.ones(kernel) / kernel, mode="valid")
-            ax.plot(range(len(smoothed)), smoothed, lw=1.5, color=IEEE_COLORS["red"], label="Smoothed")
+            ax.plot(
+                range(len(smoothed)), smoothed, lw=1.5, color=IEEE_COLORS["red"], label="Smoothed"
+            )
 
         ax.axhline(100, ls="--", color="red", lw=0.8, alpha=0.5, label="Explosion threshold")
         ax.axhline(1e-5, ls="--", color="orange", lw=0.8, alpha=0.5, label="Vanishing threshold")
@@ -42,7 +46,8 @@ def plot_gradient_norms(
 
 
 def plot_lr_vs_loss(
-    history: list[dict], save_dir: Path,
+    history: list[dict],
+    save_dir: Path,
 ):
     """Learning rate overlaid with loss curve."""
     with ieee_style():

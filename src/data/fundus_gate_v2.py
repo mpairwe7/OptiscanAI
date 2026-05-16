@@ -132,7 +132,9 @@ class FundusGateV2:
             visual_evidence if visual_evidence is not None else _env_bool("VISUAL_EVIDENCE", False)
         )
         self._mc_samples = (
-            mc_dropout_samples if mc_dropout_samples is not None else _env_int("MC_DROPOUT_SAMPLES", 5)
+            mc_dropout_samples
+            if mc_dropout_samples is not None
+            else _env_int("MC_DROPOUT_SAMPLES", 5)
         )
 
         # Attempt to load learned gate — fallback to statistical-only on failure
@@ -188,6 +190,7 @@ class FundusGateV2:
             last_conv = None
             for module in backbone.modules():
                 import torch.nn as nn
+
                 if isinstance(module, nn.Conv2d):
                     last_conv = module
             return last_conv
@@ -254,8 +257,10 @@ class FundusGateV2:
 
         # Extract hard spatial requirement
         has_fundus_spatial = (
-            (stat_checks.get("dark_border", {}).get("passed", False)
-             or stat_checks.get("circular_aperture", {}).get("passed", False))
+            (
+                stat_checks.get("dark_border", {}).get("passed", False)
+                or stat_checks.get("circular_aperture", {}).get("passed", False)
+            )
             and stat_checks.get("radial_sharpness", {}).get("passed", False)
             and stat_checks.get("hue_concentration", {}).get("passed", False)
         )
@@ -297,7 +302,10 @@ class FundusGateV2:
         if learned_prob is not None:
             stat_weight = 1.0 - self.learned_weight
             fused = stat_weight * stat_confidence + self.learned_weight * learned_prob
-            weights = {"statistical": round(stat_weight, 2), "learned": round(self.learned_weight, 2)}
+            weights = {
+                "statistical": round(stat_weight, 2),
+                "learned": round(self.learned_weight, 2),
+            }
         else:
             # Fallback: statistical-only
             fused = stat_confidence
@@ -359,9 +367,7 @@ class FundusGateV2:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _build_structural_message(
-        checks: dict, failed: list[str]
-    ) -> tuple[str, str]:
+    def _build_structural_message(checks: dict, failed: list[str]) -> tuple[str, str]:
         parts = []
         action = "Please upload a color retinal fundus photograph."
         for name in failed:
@@ -389,9 +395,7 @@ class FundusGateV2:
         return reason, action
 
     @staticmethod
-    def _build_statistical_message(
-        confidence: float, checks: dict
-    ) -> tuple[str, str]:
+    def _build_statistical_message(confidence: float, checks: dict) -> tuple[str, str]:
         reason = (
             f"Image does not match retinal fundus color and spatial profile. "
             f"Fundus confidence: {confidence:.0%}."
@@ -459,11 +463,13 @@ class FundusGateV2:
                 failed.append(entry)
 
         if learned_conf is not None and learned_conf < 0.5:
-            failed.append({
-                "name": "learned_fundus_probability",
-                "value": round(learned_conf, 4),
-                "threshold": ">= 0.50",
-            })
+            failed.append(
+                {
+                    "name": "learned_fundus_probability",
+                    "value": round(learned_conf, 4),
+                    "threshold": ">= 0.50",
+                }
+            )
 
         return failed
 
@@ -509,6 +515,7 @@ class FundusGateV2:
     def _render_radial_gradient(image: Image.Image) -> str:
         """Render radial luminance profile as a heatmap overlay."""
         import matplotlib
+
         matplotlib.use("Agg")
         from matplotlib.figure import Figure
 
@@ -541,6 +548,7 @@ class FundusGateV2:
     def _render_green_laplacian(image: Image.Image) -> str:
         """Render green-channel Laplacian as a heatmap overlay."""
         import matplotlib
+
         matplotlib.use("Agg")
         from matplotlib.figure import Figure
 
@@ -551,8 +559,10 @@ class FundusGateV2:
         # Compute Laplacian (same kernel as fundus_gate.py)
         lap = (
             -4 * green[1:-1, 1:-1]
-            + green[:-2, 1:-1] + green[2:, 1:-1]
-            + green[1:-1, :-2] + green[1:-1, 2:]
+            + green[:-2, 1:-1]
+            + green[2:, 1:-1]
+            + green[1:-1, :-2]
+            + green[1:-1, 2:]
         )
         lap_abs = np.abs(lap)
         # Normalize for visualization
@@ -577,6 +587,7 @@ class FundusGateV2:
     def _render_gradcam(self, image: Image.Image) -> str:
         """Generate GradCAM activation map from the learned gate."""
         import matplotlib
+
         matplotlib.use("Agg")
         from matplotlib.figure import Figure
 

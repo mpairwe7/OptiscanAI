@@ -36,9 +36,7 @@ def get_train_transforms(cfg: dict) -> T.Compose:
 
     # Rotation
     if aug.get("random_rotation", 0) > 0:
-        transforms_list.append(
-            T.RandomRotation(degrees=aug["random_rotation"], fill=0)
-        )
+        transforms_list.append(T.RandomRotation(degrees=aug["random_rotation"], fill=0))
 
     # Color jitter
     cj = aug.get("color_jitter", {})
@@ -56,9 +54,7 @@ def get_train_transforms(cfg: dict) -> T.Compose:
     transforms_list.append(T.ToTensor())
 
     if norm:
-        transforms_list.append(
-            T.Normalize(mean=norm["mean"], std=norm["std"])
-        )
+        transforms_list.append(T.Normalize(mean=norm["mean"], std=norm["std"]))
 
     # Random erasing (after ToTensor)
     if aug.get("random_erasing", 0) > 0:
@@ -79,9 +75,7 @@ def get_val_transforms(cfg: dict) -> T.Compose:
     ]
 
     if norm:
-        transforms_list.append(
-            T.Normalize(mean=norm["mean"], std=norm["std"])
-        )
+        transforms_list.append(T.Normalize(mean=norm["mean"], std=norm["std"]))
 
     return T.Compose(transforms_list)
 
@@ -99,9 +93,7 @@ def get_tta_transforms(cfg: dict) -> list[T.Compose]:
     norm = aug.get("normalize", {})
     img_size = cfg.get("data", {}).get("img_size", 224)
 
-    tta_names = cfg.get("augmentation", {}).get("tta", {}).get(
-        "transforms", ["hflip", "vflip"]
-    )
+    tta_names = cfg.get("augmentation", {}).get("tta", {}).get("transforms", ["hflip", "vflip"])
 
     def _build(extra):
         parts = [T.Resize((img_size, img_size), interpolation=T.InterpolationMode.BICUBIC)]

@@ -12,6 +12,7 @@ Key features:
 - Configurable retry with exponential back-off
 - P2P sync stub for future mesh-network operation
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -36,6 +37,7 @@ logger = logging.getLogger(__name__)
 
 class SyncState(str, Enum):
     """Current state of the sync engine."""
+
     IDLE = "idle"
     SYNCING = "syncing"
     ERROR = "error"
@@ -45,6 +47,7 @@ class SyncState(str, Enum):
 @dataclass
 class ChunkDelta:
     """Describes a single chunk-level change."""
+
     chunk_id: str
     action: str  # "add" | "update" | "delete"
     old_hash: Optional[str] = None
@@ -55,6 +58,7 @@ class ChunkDelta:
 @dataclass
 class DeltaResult:
     """Full delta between local and remote manifests."""
+
     additions: List[ChunkDelta] = field(default_factory=list)
     updates: List[ChunkDelta] = field(default_factory=list)
     deletions: List[ChunkDelta] = field(default_factory=list)
@@ -72,6 +76,7 @@ class DeltaResult:
 @dataclass
 class SyncStatus:
     """Snapshot of the sync engine state."""
+
     state: str = SyncState.IDLE.value
     last_sync_time: Optional[float] = None
     last_sync_duration_s: Optional[float] = None
@@ -140,12 +145,20 @@ class DeltaSyncEngine:
         max_retries: int = 3,
         retry_backoff_base_s: float = 5.0,
     ) -> None:
-        self._index_dir = Path(index_dir or os.getenv(
-            "OFFLINE_RAG_INDEX_DIR", "data/offline_rag/index",
-        ))
-        self._source_dir = Path(source_dir or os.getenv(
-            "OFFLINE_RAG_SOURCE_DIR", "data/offline_rag/source",
-        ))
+        self._index_dir = Path(
+            index_dir
+            or os.getenv(
+                "OFFLINE_RAG_INDEX_DIR",
+                "data/offline_rag/index",
+            )
+        )
+        self._source_dir = Path(
+            source_dir
+            or os.getenv(
+                "OFFLINE_RAG_SOURCE_DIR",
+                "data/offline_rag/source",
+            )
+        )
         self._manifest_path = self._index_dir / manifest_name
         self._sync_interval_s = sync_interval_s
         self._max_retries = max_retries
@@ -174,7 +187,8 @@ class DeltaSyncEngine:
                 self._status.local_manifest_chunks = len(self._local_manifest)
                 logger.info(
                     "Loaded sync manifest with %d chunks from %s",
-                    len(self._local_manifest), self._manifest_path,
+                    len(self._local_manifest),
+                    self._manifest_path,
                 )
             except Exception as exc:
                 logger.warning("Failed to load sync manifest: %s", exc)
@@ -263,33 +277,41 @@ class DeltaSyncEngine:
 
         # Additions (in remote but not local)
         for cid in sorted(remote_ids - local_ids):
-            delta.additions.append(ChunkDelta(
-                chunk_id=cid,
-                action="add",
-                new_hash=remote_manifest[cid],
-            ))
+            delta.additions.append(
+                ChunkDelta(
+                    chunk_id=cid,
+                    action="add",
+                    new_hash=remote_manifest[cid],
+                )
+            )
 
         # Updates (in both, hash differs)
         for cid in sorted(local_ids & remote_ids):
             if self._local_manifest[cid] != remote_manifest[cid]:
-                delta.updates.append(ChunkDelta(
-                    chunk_id=cid,
-                    action="update",
-                    old_hash=self._local_manifest[cid],
-                    new_hash=remote_manifest[cid],
-                ))
+                delta.updates.append(
+                    ChunkDelta(
+                        chunk_id=cid,
+                        action="update",
+                        old_hash=self._local_manifest[cid],
+                        new_hash=remote_manifest[cid],
+                    )
+                )
 
         # Deletions (in local but not remote)
         for cid in sorted(local_ids - remote_ids):
-            delta.deletions.append(ChunkDelta(
-                chunk_id=cid,
-                action="delete",
-                old_hash=self._local_manifest[cid],
-            ))
+            delta.deletions.append(
+                ChunkDelta(
+                    chunk_id=cid,
+                    action="delete",
+                    old_hash=self._local_manifest[cid],
+                )
+            )
 
         logger.info(
             "Delta computed: +%d ~%d -%d",
-            len(delta.additions), len(delta.updates), len(delta.deletions),
+            len(delta.additions),
+            len(delta.updates),
+            len(delta.deletions),
         )
         return delta
 
@@ -377,8 +399,10 @@ class DeltaSyncEngine:
 
             logger.info(
                 "Delta applied: +%d ~%d -%d => %d total passages",
-                len(delta.additions), len(delta.updates),
-                len(delta.deletions), len(updated_passages),
+                len(delta.additions),
+                len(delta.updates),
+                len(delta.deletions),
+                len(updated_passages),
             )
             return True
 
@@ -422,7 +446,9 @@ class DeltaSyncEngine:
                 last_error = str(exc)
                 logger.warning(
                     "Sync attempt %d/%d failed: %s",
-                    attempt, self._max_retries, exc,
+                    attempt,
+                    self._max_retries,
+                    exc,
                 )
                 if attempt < self._max_retries:
                     backoff = self._retry_backoff_base_s * (2 ** (attempt - 1))
@@ -433,7 +459,10 @@ class DeltaSyncEngine:
         return DeltaResult()
 
     def _finalise_sync(
-        self, t0: float, changes: int, error: Optional[str],
+        self,
+        t0: float,
+        changes: int,
+        error: Optional[str],
     ) -> None:
         """Update status after a sync cycle."""
         duration = time.monotonic() - t0
@@ -455,7 +484,9 @@ class DeltaSyncEngine:
             self._status.error_message = None
             self._status.consecutive_errors = 0
             logger.info(
-                "Sync completed: %d changes in %.1fs", changes, duration,
+                "Sync completed: %d changes in %.1fs",
+                changes,
+                duration,
             )
 
     # -- Integrity verification ---------------------------------------------
@@ -481,7 +512,9 @@ class DeltaSyncEngine:
                 if actual != expected:
                     logger.warning(
                         "Integrity mismatch for chunk %s: expected %s, got %s",
-                        cid, expected[:12], actual[:12],
+                        cid,
+                        expected[:12],
+                        actual[:12],
                     )
                     return False
 
@@ -509,7 +542,8 @@ class DeltaSyncEngine:
             self._bg_task = asyncio.create_task(self._sync_loop())
 
         logger.info(
-            "Background sync started (interval=%.0fs)", self._sync_interval_s,
+            "Background sync started (interval=%.0fs)",
+            self._sync_interval_s,
         )
 
     async def stop_background_sync(self) -> None:
@@ -537,7 +571,8 @@ class DeltaSyncEngine:
             self._status.next_sync_time = time.time() + self._sync_interval_s
             try:
                 await asyncio.wait_for(
-                    self._stop_event.wait(), timeout=self._sync_interval_s,
+                    self._stop_event.wait(),
+                    timeout=self._sync_interval_s,
                 )
                 break  # stop_event was set
             except asyncio.TimeoutError:
@@ -582,7 +617,5 @@ class DeltaSyncEngine:
             "index_dir": str(self._index_dir),
             "source_dir": str(self._source_dir),
             "sync_interval_s": self._sync_interval_s,
-            "background_running": (
-                self._bg_task is not None and not self._bg_task.done()
-            ),
+            "background_running": (self._bg_task is not None and not self._bg_task.done()),
         }

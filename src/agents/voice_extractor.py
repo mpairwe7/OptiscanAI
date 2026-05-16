@@ -15,7 +15,15 @@ logger = logging.getLogger(__name__)
 
 # Uganda-specific medical term patterns
 CONDITION_PATTERNS: dict[str, list[str]] = {
-    "diabetes": ["diabetes", "diabetic", "sugar disease", "sugar", "esukaali", "sukaali", "insulin"],
+    "diabetes": [
+        "diabetes",
+        "diabetic",
+        "sugar disease",
+        "sugar",
+        "esukaali",
+        "sukaali",
+        "insulin",
+    ],
     "hypertension": ["hypertension", "high blood pressure", "high bp", "pressure", "puleesa"],
     "hiv": ["hiv", "aids", "silimu", "arv", "antiretroviral"],
     "sickle_cell": ["sickle cell", "sickler", "sickle"],
@@ -24,7 +32,15 @@ CONDITION_PATTERNS: dict[str, list[str]] = {
 }
 
 SYMPTOM_PATTERNS: dict[str, list[str]] = {
-    "blurry_vision": ["blurry", "blur", "can't see", "cannot see", "foggy", "ebyenzirikizi", "okulaba"],
+    "blurry_vision": [
+        "blurry",
+        "blur",
+        "can't see",
+        "cannot see",
+        "foggy",
+        "ebyenzirikizi",
+        "okulaba",
+    ],
     "eye_pain": ["eye pain", "eyes hurt", "painful eyes", "okubabuka"],
     "headache": ["headache", "head ache", "head pain", "omutwe"],
     "vision_loss": ["blind", "losing sight", "can't see anything", "darkness"],
@@ -76,9 +92,11 @@ Return ONLY valid JSON, no other text."""
 
         # Use the project's LLM interface
         from src.agents.llm import call_llm
+
         response = await call_llm(prompt, max_tokens=500)
 
         import json
+
         try:
             return json.loads(response)
         except (json.JSONDecodeError, TypeError):

@@ -189,11 +189,13 @@ class MTLSConfig:
 
         # ---- CA key + certificate ----
         ca_key = rsa.generate_private_key(public_exponent=65537, key_size=4096)
-        ca_name = x509.Name([
-            x509.NameAttribute(NameOID.COUNTRY_NAME, "UG"),
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "RetinalAI Dev CA"),
-            x509.NameAttribute(NameOID.COMMON_NAME, "RetinalAI Development CA"),
-        ])
+        ca_name = x509.Name(
+            [
+                x509.NameAttribute(NameOID.COUNTRY_NAME, "UG"),
+                x509.NameAttribute(NameOID.ORGANIZATION_NAME, "RetinalAI Dev CA"),
+                x509.NameAttribute(NameOID.COMMON_NAME, "RetinalAI Development CA"),
+            ]
+        )
         ca_cert = (
             x509.CertificateBuilder()
             .subject_name(ca_name)
@@ -240,19 +242,23 @@ class MTLSConfig:
             is_server: bool,
         ) -> tuple[rsa.RSAPrivateKey, x509.Certificate]:
             key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-            subject = x509.Name([
-                x509.NameAttribute(NameOID.COUNTRY_NAME, "UG"),
-                x509.NameAttribute(NameOID.ORGANIZATION_NAME, "RetinalAI"),
-                x509.NameAttribute(NameOID.COMMON_NAME, common_name),
-            ])
-            usage_ext = x509.ExtendedKeyUsage([
-                x509.oid.ExtendedKeyUsageOID.SERVER_AUTH
-                if is_server
-                else x509.oid.ExtendedKeyUsageOID.CLIENT_AUTH
-            ])
-            san = x509.SubjectAlternativeName(
-                [x509.DNSName(d) for d in san_dns]
+            subject = x509.Name(
+                [
+                    x509.NameAttribute(NameOID.COUNTRY_NAME, "UG"),
+                    x509.NameAttribute(NameOID.ORGANIZATION_NAME, "RetinalAI"),
+                    x509.NameAttribute(NameOID.COMMON_NAME, common_name),
+                ]
             )
+            usage_ext = x509.ExtendedKeyUsage(
+                [
+                    (
+                        x509.oid.ExtendedKeyUsageOID.SERVER_AUTH
+                        if is_server
+                        else x509.oid.ExtendedKeyUsageOID.CLIENT_AUTH
+                    )
+                ]
+            )
+            san = x509.SubjectAlternativeName([x509.DNSName(d) for d in san_dns])
             cert = (
                 x509.CertificateBuilder()
                 .subject_name(subject)
@@ -261,9 +267,7 @@ class MTLSConfig:
                 .serial_number(x509.random_serial_number())
                 .not_valid_before(now)
                 .not_valid_after(now + validity)
-                .add_extension(
-                    x509.BasicConstraints(ca=False, path_length=None), critical=True
-                )
+                .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
                 .add_extension(usage_ext, critical=False)
                 .add_extension(san, critical=False)
                 .sign(ca_key, hashes.SHA256())

@@ -1,6 +1,7 @@
 """
 Learning Rate Finder - exponential LR sweep to find optimal learning rate.
 """
+
 from __future__ import annotations
 
 import copy
@@ -60,7 +61,7 @@ class LRFinder:
             loss.backward()
             optimizer.step()
 
-            lr = min_lr * (lr_mult ** step)
+            lr = min_lr * (lr_mult**step)
             for pg in optimizer.param_groups:
                 pg["lr"] = lr
 
@@ -97,6 +98,7 @@ class LRFinder:
     def plot(self, save_dir: Path):
         """Save LR finder plot."""
         from src.visualization.ieee_style import ieee_figure, ieee_style, save_ieee
+
         save_dir.mkdir(parents=True, exist_ok=True)
         with ieee_style():
             fig, ax = ieee_figure(1, 1, width="single")

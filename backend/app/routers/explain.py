@@ -1,4 +1,5 @@
 """Explainability endpoints — GradCAM, SHAP, LIME, Integrated Gradients."""
+
 import base64
 import io
 import logging
@@ -33,6 +34,7 @@ def _get_explainer():
         raise HTTPException(503, "Model not loaded")
 
     from src.models.model_explainer import ModelExplainer
+
     _explainer = ModelExplainer(
         model=model_service.model,
         device=str(model_service.device),
@@ -45,11 +47,14 @@ def _get_explainer():
 def _image_to_tensor(image: Image.Image) -> torch.Tensor:
     """Convert PIL Image to preprocessed model input tensor."""
     from torchvision import transforms
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ])
+
+    transform = transforms.Compose(
+        [
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
     return transform(image.convert("RGB")).unsqueeze(0).to(model_service.device)
 
 
@@ -67,7 +72,9 @@ async def _read_upload(file: UploadFile) -> Image.Image:
         raise HTTPException(400, "File must be an image (JPEG/PNG)")
     contents = await file.read()
     if len(contents) > settings.max_upload_size:
-        raise HTTPException(413, f"File too large (max {settings.max_upload_size // 1024 // 1024}MB)")
+        raise HTTPException(
+            413, f"File too large (max {settings.max_upload_size // 1024 // 1024}MB)"
+        )
     try:
         return Image.open(io.BytesIO(contents))
     except (OSError, SyntaxError) as e:
@@ -78,7 +85,9 @@ async def _read_upload(file: UploadFile) -> Image.Image:
 @router.post("/gradcam")
 async def explain_gradcam(
     file: UploadFile = File(...),
-    target_class: Optional[int] = Query(None, description="Target class index (auto-selects top prediction if omitted)"),
+    target_class: Optional[int] = Query(
+        None, description="Target class index (auto-selects top prediction if omitted)"
+    ),
     method: str = Query("GradCAM", description="CAM variant: GradCAM, GradCAMPlusPlus, ScoreCAM"),
     top_k: int = Query(3, ge=1, le=10, description="Number of top classes to explain"),
 ):
@@ -96,7 +105,11 @@ async def explain_gradcam(
         try:
             heatmap_pil = explainer.generate_gradcam(tensor, target_class=target_class)
             elapsed = (time.perf_counter() - t0) * 1000
-            disease_code = model_service.disease_codes[target_class] if target_class < len(model_service.disease_codes) else f"class_{target_class}"
+            disease_code = (
+                model_service.disease_codes[target_class]
+                if target_class < len(model_service.disease_codes)
+                else f"class_{target_class}"
+            )
             return {
                 "method": method,
                 "target_class": target_class,
@@ -123,24 +136,28 @@ async def explain_gradcam(
         try:
             heatmap_pil = explainer.generate_gradcam(tensor, target_class=idx)
             code = model_service.disease_codes[idx]
-            heatmaps.append({
-                "class_index": idx,
-                "disease": code,
-                "disease_name": DISEASE_NAMES.get(code, code),
-                "probability": round(float(probs[idx]), 4),
-                "heatmap": _pil_to_base64(heatmap_pil),
-            })
+            heatmaps.append(
+                {
+                    "class_index": idx,
+                    "disease": code,
+                    "disease_name": DISEASE_NAMES.get(code, code),
+                    "probability": round(float(probs[idx]), 4),
+                    "heatmap": _pil_to_base64(heatmap_pil),
+                }
+            )
         except Exception as e:
             logger.warning(f"GradCAM failed for class {idx}: {e}")
             code = model_service.disease_codes[idx]
-            heatmaps.append({
-                "class_index": idx,
-                "disease": code,
-                "disease_name": DISEASE_NAMES.get(code, code),
-                "probability": round(float(probs[idx]), 4),
-                "heatmap": None,
-                "error": str(e),
-            })
+            heatmaps.append(
+                {
+                    "class_index": idx,
+                    "disease": code,
+                    "disease_name": DISEASE_NAMES.get(code, code),
+                    "probability": round(float(probs[idx]), 4),
+                    "heatmap": None,
+                    "error": str(e),
+                }
+            )
 
     elapsed = (time.perf_counter() - t0) * 1000
     return {
@@ -155,7 +172,9 @@ async def explain_gradcam(
 async def explain_lime(
     file: UploadFile = File(...),
     top_k: int = Query(3, ge=1, le=5, description="Number of classes to explain"),
-    num_samples: int = Query(300, ge=50, le=2000, description="Perturbation samples (higher=slower but more accurate)"),
+    num_samples: int = Query(
+        300, ge=50, le=2000, description="Perturbation samples (higher=slower but more accurate)"
+    ),
     num_features: int = Query(10, ge=3, le=30, description="Number of superpixels"),
     _gate=Depends(_clinician),
 ):
@@ -175,7 +194,9 @@ async def explain_lime(
 
     top_indices = [int(i) for i in probs.argsort()[-top_k:][::-1]]
 
-    result = explainer.explain_lime(tensor, target_classes=top_indices, num_samples=num_samples, num_features=num_features)
+    result = explainer.explain_lime(
+        tensor, target_classes=top_indices, num_samples=num_samples, num_features=num_features
+    )
     elapsed = (time.perf_counter() - t0) * 1000
 
     # Simplify the response — convert numpy types to native Python for JSON serialization
@@ -191,7 +212,10 @@ async def explain_lime(
                 "prediction": float(data.get("prediction", 0)),
                 "segments": int(data.get("lime_segments", num_features)),
                 "samples_used": int(data.get("samples_used", num_samples)),
-                "summary": {str(k): float(v) if isinstance(v, (int, float)) else v for k, v in data.get("explanation_summary", {}).items()},
+                "summary": {
+                    str(k): float(v) if isinstance(v, (int, float)) else v
+                    for k, v in data.get("explanation_summary", {}).items()
+                },
                 "feature_weights": clean_weights,
             }
 
@@ -266,7 +290,9 @@ async def explain_integrated_gradients(
 
     top_indices = probs.argsort()[-top_k:][::-1].tolist()
 
-    result = explainer.explain_integrated_gradients(tensor, target_classes=top_indices, n_steps=n_steps)
+    result = explainer.explain_integrated_gradients(
+        tensor, target_classes=top_indices, n_steps=n_steps
+    )
     elapsed = (time.perf_counter() - t0) * 1000
 
     return {
@@ -333,19 +359,25 @@ async def explain_comprehensive(
             disease_short = pred.get("disease", "")
             # Find class index
             try:
-                idx = model_service.disease_codes.index(disease_short) if disease_short in model_service.disease_codes else None
+                idx = (
+                    model_service.disease_codes.index(disease_short)
+                    if disease_short in model_service.disease_codes
+                    else None
+                )
             except ValueError:
                 idx = None
 
             if idx is not None:
                 try:
                     heatmap_pil = explainer.generate_gradcam(tensor, target_class=idx)
-                    gradcam_images.append({
-                        "disease": disease_short,
-                        "disease_name": DISEASE_NAMES.get(disease_short, disease_short),
-                        "probability": pred.get("confidence_score", 0),
-                        "heatmap": _pil_to_base64(heatmap_pil),
-                    })
+                    gradcam_images.append(
+                        {
+                            "disease": disease_short,
+                            "disease_name": DISEASE_NAMES.get(disease_short, disease_short),
+                            "probability": pred.get("confidence_score", 0),
+                            "heatmap": _pil_to_base64(heatmap_pil),
+                        }
+                    )
                 except Exception as e:
                     logger.warning("Heatmap generation failed for class %s: %s", idx, e)
 
@@ -388,13 +420,29 @@ async def get_available_methods():
         LIME_AVAILABLE,
         SHAP_AVAILABLE,
     )
+
     return {
         "model_loaded": model_service.is_loaded,
         "methods": {
-            "gradcam": {"available": GRADCAM_AVAILABLE, "description": "Gradient-weighted Class Activation Mapping — highlights image regions most relevant to each prediction"},
-            "integrated_gradients": {"available": CAPTUM_AVAILABLE, "description": "Attribution method from Captum — pixel-level importance scores"},
-            "shap": {"available": SHAP_AVAILABLE, "description": "SHapley Additive exPlanations — game-theoretic feature importance"},
-            "lime": {"available": LIME_AVAILABLE, "description": "Local Interpretable Model-agnostic Explanations — superpixel perturbation analysis"},
-            "eli5": {"available": ELI5_AVAILABLE, "description": "Explain Like I'm 5 — human-readable feature importance"},
+            "gradcam": {
+                "available": GRADCAM_AVAILABLE,
+                "description": "Gradient-weighted Class Activation Mapping — highlights image regions most relevant to each prediction",
+            },
+            "integrated_gradients": {
+                "available": CAPTUM_AVAILABLE,
+                "description": "Attribution method from Captum — pixel-level importance scores",
+            },
+            "shap": {
+                "available": SHAP_AVAILABLE,
+                "description": "SHapley Additive exPlanations — game-theoretic feature importance",
+            },
+            "lime": {
+                "available": LIME_AVAILABLE,
+                "description": "Local Interpretable Model-agnostic Explanations — superpixel perturbation analysis",
+            },
+            "eli5": {
+                "available": ELI5_AVAILABLE,
+                "description": "Explain Like I'm 5 — human-readable feature importance",
+            },
         },
     }

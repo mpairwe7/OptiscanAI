@@ -8,6 +8,7 @@ When auth+DB are enabled, `get_auth_context` (new) loads the User row and
 the active Organization+Subscription, exposing them as `AuthContext` for
 billing-aware endpoints.
 """
+
 from __future__ import annotations
 
 import logging
@@ -38,6 +39,7 @@ security = HTTPBearer(auto_error=False)
 
 class TokenPayload(BaseModel):
     """Backwards-compatible legacy payload (used by routers that don't care about billing)."""
+
     sub: str
     exp: float
     role: str = "user"
@@ -47,6 +49,7 @@ class TokenPayload(BaseModel):
 @dataclass
 class AuthContext:
     """Rich context for billing-aware endpoints."""
+
     user: "User"
     membership: "Membership"
     organization: "Organization"
@@ -55,6 +58,7 @@ class AuthContext:
 
 
 # ── Token issuing ──
+
 
 def create_access_token(
     subject: str,
@@ -73,11 +77,13 @@ def create_access_token(
 
 # ── Anonymous fallback (single-tenant on-prem) ──
 
+
 def _anonymous_payload() -> TokenPayload:
     return TokenPayload(sub="anonymous", exp=time.time() + 3600, role="admin")
 
 
 # ── Resolve token from header OR httpOnly cookie ──
+
 
 def _extract_token(
     credentials: Optional[HTTPAuthorizationCredentials],
@@ -102,11 +108,15 @@ async def get_current_user(
 
     token = _extract_token(credentials, os_access)
     if token is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing authorization")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing authorization"
+        )
 
     payload = decode_access_token(token)
     if payload is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token"
+        )
 
     return TokenPayload(
         sub=str(payload.get("sub", "anonymous")),
@@ -130,10 +140,14 @@ async def get_auth_context(
 
     token = _extract_token(credentials, os_access)
     if token is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing authorization")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing authorization"
+        )
     payload = decode_access_token(token)
     if payload is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token"
+        )
 
     user_id = payload.get("sub")
     org_id = payload.get("org")
@@ -142,7 +156,9 @@ async def get_auth_context(
 
     user = await db.get(User, user_id)
     if user is None or not user.is_active:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive"
+        )
 
     # Resolve active membership — explicit org from token, else first active membership
     stmt = (
@@ -161,6 +177,7 @@ async def get_auth_context(
 
     # Resolve subscription separately (avoid eager-load explosion)
     from backend.app.models.subscription import Subscription
+
     sub_stmt = (
         select(Subscription)
         .where(Subscription.organization_id == organization.id)
@@ -179,6 +196,7 @@ async def get_auth_context(
 
 def require_role(required_role: str):
     """Backwards-compatible role check on legacy TokenPayload."""
+
     async def role_checker(user: TokenPayload = Depends(get_current_user)):
         if user is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Auth required")
@@ -188,6 +206,7 @@ def require_role(required_role: str):
                 detail=f"Role '{required_role}' required",
             )
         return user
+
     return role_checker
 
 

@@ -1,4 +1,5 @@
 """Analytics, system info, and reporting endpoints."""
+
 import json
 import logging
 import platform
@@ -39,7 +40,9 @@ async def system_info():
             "num_classes": settings.num_classes,
             "diseases_covered": len(model_service.disease_codes),
             "knowledge_graph_edges": model_service.kg.get_edge_count() if model_service.kg else 0,
-            "threshold_source": "per_class" if model_service.default_thresholds is not None else "scalar",
+            "threshold_source": (
+                "per_class" if model_service.default_thresholds is not None else "scalar"
+            ),
         },
         "infrastructure": {
             "python_version": platform.python_version(),

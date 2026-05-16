@@ -32,10 +32,10 @@ except ImportError:
 
 # DICOM SOP Class UIDs for ophthalmic photography
 OPHTHALMIC_SOP_CLASSES = {
-    "1.2.840.10008.5.1.4.1.1.77.1.5.1",   # Ophthalmic Photography 8 Bit
-    "1.2.840.10008.5.1.4.1.1.77.1.5.2",   # Ophthalmic Photography 16 Bit
-    "1.2.840.10008.5.1.4.1.1.77.1.5.4",   # Ophthalmic Tomography Image
-    "1.2.840.10008.5.1.4.1.1.7",           # Secondary Capture (fallback)
+    "1.2.840.10008.5.1.4.1.1.77.1.5.1",  # Ophthalmic Photography 8 Bit
+    "1.2.840.10008.5.1.4.1.1.77.1.5.2",  # Ophthalmic Photography 16 Bit
+    "1.2.840.10008.5.1.4.1.1.77.1.5.4",  # Ophthalmic Tomography Image
+    "1.2.840.10008.5.1.4.1.1.7",  # Secondary Capture (fallback)
 }
 
 
@@ -104,7 +104,10 @@ class DICOMHandler:
 
         logger.info(
             "DICOM parsed: patient=%s, modality=%s, images=%d, ophthalmic=%s",
-            metadata.patient_id, metadata.modality, len(images), metadata.is_ophthalmic,
+            metadata.patient_id,
+            metadata.modality,
+            len(images),
+            metadata.is_ophthalmic,
         )
 
         return metadata, images
@@ -133,9 +136,7 @@ class DICOMHandler:
             is_ophthalmic=sop_uid in OPHTHALMIC_SOP_CLASSES,
         )
 
-    def _extract_images(
-        self, ds, metadata: DICOMMetadata
-    ) -> list[ExtractedFundusImage]:
+    def _extract_images(self, ds, metadata: DICOMMetadata) -> list[ExtractedFundusImage]:
         """Extract pixel data as JPEG images."""
         images = []
 
@@ -153,36 +154,46 @@ class DICOMHandler:
                 for i in range(pixel_array.shape[0]):
                     frame = pixel_array[i]
                     img_bytes = self._array_to_jpeg(frame)
-                    images.append(ExtractedFundusImage(
-                        image_bytes=img_bytes,
-                        metadata=metadata,
-                        frame_index=i,
-                    ))
+                    images.append(
+                        ExtractedFundusImage(
+                            image_bytes=img_bytes,
+                            metadata=metadata,
+                            frame_index=i,
+                        )
+                    )
             elif pixel_array.ndim == 3:
                 # Single frame: [rows, cols, channels] or [frames, rows, cols]
                 if pixel_array.shape[2] in (3, 4):
                     # RGB/RGBA
                     img_bytes = self._array_to_jpeg(pixel_array)
-                    images.append(ExtractedFundusImage(
-                        image_bytes=img_bytes, metadata=metadata,
-                    ))
+                    images.append(
+                        ExtractedFundusImage(
+                            image_bytes=img_bytes,
+                            metadata=metadata,
+                        )
+                    )
                 else:
                     # Multiple grayscale frames
                     for i in range(pixel_array.shape[0]):
                         frame = pixel_array[i]
-                        img_bytes = self._array_to_jpeg(
-                            np.stack([frame] * 3, axis=-1)
+                        img_bytes = self._array_to_jpeg(np.stack([frame] * 3, axis=-1))
+                        images.append(
+                            ExtractedFundusImage(
+                                image_bytes=img_bytes,
+                                metadata=metadata,
+                                frame_index=i,
+                            )
                         )
-                        images.append(ExtractedFundusImage(
-                            image_bytes=img_bytes, metadata=metadata, frame_index=i,
-                        ))
             elif pixel_array.ndim == 2:
                 # Single grayscale frame
                 rgb = np.stack([pixel_array] * 3, axis=-1)
                 img_bytes = self._array_to_jpeg(rgb)
-                images.append(ExtractedFundusImage(
-                    image_bytes=img_bytes, metadata=metadata,
-                ))
+                images.append(
+                    ExtractedFundusImage(
+                        image_bytes=img_bytes,
+                        metadata=metadata,
+                    )
+                )
 
         except Exception as e:
             logger.error("Failed to extract DICOM pixel data: %s", e)

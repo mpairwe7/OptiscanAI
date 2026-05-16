@@ -51,10 +51,12 @@ async def voice_stream(websocket: WebSocket) -> None:
     await websocket.accept()
 
     if not _is_enabled():
-        await websocket.send_json({
-            "type": "error",
-            "error": "Voice-first is not enabled. Set VOICE_FIRST__ENABLED=true.",
-        })
+        await websocket.send_json(
+            {
+                "type": "error",
+                "error": "Voice-first is not enabled. Set VOICE_FIRST__ENABLED=true.",
+            }
+        )
         await websocket.close(1008)
         return
 
@@ -74,15 +76,19 @@ async def voice_stream(websocket: WebSocket) -> None:
 
     try:
         # Send greeting
-        await websocket.send_json({
-            "type": "response_start",
-            "timestamp": session.started_at,
-        })
+        await websocket.send_json(
+            {
+                "type": "response_start",
+                "timestamp": session.started_at,
+            }
+        )
         greeting = _get_greeting(session.language)
-        await websocket.send_json({
-            "type": "response_chunk",
-            "data": greeting,
-        })
+        await websocket.send_json(
+            {
+                "type": "response_chunk",
+                "data": greeting,
+            }
+        )
         await websocket.send_json({"type": "response_end"})
 
         session.phase = SessionPhase.COLLECTING_HISTORY
@@ -112,12 +118,12 @@ async def voice_stream(websocket: WebSocket) -> None:
                 if msg_type == "config":
                     session.language = data.get("language", session.language)
                     session.speech_rate = data.get("speech_rate", session.speech_rate)
-                    session.barge_in_enabled = data.get(
-                        "barge_in", session.barge_in_enabled
-                    )
+                    session.barge_in_enabled = data.get("barge_in", session.barge_in_enabled)
                     logger.info(
                         "Session %s config: lang=%s rate=%.1f",
-                        session_id, session.language, session.speech_rate,
+                        session_id,
+                        session.language,
+                        session.speech_rate,
                     )
 
                 elif msg_type == "audio_end":
@@ -146,21 +152,27 @@ async def voice_stream(websocket: WebSocket) -> None:
                         session.add_transcript(transcript)
 
                     # Acknowledge receipt
-                    await websocket.send_json({
-                        "type": "response_start",
-                    })
-                    await websocket.send_json({
-                        "type": "response_chunk",
-                        "data": _get_processing_message(session.language),
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "response_start",
+                        }
+                    )
+                    await websocket.send_json(
+                        {
+                            "type": "response_chunk",
+                            "data": _get_processing_message(session.language),
+                        }
+                    )
 
                     # In production: run fundus gate + inference here
                     # For now, acknowledge and let the REST API handle prediction
                     session.phase = SessionPhase.REPORTING
-                    await websocket.send_json({
-                        "type": "response_chunk",
-                        "data": _get_result_message(session.language),
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "response_chunk",
+                            "data": _get_result_message(session.language),
+                        }
+                    )
                     await websocket.send_json({"type": "response_end"})
 
     except WebSocketDisconnect:
@@ -168,16 +180,20 @@ async def voice_stream(websocket: WebSocket) -> None:
     except Exception as e:
         logger.error("Voice session error %s: %s", session_id, e, exc_info=True)
         if websocket.client_state == WebSocketState.CONNECTED:
-            await websocket.send_json({
-                "type": "error",
-                "error": str(e),
-            })
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "error": str(e),
+                }
+            )
     finally:
         session.complete()
         pipeline.reset()
         logger.info(
             "Voice session ended: %s (%.1fs, %d utterances)",
-            session_id, session.elapsed_seconds, session.total_utterances,
+            session_id,
+            session.elapsed_seconds,
+            session.total_utterances,
         )
 
 

@@ -1,4 +1,5 @@
 """Short-lived tokens: refresh, email-verify, password-reset, magic-link, invite."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -23,9 +24,7 @@ class RefreshToken(Base):
     device_fingerprint: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(TimestampTZ, default=utcnow, nullable=False)
 
-    __table_args__ = (
-        Index("ix_refresh_user_revoked", "user_id", "revoked_at"),
-    )
+    __table_args__ = (Index("ix_refresh_user_revoked", "user_id", "revoked_at"),)
 
 
 class EmailVerificationToken(Base):
@@ -70,7 +69,12 @@ class OrganizationInvite(Base):
     invited_by_user_id: Mapped[str] = uuid_fk("users.id", nullable=False)
     email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
     role: Mapped[MembershipRole] = mapped_column(
-        Enum(MembershipRole, name="membership_role", create_type=False, values_callable=lambda x: [e.value for e in x]),
+        Enum(
+            MembershipRole,
+            name="membership_role",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
         default=MembershipRole.CLINICIAN,
         nullable=False,
     )

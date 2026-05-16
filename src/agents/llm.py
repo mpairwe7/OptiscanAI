@@ -6,6 +6,7 @@ Claude is preferred for medical reasoning (best tool-use, structured output).
 Groq provides fast inference with Llama 3.3 70B when Claude credits are exhausted.
 Deterministic rules guarantee the system always works without any LLM.
 """
+
 import logging
 import os
 from typing import Any
@@ -53,10 +54,13 @@ def _init_providers():
     if claude_key:
         try:
             import anthropic
+
             _claude_client = anthropic.AsyncAnthropic(api_key=claude_key)
             _claude_ok = True
             _active_provider = "claude"
-            logger.info(f"Claude async client ready (model={_get_env('AGENT_MODEL', 'claude-sonnet-4-20250514')})")
+            logger.info(
+                f"Claude async client ready (model={_get_env('AGENT_MODEL', 'claude-sonnet-4-20250514')})"
+            )
         except Exception as e:
             logger.warning(f"Claude init failed: {e}")
             _claude_ok = False
@@ -68,11 +72,14 @@ def _init_providers():
     if groq_key:
         try:
             from groq import AsyncGroq
+
             _groq_client = AsyncGroq(api_key=groq_key)
             _groq_ok = True
             if _active_provider == "none":
                 _active_provider = "groq"
-            logger.info(f"Groq async client ready (model={_get_env('GROQ_MODEL', 'llama-3.3-70b-versatile')})")
+            logger.info(
+                f"Groq async client ready (model={_get_env('GROQ_MODEL', 'llama-3.3-70b-versatile')})"
+            )
         except Exception as e:
             logger.warning(f"Groq init failed: {e}")
             _groq_ok = False
@@ -111,6 +118,7 @@ Rules:
 
 
 # ── Unified invoke ──
+
 
 async def invoke(
     prompt: str,
@@ -171,11 +179,13 @@ async def _invoke_claude(
             if block.type == "text":
                 text_parts.append(block.text)
             elif block.type == "tool_use":
-                tool_calls.append({
-                    "id": block.id,
-                    "name": block.name,
-                    "input": block.input,
-                })
+                tool_calls.append(
+                    {
+                        "id": block.id,
+                        "name": block.name,
+                        "input": block.input,
+                    }
+                )
 
         return {
             "text": "\n".join(text_parts),
@@ -190,12 +200,17 @@ async def _invoke_claude(
         }
     except Exception as e:
         logger.warning(f"Claude API error: {e}")
-        return {"text": "", "tool_calls": [], "model": "", "provider": "claude", "fallback": True, "error": str(e)}
+        return {
+            "text": "",
+            "tool_calls": [],
+            "model": "",
+            "provider": "claude",
+            "fallback": True,
+            "error": str(e),
+        }
 
 
-async def _invoke_groq(
-    prompt: str, system: str, max_tokens: int
-) -> dict[str, Any]:
+async def _invoke_groq(prompt: str, system: str, max_tokens: int) -> dict[str, Any]:
     """Call Groq via async SDK (OpenAI-compatible chat completions)."""
     try:
         model = _get_env("GROQ_MODEL", "llama-3.3-70b-versatile")
@@ -229,4 +244,11 @@ async def _invoke_groq(
         }
     except Exception as e:
         logger.warning(f"Groq API error: {e}")
-        return {"text": "", "tool_calls": [], "model": "", "provider": "groq", "fallback": True, "error": str(e)}
+        return {
+            "text": "",
+            "tool_calls": [],
+            "model": "",
+            "provider": "groq",
+            "fallback": True,
+            "error": str(e),
+        }

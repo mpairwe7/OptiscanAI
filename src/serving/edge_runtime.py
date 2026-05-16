@@ -7,6 +7,7 @@ parity with ``ModelService.predict()``.
 All heavy third-party imports (``onnxruntime``, ``coremltools``) are lazy
 so that the module can be imported safely in any environment.
 """
+
 from __future__ import annotations
 
 import logging
@@ -38,8 +39,7 @@ except ImportError:
     _settings = None  # type: ignore[assignment]
     _EDGE_CFG = None
     logger.info(
-        "backend.app.core.config not available -- "
-        "EdgeRuntime will use constructor defaults"
+        "backend.app.core.config not available -- " "EdgeRuntime will use constructor defaults"
     )
 
 try:
@@ -48,10 +48,7 @@ try:
 except ImportError:
     _DISEASE_NAMES = {}
     _DISEASE_COLUMNS = []
-    logger.info(
-        "Disease name mappings not available -- "
-        "EdgeRuntime will use numeric indices"
-    )
+    logger.info("Disease name mappings not available -- " "EdgeRuntime will use numeric indices")
 
 # ---------------------------------------------------------------------------
 # Standard preprocessing (identical to ModelService._transform)
@@ -59,11 +56,13 @@ except ImportError:
 _IMAGENET_MEAN = [0.485, 0.456, 0.406]
 _IMAGENET_STD = [0.229, 0.224, 0.225]
 
-_edge_transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=_IMAGENET_MEAN, std=_IMAGENET_STD),
-])
+_edge_transform = transforms.Compose(
+    [
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=_IMAGENET_MEAN, std=_IMAGENET_STD),
+    ]
+)
 
 
 class EdgeRuntime:
@@ -103,9 +102,15 @@ class EdgeRuntime:
     ) -> None:
         # Paths -- prefer explicit args, then settings, then defaults
         cfg = _EDGE_CFG
-        self._onnx_path = onnx_model_path or (cfg.onnx_model_path if cfg else "models/export/model.onnx")
-        self._coreml_path = coreml_model_path or (cfg.coreml_model_path if cfg else "models/export/model.mlpackage")
-        self._quantized_path = quantized_model_path or (cfg.quantized_model_path if cfg else "models/export/model_int8.pth")
+        self._onnx_path = onnx_model_path or (
+            cfg.onnx_model_path if cfg else "models/export/model.onnx"
+        )
+        self._coreml_path = coreml_model_path or (
+            cfg.coreml_model_path if cfg else "models/export/model.mlpackage"
+        )
+        self._quantized_path = quantized_model_path or (
+            cfg.quantized_model_path if cfg else "models/export/model_int8.pth"
+        )
         self._parity_tolerance = parity_tolerance or (cfg.parity_tolerance if cfg else 1e-4)
 
         # Disease metadata
@@ -233,10 +238,7 @@ class EdgeRuntime:
 
                 self._quantized_model = model
             except Exception:
-                logger.exception(
-                    "Failed to rebuild model from state_dict -- "
-                    "trying direct load"
-                )
+                logger.exception("Failed to rebuild model from state_dict -- " "trying direct load")
                 self._quantized_model = checkpoint
         else:
             self._quantized_model = checkpoint
@@ -245,9 +247,7 @@ class EdgeRuntime:
             self._quantized_model.eval()
 
         self._quantized_precision = precision
-        logger.info(
-            "Quantized model loaded: %s (precision=%s)", path, precision
-        )
+        logger.info("Quantized model loaded: %s (precision=%s)", path, precision)
 
     # ------------------------------------------------------------------
     # Internal preprocessing
@@ -286,8 +286,7 @@ class EdgeRuntime:
         num_classes = len(disease_codes)
         if probs.shape[0] != num_classes:
             logger.warning(
-                "Output size mismatch: model=%d, expected=%d. "
-                "Truncating/padding.",
+                "Output size mismatch: model=%d, expected=%d. " "Truncating/padding.",
                 probs.shape[0],
                 num_classes,
             )
@@ -313,11 +312,7 @@ class EdgeRuntime:
                 "name": self._disease_names.get(code, code),
                 "probability": float(probs[i]),
                 "threshold": threshold_val,
-                "confidence": (
-                    "high" if probs[i] > 0.8
-                    else "medium" if probs[i] > 0.5
-                    else "low"
-                ),
+                "confidence": ("high" if probs[i] > 0.8 else "medium" if probs[i] > 0.5 else "low"),
             }
             for i, code in enumerate(disease_codes)
             if probs[i] > threshold_val
@@ -348,9 +343,7 @@ class EdgeRuntime:
         Raises ``RuntimeError`` if the ONNX model is not loaded.
         """
         if self._onnx_session is None:
-            raise RuntimeError(
-                "ONNX model not loaded. Call load_onnx() first."
-            )
+            raise RuntimeError("ONNX model not loaded. Call load_onnx() first.")
 
         input_array = self._preprocess(image)
         input_name = self._onnx_session.get_inputs()[0].name
@@ -363,9 +356,7 @@ class EdgeRuntime:
         logits = outputs[0]
         probs = 1.0 / (1.0 + np.exp(-logits.astype(np.float64)))
 
-        return self._build_result(
-            probs.astype(np.float32), threshold, elapsed_ms, "onnx"
-        )
+        return self._build_result(probs.astype(np.float32), threshold, elapsed_ms, "onnx")
 
     def predict_coreml(
         self,
@@ -377,16 +368,12 @@ class EdgeRuntime:
         Raises ``RuntimeError`` if the CoreML model is not loaded.
         """
         if self._coreml_model is None:
-            raise RuntimeError(
-                "CoreML model not loaded. Call load_coreml() first."
-            )
+            raise RuntimeError("CoreML model not loaded. Call load_coreml() first.")
 
         try:
             import coremltools as ct  # noqa: F401,F811 — optional dep, re-import for clarity
         except ImportError as exc:
-            raise ImportError(
-                "coremltools is required for CoreML inference."
-            ) from exc
+            raise ImportError("coremltools is required for CoreML inference.") from exc
 
         # CoreML expects a PIL Image or dict input
         resized = image.convert("RGB").resize((224, 224))
@@ -405,9 +392,7 @@ class EdgeRuntime:
         else:
             probs = raw_output
 
-        return self._build_result(
-            probs.astype(np.float32), threshold, elapsed_ms, "coreml"
-        )
+        return self._build_result(probs.astype(np.float32), threshold, elapsed_ms, "coreml")
 
     def predict_quantized(
         self,
@@ -419,9 +404,7 @@ class EdgeRuntime:
         Raises ``RuntimeError`` if the quantized model is not loaded.
         """
         if self._quantized_model is None:
-            raise RuntimeError(
-                "Quantized model not loaded. Call load_quantized() first."
-            )
+            raise RuntimeError("Quantized model not loaded. Call load_quantized() first.")
 
         tensor = self._preprocess_torch(image)
         if self._quantized_precision == "fp16":
@@ -438,7 +421,9 @@ class EdgeRuntime:
         probs = torch.sigmoid(output).cpu().numpy()
 
         return self._build_result(
-            probs.astype(np.float32), threshold, elapsed_ms,
+            probs.astype(np.float32),
+            threshold,
+            elapsed_ms,
             f"quantized_{self._quantized_precision}",
         )
 
@@ -507,12 +492,14 @@ class EdgeRuntime:
             diff = abs(ref_p - edge_p)
             max_diff = max(max_diff, diff)
             if diff > tol:
-                mismatched.append({
-                    "code": code,
-                    "reference": round(ref_p, 6),
-                    "edge": round(edge_p, 6),
-                    "diff": round(diff, 6),
-                })
+                mismatched.append(
+                    {
+                        "code": code,
+                        "reference": round(ref_p, 6),
+                        "edge": round(edge_p, 6),
+                        "diff": round(diff, 6),
+                    }
+                )
 
         passed = max_diff <= tol
 

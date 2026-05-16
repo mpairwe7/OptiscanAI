@@ -7,7 +7,14 @@ from fpdf import FPDF
 class BOMReport(FPDF):
     def header(self):
         self.set_font("Helvetica", "B", 11)
-        self.cell(0, 8, "RetinalAI Clinical Screening Platform - MLOps Capstone Project", align="C", new_x="LMARGIN", new_y="NEXT")
+        self.cell(
+            0,
+            8,
+            "RetinalAI Clinical Screening Platform - MLOps Capstone Project",
+            align="C",
+            new_x="LMARGIN",
+            new_y="NEXT",
+        )
         self.set_draw_color(0, 51, 102)
         self.set_line_width(0.8)
         self.line(10, self.get_y(), 200, self.get_y())
@@ -45,7 +52,11 @@ class BOMReport(FPDF):
             else:
                 self.set_fill_color(255)
             for i, cell in enumerate(row):
-                align = "R" if i >= len(row) - 2 and row[i].replace(",", "").replace(" ", "").isdigit() else "L"
+                align = (
+                    "R"
+                    if i >= len(row) - 2 and row[i].replace(",", "").replace(" ", "").isdigit()
+                    else "L"
+                )
                 if i == 0:
                     align = "C"
                 self.cell(col_widths[i], 7, cell, border=1, fill=True, align=align)
@@ -67,7 +78,9 @@ def main():
 
     pdf.set_font("Helvetica", "", 11)
     pdf.set_text_color(60)
-    pdf.cell(0, 7, "RetinalAI Clinical Screening Platform", align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(
+        0, 7, "RetinalAI Clinical Screening Platform", align="C", new_x="LMARGIN", new_y="NEXT"
+    )
     pdf.cell(0, 7, "MLOps Capstone Project", align="C", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(4)
 

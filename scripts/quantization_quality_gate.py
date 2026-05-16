@@ -60,6 +60,7 @@ logger = logging.getLogger(__name__)
 # Gate result data structure
 # ---------------------------------------------------------------------------
 
+
 class GateResult:
     """Container for a single quality gate check result."""
 
@@ -93,6 +94,7 @@ class GateResult:
 # ---------------------------------------------------------------------------
 # Faithfulness gate
 # ---------------------------------------------------------------------------
+
 
 def check_faithfulness(
     artefact: dict,
@@ -231,7 +233,8 @@ def _infer_torchscript(ts_path: str, input_array: np.ndarray) -> np.ndarray | No
 
 
 def _infer_pytorch_checkpoint(
-    ckpt_path: str, input_array: np.ndarray,
+    ckpt_path: str,
+    input_array: np.ndarray,
 ) -> np.ndarray | None:
     """Load a PyTorch checkpoint and run inference.
 
@@ -269,7 +272,9 @@ def _infer_pytorch_checkpoint(
 
         if quant_type and "proxy" in str(quant_type):
             model = torch.quantization.quantize_dynamic(
-                model, {torch.nn.Linear}, dtype=torch.qint8,
+                model,
+                {torch.nn.Linear},
+                dtype=torch.qint8,
             )
 
         try:
@@ -302,6 +307,7 @@ def _infer_pytorch_checkpoint(
 # ---------------------------------------------------------------------------
 # WER gate (for speech-enabled pipelines)
 # ---------------------------------------------------------------------------
+
 
 def check_wer(
     baseline_metrics: dict,
@@ -368,6 +374,7 @@ def check_wer(
 # Bundle size gate
 # ---------------------------------------------------------------------------
 
+
 def check_bundle_size(
     artefact: dict,
     max_size_mb: float = 500.0,
@@ -396,17 +403,13 @@ def check_bundle_size(
         if p.is_file():
             actual_size = p.stat().st_size / (1024 * 1024)
         elif p.is_dir():
-            actual_size = sum(
-                f.stat().st_size for f in p.rglob("*") if f.is_file()
-            ) / (1024 * 1024)
+            actual_size = sum(f.stat().st_size for f in p.rglob("*") if f.is_file()) / (1024 * 1024)
 
     # Use whichever is larger (manifest may be stale)
     size = max(reported_size, actual_size)
 
     passed = size <= max_size_mb
-    detail = (
-        f"size={size:.2f} MB (max allowed={max_size_mb:.2f} MB)"
-    )
+    detail = f"size={size:.2f} MB (max allowed={max_size_mb:.2f} MB)"
 
     return GateResult(
         gate_name="bundle_size",
@@ -421,6 +424,7 @@ def check_bundle_size(
 # ---------------------------------------------------------------------------
 # Latency gate
 # ---------------------------------------------------------------------------
+
 
 def check_latency(
     artefact: dict,
@@ -467,7 +471,10 @@ def check_latency(
             latencies = _benchmark_torchscript(artefact_path, dummy, warmup_runs, benchmark_runs)
         else:
             latencies = _benchmark_pytorch_checkpoint(
-                artefact_path, dummy, warmup_runs, benchmark_runs,
+                artefact_path,
+                dummy,
+                warmup_runs,
+                benchmark_runs,
             )
     except Exception as exc:
         return GateResult(
@@ -602,7 +609,9 @@ def _benchmark_pytorch_checkpoint(
 
         if quant_type and "proxy" in quant_type:
             model = torch.quantization.quantize_dynamic(
-                model, {nn.Linear}, dtype=torch.qint8,
+                model,
+                {nn.Linear},
+                dtype=torch.qint8,
             )
 
         try:
@@ -633,6 +642,7 @@ def _benchmark_pytorch_checkpoint(
 # ---------------------------------------------------------------------------
 # Report printer
 # ---------------------------------------------------------------------------
+
 
 def print_gate_report(results: list[GateResult]) -> None:
     """Print a formatted PASS/FAIL table for all gate checks."""
@@ -697,6 +707,7 @@ def print_gate_report(results: list[GateResult]) -> None:
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -773,7 +784,8 @@ def main() -> None:
 
     logger.info(
         "Loaded manifest: %d artefacts, FP32 baseline %.2f MB",
-        len(artefacts), fp32_size,
+        len(artefacts),
+        fp32_size,
     )
 
     # -----------------------------------------------------------------------
@@ -825,12 +837,15 @@ def main() -> None:
                 ref_p = _PROJECT_ROOT / ref_p
             if ref_p.exists():
                 result = check_faithfulness(
-                    artefact, str(ref_p), max_drop=args.max_faithfulness_drop,
+                    artefact,
+                    str(ref_p),
+                    max_drop=args.max_faithfulness_drop,
                 )
                 all_results.append(result)
                 logger.info(
                     "  Faithfulness [%s]: %s",
-                    fmt, "PASS" if result.passed else "FAIL",
+                    fmt,
+                    "PASS" if result.passed else "FAIL",
                 )
 
         # Bundle size gate
@@ -838,18 +853,21 @@ def main() -> None:
         all_results.append(result)
         logger.info(
             "  Bundle size [%s]: %s",
-            fmt, "PASS" if result.passed else "FAIL",
+            fmt,
+            "PASS" if result.passed else "FAIL",
         )
 
         # Latency gate
         if not args.skip_latency:
             result = check_latency(
-                artefact, max_p95_ms=args.max_p95_latency_ms,
+                artefact,
+                max_p95_ms=args.max_p95_latency_ms,
             )
             all_results.append(result)
             logger.info(
                 "  Latency [%s]: %s",
-                fmt, "PASS" if result.passed else "FAIL",
+                fmt,
+                "PASS" if result.passed else "FAIL",
             )
 
     # WER gate (global, not per-artefact)

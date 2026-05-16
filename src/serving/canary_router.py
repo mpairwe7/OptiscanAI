@@ -168,6 +168,7 @@ class CanaryRouter:
                 bucket = hash_value / 0x100000000
             else:
                 import random
+
                 bucket = random.random()
 
             if bucket < config.canary_weight:
@@ -236,10 +237,16 @@ class CanaryRouter:
         sticky_sessions : bool, optional
         """
         with self._lock:
-            new_primary = primary_version if primary_version is not None else self._config.primary_version
-            new_canary = canary_version if canary_version is not None else self._config.canary_version
+            new_primary = (
+                primary_version if primary_version is not None else self._config.primary_version
+            )
+            new_canary = (
+                canary_version if canary_version is not None else self._config.canary_version
+            )
             new_weight = canary_weight if canary_weight is not None else self._config.canary_weight
-            new_sticky = sticky_sessions if sticky_sessions is not None else self._config.sticky_sessions
+            new_sticky = (
+                sticky_sessions if sticky_sessions is not None else self._config.sticky_sessions
+            )
 
             self._config = CanaryConfig(
                 primary_version=new_primary,

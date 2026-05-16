@@ -37,13 +37,13 @@ def plot_disease_distribution(
         colors = plt.cm.viridis(np.linspace(0.2, 0.9, min(20, len(freq))))
         axes[0].barh(
             range(min(20, len(freq))),
-            freq.values[: 20],
+            freq.values[:20],
             color=colors,
             edgecolor="black",
             linewidth=0.4,
         )
         axes[0].set_yticks(range(min(20, len(freq))))
-        axes[0].set_yticklabels(freq.index[: 20], fontsize=7)
+        axes[0].set_yticklabels(freq.index[:20], fontsize=7)
         axes[0].invert_yaxis()
         axes[0].set_xlabel("Prevalence (%)")
         axes[0].set_title("(a) Top-20 Disease Prevalence")
@@ -65,10 +65,14 @@ def plot_disease_distribution(
 
         rare = (freq < 1.0).sum()
         axes[1].text(
-            0.95, 0.95,
+            0.95,
+            0.95,
             f"Rare (<1%): {rare}/{len(freq)}",
-            transform=axes[1].transAxes, ha="right", va="top",
-            fontsize=7, bbox=dict(boxstyle="round,pad=0.3", fc="lightyellow", alpha=0.8),
+            transform=axes[1].transAxes,
+            ha="right",
+            va="top",
+            fontsize=7,
+            bbox=dict(boxstyle="round,pad=0.3", fc="lightyellow", alpha=0.8),
         )
 
         add_watermark(fig)
@@ -84,8 +88,15 @@ def plot_multilabel_statistics(
         fig, axes = ieee_figure(2, 2, width="double", height_ratio=0.45)
 
         # (a) Histogram + KDE
-        axes[0, 0].hist(labels_per_sample, bins=range(int(labels_per_sample.max()) + 2),
-                        color=IEEE_COLORS["blue"], alpha=0.7, edgecolor="black", lw=0.4, density=True)
+        axes[0, 0].hist(
+            labels_per_sample,
+            bins=range(int(labels_per_sample.max()) + 2),
+            color=IEEE_COLORS["blue"],
+            alpha=0.7,
+            edgecolor="black",
+            lw=0.4,
+            density=True,
+        )
         if len(labels_per_sample) > 1:
             try:
                 kde_x = np.linspace(0, labels_per_sample.max(), 100)
@@ -99,8 +110,12 @@ def plot_multilabel_statistics(
         axes[0, 0].set_title("(a) Label Distribution")
 
         # (b) Box plot
-        axes[0, 1].boxplot(labels_per_sample, vert=True, patch_artist=True,
-                                boxprops=dict(facecolor=IEEE_COLORS["teal"], alpha=0.6))
+        axes[0, 1].boxplot(
+            labels_per_sample,
+            vert=True,
+            patch_artist=True,
+            boxprops=dict(facecolor=IEEE_COLORS["teal"], alpha=0.6),
+        )
         axes[0, 1].set_ylabel("Diseases per Sample")
         axes[0, 1].set_title("(b) Box Plot")
 
@@ -129,9 +144,14 @@ def plot_multilabel_statistics(
             f"Skew: {labels_per_sample.skew():.2f}"
         )
         axes[1, 1].text(
-            0.95, 0.3, stats_text,
-            transform=axes[1, 1].transAxes, ha="right", va="bottom",
-            fontsize=7, bbox=dict(boxstyle="round", fc="lightyellow", alpha=0.8),
+            0.95,
+            0.3,
+            stats_text,
+            transform=axes[1, 1].transAxes,
+            ha="right",
+            va="bottom",
+            fontsize=7,
+            bbox=dict(boxstyle="round", fc="lightyellow", alpha=0.8),
         )
 
         add_watermark(fig)
@@ -161,11 +181,19 @@ def plot_cooccurrence_matrix(
         fig, ax = ieee_figure(1, 1, width="double", height_ratio=0.85)
         mask = np.triu(np.ones_like(norm, dtype=bool), k=1)
         sns.heatmap(
-            norm, mask=mask, ax=ax,
-            xticklabels=top_diseases, yticklabels=top_diseases,
-            cmap="YlOrRd", vmin=0, vmax=1,
-            annot=True, fmt=".2f", annot_kws={"size": 6},
-            linewidths=0.3, linecolor="white",
+            norm,
+            mask=mask,
+            ax=ax,
+            xticklabels=top_diseases,
+            yticklabels=top_diseases,
+            cmap="YlOrRd",
+            vmin=0,
+            vmax=1,
+            annot=True,
+            fmt=".2f",
+            annot_kws={"size": 6},
+            linewidths=0.3,
+            linecolor="white",
             cbar_kws={"label": "Normalized Co-occurrence", "shrink": 0.8},
         )
         ax.set_title(f"Disease Co-occurrence Matrix (Top {top_k})")
@@ -187,14 +215,28 @@ def plot_class_imbalance_analysis(
 
         # (a) Imbalance ratio visualization
         sorted_counts = disease_counts.sort_values(ascending=False)
-        axes[0].fill_between(range(len(sorted_counts)), sorted_counts.values, alpha=0.3, color=IEEE_COLORS["blue"])
-        axes[0].plot(range(len(sorted_counts)), sorted_counts.values, "o-", ms=3, lw=1, color=IEEE_COLORS["blue"])
+        axes[0].fill_between(
+            range(len(sorted_counts)), sorted_counts.values, alpha=0.3, color=IEEE_COLORS["blue"]
+        )
+        axes[0].plot(
+            range(len(sorted_counts)),
+            sorted_counts.values,
+            "o-",
+            ms=3,
+            lw=1,
+            color=IEEE_COLORS["blue"],
+        )
         axes[0].set_xlabel("Disease Rank")
         axes[0].set_ylabel("Sample Count")
         axes[0].set_title("(a) Long-tail Distribution")
 
         # (b) Prevalence categories
-        categories = {"Common (>5%)": 0, "Moderate (1-5%)": 0, "Rare (<1%)": 0, "Very Rare (<0.5%)": 0}
+        categories = {
+            "Common (>5%)": 0,
+            "Moderate (1-5%)": 0,
+            "Rare (<1%)": 0,
+            "Very Rare (<0.5%)": 0,
+        }
         for p in freq:
             if p > 5:
                 categories["Common (>5%)"] += 1
@@ -205,10 +247,18 @@ def plot_class_imbalance_analysis(
             else:
                 categories["Very Rare (<0.5%)"] += 1
 
-        cat_colors = [IEEE_COLORS["green"], IEEE_COLORS["blue"], IEEE_COLORS["orange"], IEEE_COLORS["red"]]
+        cat_colors = [
+            IEEE_COLORS["green"],
+            IEEE_COLORS["blue"],
+            IEEE_COLORS["orange"],
+            IEEE_COLORS["red"],
+        ]
         wedges, texts, autotexts = axes[1].pie(
-            categories.values(), labels=categories.keys(),
-            autopct="%1.0f%%", colors=cat_colors, startangle=90,
+            categories.values(),
+            labels=categories.keys(),
+            autopct="%1.0f%%",
+            colors=cat_colors,
+            startangle=90,
             textprops={"fontsize": 7},
         )
         axes[1].set_title("(b) Prevalence Categories")
@@ -224,9 +274,16 @@ def plot_class_imbalance_analysis(
             f"Least common:\n  {disease_counts[disease_counts > 0].idxmin()} ({min_count})\n\n"
             f"Strategy:\n  Focal Loss + Pos Weighting"
         )
-        axes[2].text(0.1, 0.5, text, transform=axes[2].transAxes, fontsize=8,
-                     va="center", family="monospace",
-                     bbox=dict(boxstyle="round", fc="#f0f0f0", ec="#cccccc"))
+        axes[2].text(
+            0.1,
+            0.5,
+            text,
+            transform=axes[2].transAxes,
+            fontsize=8,
+            va="center",
+            family="monospace",
+            bbox=dict(boxstyle="round", fc="#f0f0f0", ec="#cccccc"),
+        )
         axes[2].set_axis_off()
         axes[2].set_title("(c) Imbalance Summary")
 
@@ -252,8 +309,14 @@ def plot_split_distribution(
         axes[0].bar(labels, sizes, color=colors, edgecolor="black", lw=0.5)
         total = sum(sizes)
         for i, (s, _label) in enumerate(zip(sizes, labels)):
-            axes[0].text(i, s + total * 0.01, f"{s / total * 100:.1f}%",
-                         ha="center", fontsize=8, fontweight="bold")
+            axes[0].text(
+                i,
+                s + total * 0.01,
+                f"{s / total * 100:.1f}%",
+                ha="center",
+                fontsize=8,
+                fontweight="bold",
+            )
         axes[0].set_ylabel("Number of Samples")
         axes[0].set_title("(a) Dataset Split Distribution")
 
@@ -261,11 +324,13 @@ def plot_split_distribution(
         top_10 = train_df[disease_columns].sum().sort_values(ascending=False).index[:10]
         x = np.arange(len(top_10))
         w = 0.25
-        for offset, (df, name, color) in enumerate([
-            (train_df, "Train", colors[0]),
-            (val_df, "Val", colors[1]),
-            (test_df, "Test", colors[2]),
-        ]):
+        for offset, (df, name, color) in enumerate(
+            [
+                (train_df, "Train", colors[0]),
+                (val_df, "Val", colors[1]),
+                (test_df, "Test", colors[2]),
+            ]
+        ):
             vals = df[top_10].sum().values / len(df) * 100
             axes[1].bar(x + offset * w, vals, w, label=name, color=color, edgecolor="black", lw=0.3)
         axes[1].set_xticks(x + w)

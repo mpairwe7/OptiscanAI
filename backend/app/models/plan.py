@@ -1,4 +1,5 @@
 """Plan catalog — Free, Clinician, Practice, Health System."""
+
 from __future__ import annotations
 
 import enum
@@ -59,7 +60,9 @@ class Plan(Base):
     stripe_price_id_annual: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(TimestampTZ, default=utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(TimestampTZ, default=utcnow, onupdate=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        TimestampTZ, default=utcnow, onupdate=utcnow, nullable=False
+    )
 
     @property
     def rank(self) -> int:

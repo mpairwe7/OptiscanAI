@@ -1,4 +1,5 @@
 """Structured JSON logging configuration for production."""
+
 import json
 import logging
 import sys
@@ -40,10 +41,12 @@ def setup_logging(log_level: str = "INFO", log_format: str = "json"):
     if log_format == "json":
         handler.setFormatter(JSONFormatter())
     else:
-        handler.setFormatter(logging.Formatter(
-            "%(asctime)s %(levelname)s %(name)s [%(funcName)s:%(lineno)d]: %(message)s",
-            datefmt="%Y-%m-%dT%H:%M:%S",
-        ))
+        handler.setFormatter(
+            logging.Formatter(
+                "%(asctime)s %(levelname)s %(name)s [%(funcName)s:%(lineno)d]: %(message)s",
+                datefmt="%Y-%m-%dT%H:%M:%S",
+            )
+        )
     root.addHandler(handler)
 
     # Suppress noisy loggers

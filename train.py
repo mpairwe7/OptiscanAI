@@ -66,6 +66,7 @@ def build_model(cfg: dict) -> torch.nn.Module:
     def _build_kg():
         from src.data.datamodule import DISEASE_COLUMNS
         from src.models.vignn import ClinicalKnowledgeGraph
+
         names = model_cfg.get("disease_names")
         if not names:
             names = (
@@ -82,10 +83,14 @@ def build_model(cfg: dict) -> torch.nn.Module:
 
     if model_name == "vignn":
         from src.models.vignn import create_vignn_model
+
         kg = _build_kg()
         model = create_vignn_model(
-            num_classes=num_classes, hidden_dim=hidden,
-            num_graph_layers=layers, num_heads=heads, dropout=drop,
+            num_classes=num_classes,
+            hidden_dim=hidden,
+            num_graph_layers=layers,
+            num_heads=heads,
+            dropout=drop,
             clinical_knowledge_graph=kg,
             num_patches=model_cfg.get("num_patches", 196),
             patch_embed_dim=model_cfg.get("patch_embed_dim", 384),
@@ -93,33 +98,46 @@ def build_model(cfg: dict) -> torch.nn.Module:
 
     elif model_name == "graphclip":
         from src.models.graphclip import GraphCLIP
+
         kg = _build_kg()
         model = GraphCLIP(
-            num_classes=num_classes, hidden_dim=hidden,
-            num_graph_layers=layers, num_heads=heads,
-            dropout=drop, clinical_knowledge_graph=kg,
+            num_classes=num_classes,
+            hidden_dim=hidden,
+            num_graph_layers=layers,
+            num_heads=heads,
+            dropout=drop,
+            clinical_knowledge_graph=kg,
         )
 
     elif model_name == "visual_language_gnn":
         from src.models.visual_language_gnn import VisualLanguageGNN
+
         kg = _build_kg()
         model = VisualLanguageGNN(
-            num_classes=num_classes, hidden_dim=hidden,
-            num_layers=layers, num_heads=heads,
-            dropout=drop, clinical_knowledge_graph=kg,
+            num_classes=num_classes,
+            hidden_dim=hidden,
+            num_layers=layers,
+            num_heads=heads,
+            dropout=drop,
+            clinical_knowledge_graph=kg,
         )
 
     elif model_name == "scene_graph_transformer":
         from src.models.scene_graph_transformer import SceneGraphTransformer
+
         kg = _build_kg()
         model = SceneGraphTransformer(
-            num_classes=num_classes, hidden_dim=hidden,
-            num_layers=layers, num_heads=heads,
-            dropout=drop, clinical_knowledge_graph=kg,
+            num_classes=num_classes,
+            hidden_dim=hidden,
+            num_layers=layers,
+            num_heads=heads,
+            dropout=drop,
+            clinical_knowledge_graph=kg,
         )
 
     elif model_name == "hybrid":
         from src.models.retinal_foundation_hybrid import create_hybrid_model
+
         kg = _build_kg()
         model = create_hybrid_model(
             num_classes=num_classes,
@@ -142,6 +160,7 @@ def build_model(cfg: dict) -> torch.nn.Module:
 
     elif model_name == "vit":
         import timm
+
         model = timm.create_model(
             "vit_base_patch16_224",
             pretrained=model_cfg.get("pretrained_backbone", True),
@@ -150,6 +169,7 @@ def build_model(cfg: dict) -> torch.nn.Module:
 
     elif model_name == "efficientnet":
         import timm
+
         model = timm.create_model(
             "efficientnet_b4",
             pretrained=model_cfg.get("pretrained_backbone", True),
@@ -166,7 +186,9 @@ def build_model(cfg: dict) -> torch.nn.Module:
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger = logging.getLogger(__name__)
-    logger.info(f"Model: {model_name} | Total: {total_params/1e6:.1f}M | Trainable: {trainable_params/1e6:.1f}M")
+    logger.info(
+        f"Model: {model_name} | Total: {total_params/1e6:.1f}M | Trainable: {trainable_params/1e6:.1f}M"
+    )
 
     return model
 
@@ -232,7 +254,9 @@ def main():
     model = build_model(cfg)
 
     # Loss with class weights
-    pos_weight = datamodule.pos_weights.to(f"cuda:{local_rank}" if torch.cuda.is_available() else "cpu")
+    pos_weight = datamodule.pos_weights.to(
+        f"cuda:{local_rank}" if torch.cuda.is_available() else "cpu"
+    )
     criterion = build_loss(cfg, pos_weight=pos_weight)
 
     # Trainer

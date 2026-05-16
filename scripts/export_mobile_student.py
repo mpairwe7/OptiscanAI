@@ -59,9 +59,7 @@ def load_student(checkpoint_path: str, device: torch.device) -> MobileStudentV1:
     return student.to(device)
 
 
-def export_onnx_fp32(
-    model: MobileStudentV1, output_path: Path, img_size: int = 224
-) -> Path:
+def export_onnx_fp32(model: MobileStudentV1, output_path: Path, img_size: int = 224) -> Path:
     """Export model to ONNX FP32."""
     model.eval()
     dummy = torch.randn(1, 3, img_size, img_size, device=next(model.parameters()).device)
@@ -119,12 +117,8 @@ def validate_onnx_parity(
     torch_model.eval()
 
     # Create ONNX sessions
-    fp32_session = ort.InferenceSession(
-        str(onnx_fp32_path), providers=["CPUExecutionProvider"]
-    )
-    int8_session = ort.InferenceSession(
-        str(onnx_int8_path), providers=["CPUExecutionProvider"]
-    )
+    fp32_session = ort.InferenceSession(str(onnx_fp32_path), providers=["CPUExecutionProvider"])
+    int8_session = ort.InferenceSession(str(onnx_int8_path), providers=["CPUExecutionProvider"])
 
     max_fp32_diff = 0.0
     max_int8_diff = 0.0
@@ -202,8 +196,7 @@ def validate_onnx_parity(
         "parity_checks": {
             "fp32_parity_ok": bool(max_fp32_diff < 1e-4),
             "int8_parity_ok": bool(
-                max_int8_prob_diff < 0.20
-                and np.mean(int8_binary_agreements) >= 0.99
+                max_int8_prob_diff < 0.20 and np.mean(int8_binary_agreements) >= 0.99
             ),
         },
     }

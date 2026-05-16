@@ -49,8 +49,8 @@ def compute_wer(reference: str, hypothesis: str) -> float:
         for j in range(1, len(hyp_words) + 1):
             cost = 0 if ref_words[i - 1] == hyp_words[j - 1] else 1
             d[i][j] = min(
-                d[i - 1][j] + 1,      # deletion
-                d[i][j - 1] + 1,      # insertion
+                d[i - 1][j] + 1,  # deletion
+                d[i][j - 1] + 1,  # insertion
                 d[i - 1][j - 1] + cost,  # substitution
             )
 
@@ -83,10 +83,12 @@ def evaluate(args):
     for wav_file in sorted(test_dir.glob("*.wav")):
         txt_file = wav_file.with_suffix(".txt")
         if txt_file.exists():
-            pairs.append({
-                "audio": str(wav_file),
-                "reference": txt_file.read_text().strip(),
-            })
+            pairs.append(
+                {
+                    "audio": str(wav_file),
+                    "reference": txt_file.read_text().strip(),
+                }
+            )
 
     if not pairs:
         logger.error("No test pairs found in %s", test_dir)
@@ -99,9 +101,7 @@ def evaluate(args):
     try:
         from faster_whisper import WhisperModel
 
-        model = WhisperModel(
-            args.model_path, device="cpu", compute_type="int8"
-        )
+        model = WhisperModel(args.model_path, device="cpu", compute_type="int8")
     except ImportError:
         logger.error("faster-whisper not installed")
         return
@@ -111,8 +111,17 @@ def evaluate(args):
     all_wers = []
 
     clinical_terms = [
-        "diabetes", "sugar", "hypertension", "pressure", "hiv", "sickle",
-        "malaria", "esukaali", "puleesa", "silimu", "amaaso",
+        "diabetes",
+        "sugar",
+        "hypertension",
+        "pressure",
+        "hiv",
+        "sickle",
+        "malaria",
+        "esukaali",
+        "puleesa",
+        "silimu",
+        "amaaso",
     ]
     term_correct = {t: 0 for t in clinical_terms}
     term_total = {t: 0 for t in clinical_terms}
@@ -127,6 +136,7 @@ def evaluate(args):
         audio, sr = sf.read(pair["audio"])
         if sr != 16000:
             import resampy
+
             audio = resampy.resample(audio, sr, 16000)
 
         segments, _ = model.transcribe(audio, language="en", beam_size=5)

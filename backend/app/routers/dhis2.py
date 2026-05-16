@@ -75,7 +75,12 @@ async def search_patient(
         client = DHIS2Client(settings.dhis2.base_url, auth)
         results = await client.search_patient(query, org_unit)
         await client.close()
-        return {"results": [{"tei_id": r.tei_id, "name": r.name, "org_unit": r.org_unit} for r in results], "count": len(results)}
+        return {
+            "results": [
+                {"tei_id": r.tei_id, "name": r.name, "org_unit": r.org_unit} for r in results
+            ],
+            "count": len(results),
+        }
     except Exception as e:
         raise HTTPException(502, f"DHIS2 error: {e}")
 
@@ -103,7 +108,11 @@ async def create_referral(body: ReferralRequest):
         from backend.app.integrations.dhis2.auth import DHIS2Auth
         from backend.app.integrations.dhis2.client import DHIS2Client
 
-        auth = DHIS2Auth(method=settings.dhis2.auth_method, personal_access_token=settings.dhis2.personal_access_token, base_url=settings.dhis2.base_url)
+        auth = DHIS2Auth(
+            method=settings.dhis2.auth_method,
+            personal_access_token=settings.dhis2.personal_access_token,
+            base_url=settings.dhis2.base_url,
+        )
         client = DHIS2Client(settings.dhis2.base_url, auth)
         event_id = await client.create_referral_event(referral)
         await client.close()
@@ -111,7 +120,11 @@ async def create_referral(body: ReferralRequest):
     except Exception as e:
         logger.warning("DHIS2 unavailable, queuing offline: %s", e)
         queue = DHIS2OfflineQueue(settings.dhis2.queue_dir)
-        op = DHIS2Operation(operation_id=str(uuid4()), operation_type="create_referral", payload=referral.model_dump())
+        op = DHIS2Operation(
+            operation_id=str(uuid4()),
+            operation_type="create_referral",
+            payload=referral.model_dump(),
+        )
         await queue.enqueue(op)
         return {"event_id": "", "status": "queued", "queued_offline": True}
 
@@ -120,6 +133,7 @@ async def create_referral(body: ReferralRequest):
 async def queue_status():
     _require()
     from backend.app.integrations.dhis2.offline_queue import DHIS2OfflineQueue
+
     queue = DHIS2OfflineQueue(settings.dhis2.queue_dir)
     count = await queue.get_pending_count()
     return {"pending": count}

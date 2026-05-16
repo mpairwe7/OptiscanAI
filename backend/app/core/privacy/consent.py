@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ConsentRecord:
     """Recorded patient consent."""
+
     consent_id: str
     patient_id_hash: str  # SHA-256 hashed patient identifier
     purpose: str  # screening | referral | data_sharing | research
@@ -73,28 +74,36 @@ class ConsentManager:
         )
 
         # Compute integrity hash
-        hash_input = json.dumps({
-            "consent_id": record.consent_id,
-            "patient_id_hash": record.patient_id_hash,
-            "purpose": record.purpose,
-            "timestamp": record.timestamp,
-        }, sort_keys=True)
+        hash_input = json.dumps(
+            {
+                "consent_id": record.consent_id,
+                "patient_id_hash": record.patient_id_hash,
+                "purpose": record.purpose,
+                "timestamp": record.timestamp,
+            },
+            sort_keys=True,
+        )
         record.entry_hash = hashlib.sha256(hash_input.encode()).hexdigest()
 
         # Persist
         with open(self._consent_file, "a") as f:
-            f.write(json.dumps({
-                "consent_id": record.consent_id,
-                "patient_id_hash": record.patient_id_hash,
-                "purpose": record.purpose,
-                "scope": record.scope,
-                "method": record.consent_method,
-                "language": record.language,
-                "granted": record.granted,
-                "timestamp": record.timestamp,
-                "audio_hash": record.audio_hash,
-                "entry_hash": record.entry_hash,
-            }) + "\n")
+            f.write(
+                json.dumps(
+                    {
+                        "consent_id": record.consent_id,
+                        "patient_id_hash": record.patient_id_hash,
+                        "purpose": record.purpose,
+                        "scope": record.scope,
+                        "method": record.consent_method,
+                        "language": record.language,
+                        "granted": record.granted,
+                        "timestamp": record.timestamp,
+                        "audio_hash": record.audio_hash,
+                        "entry_hash": record.entry_hash,
+                    }
+                )
+                + "\n"
+            )
 
         # Save audio recording if provided
         if audio_bytes:
@@ -103,7 +112,9 @@ class ConsentManager:
 
         logger.info(
             "Consent recorded: %s (purpose=%s, method=%s)",
-            record.consent_id, purpose, consent_method,
+            record.consent_id,
+            purpose,
+            consent_method,
         )
         return record
 
@@ -135,12 +146,17 @@ class ConsentManager:
         )
         # Mark as revoked
         with open(self._consent_file, "a") as f:
-            f.write(json.dumps({
-                "consent_id": record.consent_id,
-                "patient_id_hash": record.patient_id_hash,
-                "purpose": purpose,
-                "granted": False,
-                "timestamp": time.time(),
-                "action": "revoked",
-            }) + "\n")
+            f.write(
+                json.dumps(
+                    {
+                        "consent_id": record.consent_id,
+                        "patient_id_hash": record.patient_id_hash,
+                        "purpose": purpose,
+                        "granted": False,
+                        "timestamp": time.time(),
+                        "action": "revoked",
+                    }
+                )
+                + "\n"
+            )
         logger.info("Consent revoked for purpose=%s", purpose)

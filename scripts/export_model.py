@@ -52,9 +52,12 @@ def main():
         onnx_path = out_dir / "model.onnx"
         try:
             torch.onnx.export(
-                model, dummy_input, str(onnx_path),
+                model,
+                dummy_input,
+                str(onnx_path),
                 opset_version=export_cfg["onnx"].get("opset_version", 17),
-                input_names=["image"], output_names=["logits"],
+                input_names=["image"],
+                output_names=["logits"],
                 dynamic_axes={"image": {0: "batch"}, "logits": {0: "batch"}},
             )
             manifest["formats"].append("onnx")
@@ -76,9 +79,7 @@ def main():
     # Save manifest
     (out_dir / "export_manifest.json").write_text(json.dumps(manifest, indent=2))
     if ckpt.get("decision_thresholds") is not None:
-        (out_dir / "thresholds.json").write_text(
-            json.dumps(ckpt["decision_thresholds"], indent=2)
-        )
+        (out_dir / "thresholds.json").write_text(json.dumps(ckpt["decision_thresholds"], indent=2))
     logger.info(f"Export complete: {manifest['formats']}")
 
 

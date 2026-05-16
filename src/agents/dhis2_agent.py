@@ -48,14 +48,18 @@ class DHIS2Agent:
 
             logger.info(
                 "DHIS2Agent: Creating referral for %d findings (priority=%s)",
-                len(detected), priority,
+                len(detected),
+                priority,
             )
 
             if self.bus:
-                await self.bus.emit(EventType.DHIS2_REFERRAL_CREATED, {
-                    "diseases": detected,
-                    "priority": priority,
-                })
+                await self.bus.emit(
+                    EventType.DHIS2_REFERRAL_CREATED,
+                    {
+                        "diseases": detected,
+                        "priority": priority,
+                    },
+                )
 
         except Exception as e:
             logger.error("DHIS2Agent referral creation failed: %s", e)

@@ -1,4 +1,5 @@
 """Invoice model — one per billing period (or one per ad-hoc MoMo payment)."""
+
 from __future__ import annotations
 
 import enum
@@ -37,10 +38,17 @@ class Invoice(Base):
         nullable=False,
     )
     provider: Mapped[PaymentProvider] = mapped_column(
-        Enum(PaymentProvider, name="payment_provider", create_type=False, values_callable=lambda x: [e.value for e in x]),
+        Enum(
+            PaymentProvider,
+            name="payment_provider",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
         nullable=False,
     )
-    provider_invoice_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    provider_invoice_id: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True, index=True
+    )
 
     hosted_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     pdf_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
@@ -51,6 +59,4 @@ class Invoice(Base):
     issued_at: Mapped[datetime] = mapped_column(TimestampTZ, default=utcnow, nullable=False)
     paid_at: Mapped[Optional[datetime]] = mapped_column(TimestampTZ, nullable=True)
 
-    __table_args__ = (
-        Index("ix_invoice_org_issued", "organization_id", "issued_at"),
-    )
+    __table_args__ = (Index("ix_invoice_org_issued", "organization_id", "issued_at"),)

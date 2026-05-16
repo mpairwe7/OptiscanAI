@@ -28,7 +28,14 @@ def plot_model_comparison_bars(
 ):
     """Side-by-side bar comparison across models (notebook cell 31 enhanced)."""
     if metrics is None:
-        metrics = ["f1_macro", "f1_micro", "auc_roc", "precision_macro", "recall_macro", "accuracy_macro"]
+        metrics = [
+            "f1_macro",
+            "f1_micro",
+            "auc_roc",
+            "precision_macro",
+            "recall_macro",
+            "accuracy_macro",
+        ]
 
     with ieee_style():
         fig, ax = ieee_figure(1, 1, width="double", height_ratio=0.5)
@@ -40,13 +47,27 @@ def plot_model_comparison_bars(
         for i, model in enumerate(model_names):
             vals = [results[model].get(m, 0) for m in metrics]
             color = MODEL_COLORS.get(model, CB_PALETTE[i % len(CB_PALETTE)])
-            bars = ax.bar(x + i * width, vals, width, label=model, color=color,
-                         edgecolor="black", linewidth=0.3, alpha=0.85)
+            bars = ax.bar(
+                x + i * width,
+                vals,
+                width,
+                label=model,
+                color=color,
+                edgecolor="black",
+                linewidth=0.3,
+                alpha=0.85,
+            )
             # Value labels
             for bar, val in zip(bars, vals):
                 if val > 0:
-                    ax.text(bar.get_x() + bar.get_width() / 2, val + 0.005,
-                           f"{val:.3f}", ha="center", fontsize=6, rotation=90)
+                    ax.text(
+                        bar.get_x() + bar.get_width() / 2,
+                        val + 0.005,
+                        f"{val:.3f}",
+                        ha="center",
+                        fontsize=6,
+                        rotation=90,
+                    )
 
         ax.set_xticks(x + width * (len(model_names) - 1) / 2)
         display_names = [m.replace("_", " ").title() for m in metrics]
@@ -112,9 +133,13 @@ def plot_efficiency_comparison(
             b = benchmark_results[model]
             color = MODEL_COLORS.get(model, CB_PALETTE[i % len(CB_PALETTE)])
             axes[0].scatter(
-                b.get("latency_ms", 0), b.get("f1_macro", 0),
+                b.get("latency_ms", 0),
+                b.get("f1_macro", 0),
                 s=b.get("params_M", 10) * 5,  # Size = model size
-                c=color, edgecolors="black", linewidth=0.5, zorder=3,
+                c=color,
+                edgecolors="black",
+                linewidth=0.5,
+                zorder=3,
                 label=f"{model} ({b.get('params_M', 0):.0f}M)",
             )
 
@@ -128,11 +153,26 @@ def plot_efficiency_comparison(
         param_vals = [benchmark_results[m].get("params_M", 0) for m in models]
         x = np.arange(len(models))
         w = 0.35
-        axes[1].bar(x - w/2, mem_vals, w, label="GPU Memory (MB)",
-                   color=IEEE_COLORS["blue"], edgecolor="black", lw=0.3)
+        axes[1].bar(
+            x - w / 2,
+            mem_vals,
+            w,
+            label="GPU Memory (MB)",
+            color=IEEE_COLORS["blue"],
+            edgecolor="black",
+            lw=0.3,
+        )
         ax2 = axes[1].twinx()
-        ax2.bar(x + w/2, param_vals, w, label="Parameters (M)",
-               color=IEEE_COLORS["orange"], edgecolor="black", lw=0.3, alpha=0.7)
+        ax2.bar(
+            x + w / 2,
+            param_vals,
+            w,
+            label="Parameters (M)",
+            color=IEEE_COLORS["orange"],
+            edgecolor="black",
+            lw=0.3,
+            alpha=0.7,
+        )
         axes[1].set_xticks(x)
         axes[1].set_xticklabels(models, fontsize=7, rotation=20)
         axes[1].set_ylabel("GPU Memory (MB)")
@@ -162,7 +202,9 @@ def plot_training_time_comparison(
         # (a) Training time
         times = [results[m].get("training_time_min", 0) for m in models]
         epochs = [results[m].get("total_epochs", 0) for m in models]
-        colors = [MODEL_COLORS.get(m, CB_PALETTE[i % len(CB_PALETTE)]) for i, m in enumerate(models)]
+        colors = [
+            MODEL_COLORS.get(m, CB_PALETTE[i % len(CB_PALETTE)]) for i, m in enumerate(models)
+        ]
 
         axes[0].bar(x, times, color=colors, edgecolor="black", lw=0.3)
         for i, (t, e) in enumerate(zip(times, epochs)):
@@ -179,7 +221,7 @@ def plot_training_time_comparison(
         # Actual scaling (estimated)
         for i, model in enumerate(models):
             base_time = results[model].get("training_time_min", 100)
-            actual = [base_time / (g ** 0.85) / base_time for g in gpu_counts]  # ~85% efficiency
+            actual = [base_time / (g**0.85) / base_time for g in gpu_counts]  # ~85% efficiency
             color = MODEL_COLORS.get(model, CB_PALETTE[i % len(CB_PALETTE)])
             axes[1].plot(gpu_counts, actual, "o-", ms=4, color=color, label=model)
         axes[1].set_xlabel("Number of GPUs")
@@ -201,7 +243,15 @@ def plot_comprehensive_leaderboard(
         fig, ax = ieee_figure(1, 1, width="double", height_ratio=0.5)
         ax.set_axis_off()
 
-        metrics = ["f1_macro", "f1_micro", "auc_roc", "mAP", "precision_macro", "recall_macro", "hamming_loss"]
+        metrics = [
+            "f1_macro",
+            "f1_micro",
+            "auc_roc",
+            "mAP",
+            "precision_macro",
+            "recall_macro",
+            "hamming_loss",
+        ]
         headers = ["Model"] + [m.replace("_", " ").title() for m in metrics] + ["Rank"]
 
         rows = []
@@ -216,8 +266,10 @@ def plot_comprehensive_leaderboard(
             rows.append(row)
 
         table = ax.table(
-            cellText=rows, colLabels=headers,
-            cellLoc="center", loc="center",
+            cellText=rows,
+            colLabels=headers,
+            cellLoc="center",
+            loc="center",
             colColours=["#D6E4F0"] * len(headers),
         )
         table.auto_set_font_size(False)

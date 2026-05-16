@@ -99,7 +99,9 @@ class FlowerFederatedServer:
 
         logger.info(
             "Starting Flower server: address=%s, rounds=%d, min_clients=%d",
-            self._address, self._num_rounds, self._min_clients,
+            self._address,
+            self._num_rounds,
+            self._min_clients,
         )
 
         fl.server.start_server(

@@ -2,6 +2,7 @@
 BiasVarianceMonitor - Extracted from notebook cell 42.
 Monitors train/val gap for overfitting/underfitting diagnosis.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -34,8 +35,9 @@ class BiasVarianceMonitor:
         final_val = self.val_scores[-1]
         best_val = max(self.val_scores)
         gap = final_train - final_val
-        recent_std = float(np.std(self.val_scores[-5:]) if len(self.val_scores) >= 5
-                           else np.std(self.val_scores))
+        recent_std = float(
+            np.std(self.val_scores[-5:]) if len(self.val_scores) >= 5 else np.std(self.val_scores)
+        )
 
         diagnosis = self._diagnose(final_train, final_val, gap, recent_std)
         health = self._health_score(gap, recent_std)
@@ -71,17 +73,25 @@ class BiasVarianceMonitor:
     def _recommend(self, diagnosis: str) -> list[str]:
         recs = {
             "SEVERE_OVERFITTING": [
-                "Increase dropout to 0.3", "Add more augmentation",
-                "Reduce model complexity", "Stronger L2 regularization",
+                "Increase dropout to 0.3",
+                "Add more augmentation",
+                "Reduce model complexity",
+                "Stronger L2 regularization",
             ],
             "MODERATE_OVERFITTING": [
-                "Increase dropout to 0.2", "Reduce LR by 50%", "More training data",
+                "Increase dropout to 0.2",
+                "Reduce LR by 50%",
+                "More training data",
             ],
             "UNDERFITTING": [
-                "Increase model capacity", "Train longer", "Lower dropout",
+                "Increase model capacity",
+                "Train longer",
+                "Lower dropout",
             ],
             "HIGH_VARIANCE": [
-                "Reduce LR", "Increase batch size", "Add batch normalization",
+                "Reduce LR",
+                "Increase batch size",
+                "Add batch normalization",
             ],
             "OPTIMAL": ["Model is well-regularized", "Ready for deployment"],
             "EXCELLENT": ["Outstanding performance", "Deploy with confidence"],
