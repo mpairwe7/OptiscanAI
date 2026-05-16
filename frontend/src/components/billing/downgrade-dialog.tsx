@@ -6,11 +6,10 @@ import { ApiError } from "@/lib/api-fetch";
 
 interface Props {
   currentPlanName: string;
-  currentProvider: string;
   onClose: () => void;
 }
 
-export function DowngradeDialog({ currentPlanName, currentProvider, onClose }: Props) {
+export function DowngradeDialog({ currentPlanName, onClose }: Props) {
   const qc = useQueryClient();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,8 +56,8 @@ export function DowngradeDialog({ currentPlanName, currentProvider, onClose }: P
             Downgraded to Free
           </h2>
           <p className="mt-2 text-sm text-slate-600">
-            Your account is on the Free plan effective now. Stripe will issue a prorated credit for any
-            unused time on {currentPlanName}.
+            Your account is on the Free plan effective now. Mobile-money payments are non-refundable, so
+            time remaining on {currentPlanName} is forfeit.
           </p>
           <button
             onClick={onClose}
@@ -70,9 +69,6 @@ export function DowngradeDialog({ currentPlanName, currentProvider, onClose }: P
       </div>
     );
   }
-
-  const isStripe = currentProvider === "stripe";
-  const isMoMo = currentProvider === "mtn" || currentProvider === "airtel" || currentProvider === "flutterwave";
 
   return (
     <div
@@ -99,18 +95,10 @@ export function DowngradeDialog({ currentPlanName, currentProvider, onClose }: P
         </p>
 
         <ul className="mt-4 space-y-1.5 text-sm text-slate-700">
-          {isStripe && (
-            <li className="flex items-start gap-2">
-              <span className="text-teal-600 mt-0.5">✓</span>
-              <span>Stripe will cancel the subscription now and issue a prorated credit for the unused time.</span>
-            </li>
-          )}
-          {isMoMo && (
-            <li className="flex items-start gap-2">
-              <span className="text-amber-600 mt-0.5">!</span>
-              <span>You already paid for the current period — that time is forfeit (mobile money doesn&apos;t prorate refunds).</span>
-            </li>
-          )}
+          <li className="flex items-start gap-2">
+            <span className="text-amber-600 mt-0.5">!</span>
+            <span>You already paid for the current period — that time is forfeit (mobile money doesn&apos;t prorate refunds).</span>
+          </li>
           <li className="flex items-start gap-2">
             <span className="text-amber-600 mt-0.5">!</span>
             <span>SHAP, LIME, Integrated Gradients, ELI5, clinical reasoning, voice mode, and team features lock immediately.</span>

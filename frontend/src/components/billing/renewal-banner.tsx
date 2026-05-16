@@ -4,8 +4,6 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { apiGetSubscription } from "@/lib/auth-api";
 
-const MOMO_PROVIDERS = new Set(["mtn", "airtel", "flutterwave"]);
-
 function daysUntil(iso: string): number {
   const ms = new Date(iso).getTime() - Date.now();
   return Math.ceil(ms / 86_400_000);
@@ -33,19 +31,14 @@ export function RenewalBanner({ variant }: BannerProps) {
 
   const visibility = useMemo(() => {
     if (!sub.data) return null;
-    if (!MOMO_PROVIDERS.has(sub.data.provider)) return null;
+    if (sub.data.provider !== "mtn") return null;
     if (sub.data.cancel_at_period_end) return null;
     if (sub.data.plan_code === "free") return null;
     const days = daysUntil(sub.data.current_period_end);
     if (days > 7) return null;
     return {
       days,
-      providerLabel:
-        sub.data.provider === "mtn"
-          ? "MTN MoMo"
-          : sub.data.provider === "airtel"
-            ? "Airtel Money"
-            : "Flutterwave",
+      providerLabel: "MTN MoMo",
       planCode: sub.data.plan_code,
       planName: sub.data.plan_display_name,
       billingCycle: sub.data.billing_cycle as "monthly" | "annual",

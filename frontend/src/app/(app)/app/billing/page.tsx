@@ -7,9 +7,7 @@ import {
   apiGetSubscription,
   apiListInvoices,
   apiResumeSubscription,
-  apiStripePortal,
 } from "@/lib/auth-api";
-import { ApiError } from "@/lib/api-fetch";
 import { RenewalBanner } from "@/components/billing/renewal-banner";
 import { DowngradeDialog } from "@/components/billing/downgrade-dialog";
 
@@ -17,22 +15,7 @@ export default function BillingPage() {
   const qc = useQueryClient();
   const sub = useQuery({ queryKey: ["billing", "subscription"], queryFn: apiGetSubscription });
   const invoices = useQuery({ queryKey: ["billing", "invoices"], queryFn: apiListInvoices });
-  const [portalLoading, setPortalLoading] = useState(false);
-  const [portalError, setPortalError] = useState<string | null>(null);
   const [downgrading, setDowngrading] = useState(false);
-
-  async function handlePortal() {
-    setPortalLoading(true);
-    setPortalError(null);
-    try {
-      const { url } = await apiStripePortal();
-      window.location.href = url;
-    } catch (err) {
-      setPortalError(err instanceof ApiError ? err.message : "Portal failed");
-    } finally {
-      setPortalLoading(false);
-    }
-  }
 
   async function handleCancel() {
     if (!confirm("Cancel at end of current period? You'll keep access until then.")) return;
@@ -80,15 +63,6 @@ export default function BillingPage() {
             >
               Change plan
             </Link>
-            {sub.data.provider === "stripe" && (
-              <button
-                onClick={handlePortal}
-                disabled={portalLoading}
-                className="inline-flex items-center px-3 py-1.5 text-sm font-semibold rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 disabled:opacity-50"
-              >
-                {portalLoading ? "Opening…" : "Manage payment method"}
-              </button>
-            )}
             {sub.data.cancel_at_period_end ? (
               <button
                 onClick={handleResume}
@@ -116,17 +90,11 @@ export default function BillingPage() {
             )}
           </div>
         </div>
-        {portalError && (
-          <div className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
-            {portalError}
-          </div>
-        )}
       </section>
 
       {downgrading && (
         <DowngradeDialog
           currentPlanName={sub.data.plan_display_name}
-          currentProvider={sub.data.provider}
           onClose={() => setDowngrading(false)}
         />
       )}
