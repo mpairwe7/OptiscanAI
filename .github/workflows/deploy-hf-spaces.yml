@@ -114,15 +114,27 @@ jobs:
 
       - name: Push to HF Spaces
         working-directory: hf_space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_USER: ${{ secrets.HF_USER }}
         run: |
+          # Git needs an identity to commit. The runner has no global config,
+          # so the previous step crashed with `empty ident name not allowed`.
+          git config user.email "ci@optiscan.makstartup.com"
+          git config user.name "OptiscanAI CI"
+
           git lfs install
           git lfs track "*.pth"
           git add -A
           git diff --cached --quiet && echo "No changes to deploy" && exit 0
           git commit -m "Deploy $(date +%Y%m%d-%H%M%S) from ${GITHUB_SHA::8}"
-          git push
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+
+          # `hf auth login --add-to-git-credential` doesn't always wire the
+          # HF Hub push path. Inject the token straight into the remote URL
+          # (rewritten in-place — no other process sees it).
+          HF_USER="${HF_USER:-Mpairwe49}"
+          git remote set-url origin "https://${HF_USER}:${HF_TOKEN}@huggingface.co/spaces/${{ env.HF_SPACE }}"
+          git push origin HEAD:main
 
       - name: Wait for Space build
         run: |
