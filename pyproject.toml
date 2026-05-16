@@ -1,5 +1,5 @@
 [project]
-name = "retinal-disease-mlops"
+name = "optiscan-ai"
 version = "2.0.0"
 description = "Multi-label retinal disease classification with MLOps pipeline"
 readme = "README.md"
@@ -148,7 +148,7 @@ federated = [
 
 # All production features combined
 full = [
-    "retinal-disease-mlops[observability,drift-detection,ray-serve,kafka,iceberg,security,edge]",
+    "optiscan-ai[observability,drift-detection,ray-serve,kafka,iceberg,security,edge]",
 ]
 
 [tool.uv]

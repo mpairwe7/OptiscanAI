@@ -72,7 +72,7 @@ LABEL org.opencontainers.image.title="OptiscanAI" \
       org.opencontainers.image.description="GPU Retinal Disease Screening Platform — Backend + Frontend" \
       org.opencontainers.image.version="3.0.0" \
       org.opencontainers.image.vendor="OptiscanAI" \
-      org.opencontainers.image.source="https://github.com/mpairwe7/MLOPS_V1" \
+      org.opencontainers.image.source="https://github.com/mpairwe7/OptiscanAI" \
       org.opencontainers.image.licenses="CC-BY-4.0"
 
 ENV DEBIAN_FRONTEND=noninteractive \

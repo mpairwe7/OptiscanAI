@@ -487,7 +487,7 @@ To redeploy without rebuilding (e.g., env var change):
 
 ### GitHub Secrets Required
 
-Set at `github.com/mpairwe7/MLOPS_V1/settings/secrets/actions`:
+Set at `github.com/mpairwe7/OptiscanAI/settings/secrets/actions`:
 
 | Secret | Description | Example |
 |--------|-------------|---------|

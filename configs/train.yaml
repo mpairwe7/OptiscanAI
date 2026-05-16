@@ -82,7 +82,7 @@ distributed:
 
 # --- Logging ---
 logging:
-  project_name: "retinal-disease-mlops"
+  project_name: "optiscan-ai"
   experiment_name: "vignn-8gpu-asl-v2"
   log_every_n_steps: 10
   logger: "wandb"                    # wandb | tensorboard | csv
