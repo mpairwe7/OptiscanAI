@@ -7,6 +7,7 @@ Usage:
   PYTHONPATH=. CUDA_VISIBLE_DEVICES=1 python3 -u scripts/train_single_model.py --model vignn
   PYTHONPATH=. CUDA_VISIBLE_DEVICES=2 python3 -u scripts/train_single_model.py --model graphclip
 """
+
 import argparse
 import json
 import logging

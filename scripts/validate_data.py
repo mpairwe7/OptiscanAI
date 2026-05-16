@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run data validation checks before training."""
+
 import argparse
 import json
 import logging

@@ -7,6 +7,7 @@ IEEE author photo standards:
 - Position: immediately before the author's biography paragraph
 - Crop: head and shoulders, centered
 """
+
 import subprocess
 from pathlib import Path
 

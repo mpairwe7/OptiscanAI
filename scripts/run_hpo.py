@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run hyperparameter optimization."""
+
 import argparse
 import logging
 import sys

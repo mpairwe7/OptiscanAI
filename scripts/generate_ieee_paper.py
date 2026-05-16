@@ -87,26 +87,26 @@ def update_metadata(doc):
     _set_text(paras[1], "Digital Object Identifier: Not assigned.")
 
     # Para 5 (AU): author names - remove Fellow/Member designations
-    _set_text(paras[5], "MPAIRWE LAUBEN\u00B9, NANKYA SHADIA\u00B2, AND YAPYEKO REBECCA\u00B3")
+    _set_text(paras[5], "MPAIRWE LAUBEN\u00b9, NANKYA SHADIA\u00b2, AND YAPYEKO REBECCA\u00b3")
 
     # Para 6 (PI_No Space): affiliation 1
     _set_text(
         paras[6],
-        "\u00B9Department of Networks, College of Computing and Information Sciences, "
+        "\u00b9Department of Networks, College of Computing and Information Sciences, "
         "Makerere University, Kampala, Uganda",
     )
 
     # Para 7 (PI_No Space): affiliation 2
     _set_text(
         paras[7],
-        "\u00B2Department of Networks, College of Computing and Information Sciences, "
+        "\u00b2Department of Networks, College of Computing and Information Sciences, "
         "Makerere University, Kampala, Uganda",
     )
 
     # Para 8 (PI): affiliation 3
     _set_text(
         paras[8],
-        "\u00B3Department of Networks, College of Computing and Information Sciences, "
+        "\u00b3Department of Networks, College of Computing and Information Sciences, "
         "Makerere University, Kampala, Uganda",
     )
 
@@ -460,7 +460,7 @@ def add_methodology(doc):
             "invite catastrophic forgetting of these pre-trained representations. We instead "
             "employ LoRA [10], inserting trainable low-rank matrices into the query, key, and "
             "value projection layers of the transformer\u2019s self-attention blocks. With rank "
-            "r = 16 and scaling factor \u03B1 = 32, this introduces approximately 2.4 million "
+            "r = 16 and scaling factor \u03b1 = 32, this introduces approximately 2.4 million "
             "trainable parameters\u2014less than 1% of the full model\u2014while the pre-trained "
             "weights remain frozen. The classification head follows a bottleneck design: the "
             "1024-dimensional CLS token output from the transformer passes through a "
@@ -531,8 +531,8 @@ def add_methodology(doc):
         (
             "We developed a seven-strategy precision rescue plan to address this problem. "
             "First, we replaced binary cross-entropy with Asymmetric Loss (ASL) [28], setting "
-            "the positive focusing parameter \u03B3+ to 0 (preserving all positive gradients, "
-            "since true positives are scarce) and the negative focusing parameter \u03B3\u2212 to "
+            "the positive focusing parameter \u03b3+ to 0 (preserving all positive gradients, "
+            "since true positives are scarce) and the negative focusing parameter \u03b3\u2212 to "
             "4 (aggressively down-weighting easy negative examples that drive false positives). "
             "A clipping threshold of 0.05 completely zeros the gradient contribution from "
             "highly confident negative predictions. Second, we pruned ultra-rare classes having "
@@ -546,7 +546,7 @@ def add_methodology(doc):
             "bottleneck classification head provides additional regularization through heavy "
             "dropout. Sixth, we employ staged backbone unfreezing: for the first 10 epochs, "
             "only the classification head trains; from epoch 11 onward, the last four "
-            "transformer blocks unfreeze at a reduced learning rate of 1 \u00D7 10\u207B\u2076, "
+            "transformer blocks unfreeze at a reduced learning rate of 1 \u00d7 10\u207b\u2076, "
             "one-tenth of the head\u2019s learning rate. Seventh, we apply test-time augmentation "
             "(TTA), averaging predictions over six augmented views of each input image."
         ),
@@ -696,8 +696,8 @@ def add_system_design(doc):
             "The final decision fuses the statistical and learned signals with weights of 0.6 "
             "and 0.4 respectively, requiring a combined confidence of at least 70% for "
             "acceptance. When an image is rejected, the gate returns the specific reason (e.g., "
-            "\u201Cinsufficient red channel dominance\u201D or \u201Clearned classifier "
-            "confidence 0.23\u201D) along with a visual evidence overlay, allowing the health "
+            "\u201cinsufficient red channel dominance\u201d or \u201clearned classifier "
+            "confidence 0.23\u201d) along with a visual evidence overlay, allowing the health "
             "worker to recapture the image with corrective guidance. In adversarial testing "
             "against 33 categories of non-fundus images\u2014including AI-generated synthetic "
             "fundus images, petri dish photographs, and heavily filtered photographs\u2014the "
@@ -764,7 +764,7 @@ def add_results(doc):
             "validation, and 640 for testing. After class pruning, 24 disease labels having at "
             "least 10 training examples remain in the classification head. The model trains for "
             "25 epochs using the AdamW optimizer with a cosine learning rate schedule (peak "
-            "learning rate 1 \u00D7 10\u207B\u2074 for the head, 1 \u00D7 10\u207B\u2076 for "
+            "learning rate 1 \u00d7 10\u207b\u2074 for the head, 1 \u00d7 10\u207b\u2076 for "
             "unfrozen backbone blocks) and mixed-precision (FP16) training."
         ),
         "PARA",
@@ -781,9 +781,9 @@ def add_results(doc):
         table.rows[0].cells[i].text = h
     # Data rows
     data = [
-        ("Precision (macro)", "0.025", "0.312", "12.5\u00D7"),
+        ("Precision (macro)", "0.025", "0.312", "12.5\u00d7"),
         ("Recall (macro)", "0.820", "0.456", "Trade-off"),
-        ("F1 (macro)", "0.046", "0.362", "7.9\u00D7"),
+        ("F1 (macro)", "0.046", "0.362", "7.9\u00d7"),
         ("AUC-ROC (macro)", "0.481", "0.888", "+84.6%"),
         ("Accuracy", "\u2014", "0.954", "\u2014"),
         ("Active classes", "45", "24", "Pruned"),
@@ -1075,7 +1075,7 @@ def add_references(doc):
         'S. M. Pachade et al., "RFMiD: Retinal Fundus Multi-Disease Image Dataset," '
         "in Proc. IEEE/CVF ISBI, 2021, pp. 1341\u20131345.",
         # [13]
-        'M. D. Abr\u00E0moff, M. K. Garvin, and M. Sonka, "Retinal imaging and image '
+        'M. D. Abr\u00e0moff, M. K. Garvin, and M. Sonka, "Retinal imaging and image '
         'analysis," IEEE Rev. Biomed. Eng., vol. 3, pp. 169\u2013208, 2010.',
         # [14]
         'V. Gulshan et al., "Development and validation of a deep learning algorithm for '
@@ -1138,7 +1138,7 @@ def add_references(doc):
         'gradient-based localization," Int. J. Comput. Vis., vol. 128, no. 2, '
         "pp. 336\u2013359, 2020.",
         # [31]
-        'M. T. Ribeiro, S. Singh, and C. Guestrin, "\u201CWhy should I trust you?\u201D: '
+        'M. T. Ribeiro, S. Singh, and C. Guestrin, "\u201cWhy should I trust you?\u201d: '
         'Explaining the predictions of any classifier," in Proc. ACM SIGKDD, 2016, '
         "pp. 1135\u20131144.",
         # [32]

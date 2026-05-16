@@ -363,7 +363,7 @@ def generate_fig3_gate():
         (3.0, 5.8, "Layer 1: Structural\nChecks (<1 ms)", "#70AD47", 4.0),
         (3.0, 4.6, "Layer 2: Statistical\nAnalysis (3-15 ms)", "#ED7D31", 4.0),
         (3.0, 3.4, "Layer 3: MobileNetV3\nLearned Gate (~5 ms)", "#7030A0", 4.0),
-        (3.0, 2.2, "Fusion Decision\n(0.6\u00D7stat + 0.4\u00D7learned)", "#C00000", 4.5),
+        (3.0, 2.2, "Fusion Decision\n(0.6\u00d7stat + 0.4\u00d7learned)", "#C00000", 4.5),
     ]
 
     for cx, cy, label, color, w in layers:

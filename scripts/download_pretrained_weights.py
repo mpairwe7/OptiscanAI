@@ -6,6 +6,7 @@ Tries PyTorch Hub first, then timm GitHub releases.
 Usage:
     python3 scripts/download_pretrained_weights.py
 """
+
 import sys
 import urllib.request
 from pathlib import Path

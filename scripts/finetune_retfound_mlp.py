@@ -8,6 +8,7 @@ This script uses a 2-layer MLP head (~0.3M params) with end-to-end fine-tuning.
 Usage:
     PYTHONPATH=. CUDA_VISIBLE_DEVICES=5 python3 -u scripts/finetune_retfound_mlp.py 2>&1 | tee outputs/full_pipeline/finetune_retfound_mlp.log
 """
+
 import logging
 import os
 import random

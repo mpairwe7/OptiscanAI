@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Check if model retraining is needed based on drift and other triggers."""
+
 import argparse
 import json
 import logging

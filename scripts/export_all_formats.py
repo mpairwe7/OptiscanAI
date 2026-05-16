@@ -22,6 +22,7 @@ Usage
         --model-path best.pth \\
         --formats onnx torchscript coreml int8 fp16
 """
+
 from __future__ import annotations
 
 import argparse
