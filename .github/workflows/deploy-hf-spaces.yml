@@ -21,7 +21,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      # lfs: true pulls the real model_vignn_rank1.pth payload (137 MB) instead
+      # of the LFS pointer text — without this, FastAPI's lifespan startup
+      # calls torch.load() on the pointer and fails with:
+      #   _pickle.UnpicklingError: invalid load key, 'v'.
       - uses: actions/checkout@v4
+        with:
+          lfs: true
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
