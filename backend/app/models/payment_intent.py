@@ -5,7 +5,7 @@ import enum
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Enum, Integer, JSON, String
+from sqlalchemy import JSON, Enum, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.core.db import Base

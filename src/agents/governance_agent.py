@@ -13,7 +13,7 @@ from typing import Optional
 
 from src.agents.base import BaseAgent, ToolResult
 from src.agents.event_bus import Event, EventType
-from src.governance.audit import AuditTrail, AuditEventType
+from src.governance.audit import AuditEventType, AuditTrail
 
 logger = logging.getLogger(__name__)
 
@@ -300,7 +300,7 @@ class GovernanceAgent(BaseAgent):
                 success=True,
                 data={"integrity_valid": valid},
             )
-        except Exception as e:
+        except Exception:
             return ToolResult(
                 tool="verify_audit_integrity",
                 success=True,

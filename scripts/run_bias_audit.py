@@ -15,10 +15,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import numpy as np
-import torch
 
+from src.governance.audit_logger import ImmutableAuditLogger
 from src.governance.bias_auditor import BiasAuditor
-from src.governance.audit_logger import ImmutableAuditLogger, AuditEventType
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -86,13 +85,13 @@ def main():
     )
 
     # Print summary
-    print(f"\nBias Audit Report")
+    print("\nBias Audit Report")
     print(f"{'='*50}")
     print(f"Result: {'PASS' if report.fairness_pass else 'FAIL'}")
     print(f"Violations: {len(report.violations)}")
     for v in report.violations:
         print(f"  - {v}")
-    print(f"Recommendations:")
+    print("Recommendations:")
     for r in report.recommendations:
         print(f"  - {r}")
     print(f"\nReport saved to: {args.output}")

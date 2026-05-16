@@ -53,12 +53,12 @@ def init_telemetry(app: Any = None) -> None:
         return
 
     try:
-        from opentelemetry import trace, metrics
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+        from opentelemetry import metrics, trace
         from opentelemetry.sdk.metrics import MeterProvider
         from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
         from opentelemetry.sdk.resources import Resource
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
         from opentelemetry.semconv.resource import ResourceAttributes
     except ImportError:
         logger.warning(

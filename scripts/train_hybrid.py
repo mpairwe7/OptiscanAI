@@ -23,16 +23,16 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import yaml
 import numpy as np
 import torch
 import torch.distributed as dist
+import yaml
 
 from src.data.datamodule import RetinalDataModule
-from src.training.losses import build_loss
-from src.training.trainer import DDPTrainer
 from src.models.retinal_foundation_hybrid import create_hybrid_model
 from src.models.vignn import create_knowledge_graph
+from src.training.losses import build_loss
+from src.training.trainer import DDPTrainer
 
 
 def setup_logging(rank: int = 0):
@@ -184,7 +184,7 @@ def main():
             trainer.optimizer.load_state_dict(ckpt["optimizer_state_dict"])
 
     # Train
-    history = trainer.train()
+    trainer.train()
 
     # Cleanup
     if world_size > 1:

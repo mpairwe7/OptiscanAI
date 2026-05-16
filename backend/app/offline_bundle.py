@@ -229,7 +229,7 @@ class OfflineBundleManager:
         if index_path.exists():
             required.append(("index.faiss", index_path))
 
-        meta_path = self._index_dir / "bundle_meta.json"
+        self._index_dir / "bundle_meta.json"
 
         # Collect optional embedder files
         embedder_files: List[Tuple[str, Path]] = []

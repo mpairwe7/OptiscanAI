@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import HTTPException, status
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.config import settings
@@ -18,8 +18,8 @@ from backend.app.models.plan import Plan
 from backend.app.models.subscription import Subscription
 from backend.app.models.tokens import OrganizationInvite
 from backend.app.models.user import User
-from backend.app.services.auth_service import normalize_email, slugify
 from backend.app.services import email_templates
+from backend.app.services.auth_service import normalize_email, slugify
 from backend.app.services.email_service import send_rendered
 
 logger = logging.getLogger(__name__)

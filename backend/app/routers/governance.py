@@ -11,11 +11,11 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
+
 from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-from fastapi import Depends
 from backend.app.core.feature_gate import require_tier
 
 router = APIRouter(

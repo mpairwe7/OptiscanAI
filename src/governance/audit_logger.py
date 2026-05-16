@@ -19,11 +19,10 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import os
 import threading
 import time
 import uuid
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -402,7 +401,7 @@ class ImmutableAuditLogger:
 
         for log_file in log_files:
             with open(log_file) as f:
-                lines = [l.strip() for l in f.readlines() if l.strip()]
+                lines = [line.strip() for line in f.readlines() if line.strip()]
 
             for line in reversed(lines):
                 try:

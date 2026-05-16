@@ -23,7 +23,6 @@ Produces:
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sys
 from pathlib import Path
@@ -36,7 +35,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 def prepare_dataset(data_dir: Path, split: str = "train"):
     """Load wav+txt pairs into a HuggingFace Dataset."""
-    from datasets import Dataset, Audio
+    from datasets import Audio, Dataset
 
     split_dir = data_dir / split
     if not split_dir.exists():
@@ -64,13 +63,13 @@ def prepare_dataset(data_dir: Path, split: str = "train"):
 
 def finetune(args):
     """Run Whisper-tiny fine-tuning."""
+    import torch
     from transformers import (
+        Seq2SeqTrainer,
+        Seq2SeqTrainingArguments,
         WhisperForConditionalGeneration,
         WhisperProcessor,
-        Seq2SeqTrainingArguments,
-        Seq2SeqTrainer,
     )
-    import torch
 
     data_dir = Path(args.data_dir)
     output_dir = Path(args.output_dir) / "whisper-tiny-ug"

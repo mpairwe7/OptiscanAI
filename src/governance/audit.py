@@ -1,12 +1,12 @@
 """Immutable audit trail for model lifecycle events.
 Records training runs, deployments, predictions, and configuration changes."""
-import json
 import hashlib
+import json
 import logging
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from dataclasses import dataclass, asdict
 
 logger = logging.getLogger(__name__)
 

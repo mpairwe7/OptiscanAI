@@ -4,20 +4,23 @@ Computes all metrics, runs inference, and collects data for visualization.
 """
 
 from __future__ import annotations
+
 import json
-import time
 import logging
+import time
 from pathlib import Path
 
 import numpy as np
 import torch
+from sklearn.metrics import (
+    average_precision_score,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from sklearn.metrics import (
-    f1_score, roc_auc_score, average_precision_score,
-    precision_score, recall_score, hamming_loss,
-    classification_report,
-)
 
 from src.training.metrics import compute_multilabel_metrics
 

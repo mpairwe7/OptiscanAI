@@ -92,7 +92,7 @@ def export_onnx_fp32(
 
 def quantize_onnx_int8(fp32_path: Path, int8_path: Path) -> Path:
     """Dynamic INT8 quantization of ONNX model."""
-    from onnxruntime.quantization import quantize_dynamic, QuantType
+    from onnxruntime.quantization import QuantType, quantize_dynamic
 
     quantize_dynamic(
         str(fp32_path),

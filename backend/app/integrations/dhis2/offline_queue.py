@@ -6,13 +6,12 @@ exponential backoff when connectivity returns.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +114,7 @@ class DHIS2OfflineQueue:
         op_type = op.get("operation_type")
         payload = op.get("payload", {})
 
-        from .models import ReferralEvent, AggregateReport
+        from .models import AggregateReport, ReferralEvent
 
         if op_type == "create_referral":
             event_id = await client.create_referral_event(ReferralEvent(**payload))

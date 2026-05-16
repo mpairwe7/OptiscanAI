@@ -4,20 +4,29 @@ Confusion matrices, ROC/PR curves, per-class analysis.
 """
 
 from __future__ import annotations
+
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from sklearn.metrics import (
-    roc_curve, auc, precision_recall_curve, average_precision_score,
-    confusion_matrix, f1_score, precision_score, recall_score,
-    ConfusionMatrixDisplay,
+    auc,
+    average_precision_score,
+    f1_score,
+    precision_recall_curve,
+    precision_score,
+    recall_score,
+    roc_curve,
 )
 
 from src.visualization.ieee_style import (
-    ieee_style, ieee_figure, save_ieee, annotate_bars, add_watermark,
-    IEEE_COLORS, CB_PALETTE, METRIC_COLORS,
+    IEEE_COLORS,
+    METRIC_COLORS,
+    add_watermark,
+    ieee_figure,
+    ieee_style,
+    save_ieee,
 )
 
 
@@ -171,7 +180,7 @@ def plot_confusion_matrix_multilabel(
             cmap="YlGn", vmin=0, vmax=1,
             linewidths=0.3, linecolor="white",
         )
-        axes[1].set_title(f"(b) Per-Class Metrics Heatmap")
+        axes[1].set_title("(b) Per-Class Metrics Heatmap")
         axes[1].tick_params(labelsize=6)
 
         fig.suptitle(f"{model_name} - Multi-Label Confusion Analysis", fontsize=11, fontweight="bold", y=1.02)
@@ -322,7 +331,7 @@ def plot_precision_floor_threshold_analysis(
 
         ax.set_xlabel("Global Threshold")
         ax.set_ylabel("Score")
-        ax.set_title(f"(a) Precision-Floor Trade-off")
+        ax.set_title("(a) Precision-Floor Trade-off")
         ax.legend(fontsize=6)
         ax.set_ylim(0, 1)
 

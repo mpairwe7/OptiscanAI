@@ -3,10 +3,8 @@
 All Phase 1-4 features are opt-in via nested settings with env_nested_delimiter='__'.
 Example: TELEMETRY__ENABLED=true, MLFLOW__TRACKING_URI=http://mlflow:5000
 """
-from pathlib import Path
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
-
 
 # ── Phase 1: Observability & MLOps ──────────────────────────────────────────
 

@@ -2,7 +2,6 @@
 Checks for demographic parity and performance equity across subgroups."""
 import logging
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 from sklearn.metrics import f1_score, roc_auc_score

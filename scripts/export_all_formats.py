@@ -73,8 +73,8 @@ def load_model(checkpoint_path: str) -> tuple[torch.nn.Module, dict]:
     model_name = ckpt.get("model_name", "vignn") if isinstance(ckpt, dict) else "vignn"
     state_dict = ckpt.get("model_state_dict", ckpt) if isinstance(ckpt, dict) else ckpt
 
-    from src.models.vignn import create_vignn_model, ClinicalKnowledgeGraph
     from src.data.datamodule import DISEASE_COLUMNS
+    from src.models.vignn import ClinicalKnowledgeGraph, create_vignn_model
 
     kg = ClinicalKnowledgeGraph(disease_names=DISEASE_COLUMNS)
     num_classes = len(DISEASE_COLUMNS)

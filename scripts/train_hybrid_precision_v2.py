@@ -20,9 +20,7 @@ Usage:
 """
 
 import argparse
-import json
 import logging
-import os
 import random
 import sys
 from pathlib import Path
@@ -31,22 +29,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import numpy as np
 import torch
-import torch.distributed as dist
 import yaml
 
 from src.data.datamodule import RetinalDataModule
-from src.models.retinal_foundation_hybrid_v2 import (
-    AsymmetricLossV2,
-    RetinalFoundationHybridV2,
-    create_hybrid_v2,
-    filter_rare_classes,
-)
-from src.models.vignn import ClinicalKnowledgeGraph
 from src.evaluation.precision_threshold_optimizer import (
     optimize_thresholds_with_precision_floor,
     save_thresholds,
 )
-from src.training.metrics import MetricTracker, compute_multilabel_metrics
+from src.models.retinal_foundation_hybrid_v2 import (
+    AsymmetricLossV2,
+    create_hybrid_v2,
+    filter_rare_classes,
+)
+from src.models.vignn import ClinicalKnowledgeGraph
+from src.training.metrics import compute_multilabel_metrics
 
 logging.basicConfig(
     level=logging.INFO,
@@ -70,7 +66,6 @@ def build_weighted_sampler(labels_df, disease_columns):
     Each sample's weight is the inverse frequency of its rarest positive class.
     This ensures rare diseases are seen proportionally more often.
     """
-    import pandas as pd
     from torch.utils.data import WeightedRandomSampler
 
     label_matrix = labels_df[disease_columns].values.astype(np.float32)

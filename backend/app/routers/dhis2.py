@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 from fastapi import Depends
+
 from backend.app.core.feature_gate import require_tier
 
 router = APIRouter(
@@ -64,8 +64,8 @@ async def search_patient(
 ):
     _require()
     try:
-        from backend.app.integrations.dhis2.client import DHIS2Client
         from backend.app.integrations.dhis2.auth import DHIS2Auth
+        from backend.app.integrations.dhis2.client import DHIS2Client
 
         auth = DHIS2Auth(
             method=settings.dhis2.auth_method,
@@ -83,9 +83,10 @@ async def search_patient(
 @router.post("/referral", response_model=ReferralResponse)
 async def create_referral(body: ReferralRequest):
     _require()
+    from uuid import uuid4
+
     from backend.app.integrations.dhis2.models import ReferralEvent
     from backend.app.integrations.dhis2.offline_queue import DHIS2OfflineQueue, DHIS2Operation
-    from uuid import uuid4
 
     referral = ReferralEvent(
         org_unit=body.org_unit,
@@ -99,8 +100,8 @@ async def create_referral(body: ReferralRequest):
     )
 
     try:
-        from backend.app.integrations.dhis2.client import DHIS2Client
         from backend.app.integrations.dhis2.auth import DHIS2Auth
+        from backend.app.integrations.dhis2.client import DHIS2Client
 
         auth = DHIS2Auth(method=settings.dhis2.auth_method, personal_access_token=settings.dhis2.personal_access_token, base_url=settings.dhis2.base_url)
         client = DHIS2Client(settings.dhis2.base_url, auth)

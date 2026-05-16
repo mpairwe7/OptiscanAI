@@ -15,9 +15,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import torch
+
 from src.models.retinal_foundation_hybrid import create_hybrid_model
 from src.models.vignn import create_knowledge_graph
-from src.optimization.quantization import benchmark_latency, _model_size_mb
+from src.optimization.quantization import _model_size_mb, benchmark_latency
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -45,7 +46,7 @@ def main():
     size_mb = _model_size_mb(model)
     params = model.get_param_summary()
 
-    print(f"\nRetinalFoundationHybrid Benchmark")
+    print("\nRetinalFoundationHybrid Benchmark")
     print(f"{'='*60}")
     print(f"Backbone: {args.backbone}")
     print(f"Total params: {params['total']/1e6:.1f}M")

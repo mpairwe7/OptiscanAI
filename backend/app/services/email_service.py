@@ -103,8 +103,9 @@ def _from_header() -> str:
 
 
 async def _send_smtp(to: str, subject: str, body_text: str, body_html: Optional[str]) -> None:
-    import aiosmtplib  # type: ignore  # optional dep
     from email.message import EmailMessage
+
+    import aiosmtplib  # type: ignore  # optional dep
 
     msg = EmailMessage()
     msg["From"] = _from_header()

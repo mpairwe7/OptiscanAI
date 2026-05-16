@@ -32,7 +32,7 @@ import asyncio
 import logging
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import IntEnum
 from pathlib import Path
@@ -309,6 +309,7 @@ class GracefulDegradationManager:
             ``error`` is ``None`` on success.
         """
         # Try primary
+        primary_error_msg: str | None = None
         try:
             result = await primary(*args, **kwargs)
             return {
@@ -318,6 +319,7 @@ class GracefulDegradationManager:
                 "error": None,
             }
         except Exception as primary_error:
+            primary_error_msg = str(primary_error)
             logger.warning(
                 "Primary operation failed (%s), trying fallbacks",
                 primary_error,
@@ -340,7 +342,7 @@ class GracefulDegradationManager:
                 logger.warning("Fallback #%d failed: %s", idx, fb_error)
 
         # All fallbacks exhausted
-        error_msg = str(last_error) if last_error else str(primary_error)
+        error_msg = str(last_error) if last_error else (primary_error_msg or "unknown error")
         logger.error("All fallbacks exhausted: %s", error_msg)
         return {
             "result": None,
@@ -392,7 +394,7 @@ class GracefulDegradationManager:
     ) -> None:
         """Emit a ``GRACEFUL_DEGRADATION_ACTIVATED`` event on the event bus."""
         try:
-            from src.agents.event_bus import event_bus, Event, EventType
+            from src.agents.event_bus import Event, EventType, event_bus
 
             await event_bus.emit(Event(
                 type=EventType.GRACEFUL_DEGRADATION_ACTIVATED,

@@ -3,8 +3,9 @@ MixUp and CutMix augmentation for multi-label classification.
 Applied at the batch level after collation.
 """
 from __future__ import annotations
-import torch
+
 import numpy as np
+import torch
 
 
 class MixUpCutMix:

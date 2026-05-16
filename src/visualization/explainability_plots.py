@@ -4,17 +4,19 @@ GradCAM, attention maps, clinical knowledge graph, feature attribution.
 """
 
 from __future__ import annotations
+
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-import numpy as np
 import cv2
-from PIL import Image
+import matplotlib.pyplot as plt
+import numpy as np
 
 from src.visualization.ieee_style import (
-    ieee_style, ieee_figure, save_ieee, add_watermark,
-    IEEE_COLORS, CB_PALETTE,
+    IEEE_COLORS,
+    add_watermark,
+    ieee_figure,
+    ieee_style,
+    save_ieee,
 )
 
 
@@ -269,7 +271,7 @@ def plot_feature_attribution(
             if attr.max() > attr.min():
                 attr = (attr - attr.min()) / (attr.max() - attr.min())
 
-            im = axes[i + 1].imshow(attr, cmap="hot", vmin=0, vmax=1)
+            axes[i + 1].imshow(attr, cmap="hot", vmin=0, vmax=1)
             axes[i + 1].set_title(method, fontsize=8)
             axes[i + 1].axis("off")
 

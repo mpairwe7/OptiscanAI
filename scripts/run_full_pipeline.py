@@ -17,7 +17,11 @@ Usage:
 =============================================================================
 """
 
-import json, logging, os, random, sys, time
+import json
+import logging
+import random
+import sys
+import time
 from copy import deepcopy
 from pathlib import Path
 
@@ -29,15 +33,13 @@ import yaml
 from PIL import Image
 from sklearn.model_selection import StratifiedKFold
 from torch.utils.data import DataLoader
-import threading
-import queue
 
-from src.data.datamodule import RetinalDataModule, DISEASE_COLUMNS
 from src.data.augmentation import get_train_transforms, get_val_transforms
-from src.training.losses import build_loss
-from src.training.metrics import MetricTracker
+from src.data.datamodule import DISEASE_COLUMNS, RetinalDataModule
 from src.training.early_stopping import AdvancedEarlyStopping
 from src.training.ema import ModelEMA
+from src.training.losses import build_loss
+from src.training.metrics import MetricTracker
 
 logging.basicConfig(
     level=logging.INFO,
@@ -254,7 +256,7 @@ def main():
     img_dirs = [dm.train_dataset.img_dir, dm.val_dataset.img_dir]
 
     log.info(f"  Samples: {len(all_df)} | Classes: {nc} | Image dirs: {len(img_dirs)}")
-    log.info(f"  Disease prevalence (top 5):")
+    log.info("  Disease prevalence (top 5):")
     top5 = all_df[dm.disease_columns].sum().sort_values(ascending=False).head(5)
     for d, c in top5.items():
         log.info(f"    {d}: {c} ({c/len(all_df)*100:.1f}%)")
@@ -269,8 +271,8 @@ def main():
     test_img, test_lab = test_ds[0]
     log.info(f"  Train transform output: {test_img.shape} (dtype={test_img.dtype})")
     log.info(f"  Label shape: {test_lab.shape}")
-    log.info(f"  Augmentation: flip, rotate, color jitter, crop, random erase")
-    log.info(f"  FP16 mixed precision: enabled")
+    log.info("  Augmentation: flip, rotate, color jitter, crop, random erase")
+    log.info("  FP16 mixed precision: enabled")
 
     # ━━ STAGE 3: K-Fold Training (All 4 Models) ━━━━━━━━━━━━━━━━━━━━━━━━━━
     log.info("\n" + "="*70)
@@ -343,13 +345,13 @@ def main():
     best_name = max(scores, key=scores.get)
     best_r = next(r for r in all_results if r["model"] == best_name)
 
-    print(f"\n  WEIGHTED SCORES (F1:40% | AUC:30% | Prec:15% | Rec:15%):")
+    print("\n  WEIGHTED SCORES (F1:40% | AUC:30% | Prec:15% | Rec:15%):")
     for n, s in sorted(scores.items(), key=lambda x: x[1], reverse=True):
         mark = " <-- BEST" if n == best_name else ""
         print(f"    {n:<28} {s:.4f}{mark}")
 
     print(f"\n{'='*70}")
-    print(f"  RECOMMENDATION")
+    print("  RECOMMENDATION")
     print(f"{'='*70}")
     print(f"\n  Recommended: {best_name}")
     print(f"    Overall Score: {scores[best_name]:.4f}")
@@ -358,8 +360,8 @@ def main():
     print(f"    Precision: {best_r['mean_precision_macro']:.4f}")
     print(f"    Recall:   {best_r['mean_recall_macro']:.4f}")
     print(f"    Parameters: {best_r['params_M']:.0f}M")
-    print(f"\n    Rationale: Weighted scoring (F1:40%, AUC:30%, Prec:15%, Rec:15%)")
-    print(f"    Best balance between accuracy and computational efficiency")
+    print("\n    Rationale: Weighted scoring (F1:40%, AUC:30%, Prec:15%, Rec:15%)")
+    print("    Best balance between accuracy and computational efficiency")
     print(f"{'='*70}\n")
 
     # ━━ STAGE 5: Fine-Tune Best Model on Full Dataset ━━━━━━━━━━━━━━━━━━━━

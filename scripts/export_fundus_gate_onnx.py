@@ -91,7 +91,7 @@ def export_gate_onnx(
 
 def quantize_gate_int8(fp32_path: Path, int8_path: Path) -> Path:
     """Dynamic INT8 quantization."""
-    from onnxruntime.quantization import quantize_dynamic, QuantType
+    from onnxruntime.quantization import QuantType, quantize_dynamic
 
     quantize_dynamic(str(fp32_path), str(int8_path), weight_type=QuantType.QUInt8)
 
@@ -124,7 +124,7 @@ def validate_gate_parity(
         with torch.no_grad():
             torch_out = torch.sigmoid(torch_model(dummy)).numpy()
 
-        fp32_out = 1.0 / (1.0 + np.exp(-fp32_sess.run(None, {"input": dummy_np})[0]))
+        1.0 / (1.0 + np.exp(-fp32_sess.run(None, {"input": dummy_np})[0]))
 
         t0 = time.perf_counter()
         int8_out = 1.0 / (1.0 + np.exp(-int8_sess.run(None, {"input": dummy_np})[0]))

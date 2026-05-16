@@ -14,21 +14,21 @@ from backend.app.core.db import Base
 
 # Import all models so Base.metadata is populated.
 from backend.app.models import (  # noqa: F401
-    User,
-    Organization,
-    Membership,
-    Plan,
-    Subscription,
-    Invoice,
-    PaymentIntent,
-    UsageEvent,
-    WebhookEvent,
-    RefreshToken,
     EmailVerificationToken,
-    PasswordResetToken,
+    Invoice,
     MagicLinkToken,
+    Membership,
+    Organization,
     OrganizationInvite,
+    PasswordResetToken,
+    PaymentIntent,
+    Plan,
+    RefreshToken,
     RenewalReminder,
+    Subscription,
+    UsageEvent,
+    User,
+    WebhookEvent,
 )
 
 config = context.config

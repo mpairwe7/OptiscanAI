@@ -21,7 +21,6 @@ import sys
 from pathlib import Path
 
 import numpy as np
-import torch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -95,7 +94,7 @@ def main():
     try:
         from backend.app.core.federated_server import FlowerFederatedServer
 
-        server = FlowerFederatedServer(
+        FlowerFederatedServer(
             num_rounds=args.rounds,
             min_clients=min(args.clients, 2),
         )
@@ -109,7 +108,7 @@ def main():
         json.dump(report, f, indent=2)
 
     logger.info("Report saved to %s", output_path)
-    print(f"\nFederation Simulation Report:")
+    print("\nFederation Simulation Report:")
     for cd in report["client_data_distribution"]:
         print(f"  Client {cd['client']}: {cd['samples']} samples, {cd['classes']} classes")
     print(f"  Flower available: {report.get('flower_available', False)}")

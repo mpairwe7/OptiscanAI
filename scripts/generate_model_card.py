@@ -9,10 +9,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import yaml
-import torch
-from src.governance.model_card import generate_model_card
+
+from src.data.datamodule import DISEASE_COLUMNS, RetinalDataModule
 from src.governance.dataset_card import DatasetCard
-from src.data.datamodule import RetinalDataModule, DISEASE_COLUMNS
+from src.governance.model_card import generate_model_card
 from train import build_model
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")

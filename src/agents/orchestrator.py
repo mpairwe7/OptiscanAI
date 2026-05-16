@@ -3,15 +3,14 @@
 Starts, stops, and monitors the three autonomous agents. Provides a unified
 interface for the backend API to query agent state and trigger actions.
 """
-import asyncio
 import logging
 from typing import Optional
 
 from src.agents.base import BaseAgent
 from src.agents.event_bus import EventBus, event_bus
-from src.agents.screening_agent import ScreeningAgent
-from src.agents.monitor_agent import MonitorAgent
 from src.agents.governance_agent import GovernanceAgent
+from src.agents.monitor_agent import MonitorAgent
+from src.agents.screening_agent import ScreeningAgent
 
 logger = logging.getLogger(__name__)
 

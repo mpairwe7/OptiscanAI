@@ -168,13 +168,14 @@ async def check_scan_quota_inline(request, response) -> Optional["BillingContext
     when the org is over its monthly scan quota; the response body matches
     the structure consumed by the frontend PaywallModal.
     """
+    from sqlalchemy import select
+
     from backend.app.core.db import session_factory
     from backend.app.core.security import decode_access_token
     from backend.app.models.membership import Membership, MembershipStatus
     from backend.app.models.organization import Organization
     from backend.app.models.subscription import Subscription
     from backend.app.models.user import User
-    from sqlalchemy import select
 
     if not settings.billing.enabled:
         return None

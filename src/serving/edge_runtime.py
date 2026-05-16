@@ -211,7 +211,7 @@ class EdgeRuntime:
         elif isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
             # Need to rebuild model architecture -- try to import the builder
             try:
-                from src.models.vignn import create_vignn_model, ClinicalKnowledgeGraph
+                from src.models.vignn import ClinicalKnowledgeGraph, create_vignn_model
 
                 disease_cols = self._disease_columns
                 kg = ClinicalKnowledgeGraph(disease_names=disease_cols)
@@ -382,7 +382,7 @@ class EdgeRuntime:
             )
 
         try:
-            import coremltools as ct  # noqa: F811
+            import coremltools as ct  # noqa: F401,F811 — optional dep, re-import for clarity
         except ImportError as exc:
             raise ImportError(
                 "coremltools is required for CoreML inference."

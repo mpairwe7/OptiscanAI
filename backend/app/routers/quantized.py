@@ -6,12 +6,10 @@ for GGUF/AWQ/GPTQ/ONNX quantized model variants.
 from __future__ import annotations
 
 import logging
-import os
-import time
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from backend.app.core.config import settings

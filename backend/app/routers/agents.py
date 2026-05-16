@@ -12,6 +12,7 @@ from backend.app.core.config import settings
 logger = logging.getLogger(__name__)
 
 from fastapi import Depends
+
 from backend.app.core.feature_gate import require_tier
 
 router = APIRouter(
@@ -150,8 +151,9 @@ async def agentic_screen(
             detail["suggestion"] = gate_result.suggested_action
         raise HTTPException(422, detail=detail)
 
-    from src.agents.graph import run_screening
     import uuid
+
+    from src.agents.graph import run_screening
 
     scan_id = str(uuid.uuid4())[:8]
     try:

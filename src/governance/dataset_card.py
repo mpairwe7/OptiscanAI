@@ -1,11 +1,10 @@
 """Dataset Card / Datasheet generator following Gebru et al. (2021) framework."""
 import json
 import logging
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 logger = logging.getLogger(__name__)

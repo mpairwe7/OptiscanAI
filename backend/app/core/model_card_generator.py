@@ -31,11 +31,15 @@ if str(_PROJECT_ROOT) not in sys.path:
 # ---------------------------------------------------------------------------
 try:
     from src.governance.model_card import (
-        ModelCard as _GovernanceModelCard,
-        generate_model_card as _gov_generate,
+        FairnessAnalysis,
         ModelDetails,
         PerformanceMetrics,
-        FairnessAnalysis,
+    )
+    from src.governance.model_card import (
+        ModelCard as _GovernanceModelCard,
+    )
+    from src.governance.model_card import (
+        generate_model_card as _gov_generate,
     )
     _GOV_AVAILABLE = True
 except ImportError:
@@ -318,7 +322,7 @@ class ModelCardAutoGenerator:
 
             # Emit downstream event
             try:
-                from src.agents.event_bus import event_bus, Event, EventType
+                from src.agents.event_bus import Event, EventType, event_bus
 
                 await event_bus.emit(
                     Event(
@@ -527,7 +531,7 @@ def init_model_card_generator() -> None:
     # Subscribe to MODEL_PROMOTED if auto-generation is enabled
     if _generator._auto_generate:
         try:
-            from src.agents.event_bus import event_bus, EventType
+            from src.agents.event_bus import EventType, event_bus
 
             event_bus.subscribe(
                 EventType.MODEL_PROMOTED,

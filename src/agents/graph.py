@@ -14,10 +14,10 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Literal, TypedDict
 
-from langgraph.graph import StateGraph, END
+from langgraph.graph import END, StateGraph
 
 from src.agents import llm
-from src.agents.event_bus import EventType, Event, event_bus
+from src.agents.event_bus import Event, EventType, event_bus
 
 logger = logging.getLogger(__name__)
 

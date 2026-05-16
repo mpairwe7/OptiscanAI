@@ -20,10 +20,9 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import time
 from collections import defaultdict
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -389,7 +388,7 @@ class ActiveLearningManager:
             self.pending_queue.sort(
                 key=lambda c: (priority_order.get(c.priority, 99), c.timestamp)
             )
-            evicted = self.pending_queue.pop()
+            self.pending_queue.pop()
             self.stats["cases_evicted"] += 1
 
     # ------------------------------------------------------------------

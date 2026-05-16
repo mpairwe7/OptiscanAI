@@ -3,6 +3,7 @@
 
 from fpdf import FPDF
 
+
 class BOMReport(FPDF):
     def header(self):
         self.set_font("Helvetica", "B", 11)

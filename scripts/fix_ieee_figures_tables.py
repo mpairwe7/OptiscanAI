@@ -12,17 +12,17 @@ import re
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
 import numpy as np
 from docx import Document
-from docx.shared import Inches, Pt, Emu, Cm, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.oxml.ns import qn, nsdecls
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import parse_xml
-from lxml import etree
+from docx.oxml.ns import nsdecls, qn
+from docx.shared import Inches, Pt
 
 INPUT = Path("docs/IEEE_Concept_Paper_Final.docx")
 OUTPUT = Path("docs/IEEE_Concept_Paper_Final.docx")  # overwrite
@@ -49,10 +49,9 @@ def generate_fig1_architecture():
     c_agent = '#7030A0'
     c_output = '#C00000'
     c_xai = '#FFC000'
-    c_bg = '#F2F2F2'
 
     box_h = 0.7
-    box_props = dict(boxstyle='round,pad=0.15', linewidth=1.2)
+    dict(boxstyle='round,pad=0.15', linewidth=1.2)
 
     # Row 1: Main pipeline (y=4.5)
     boxes_main = [
@@ -300,7 +299,6 @@ def generate_fig3_gate():
 
 def fix_table_ieee(table):
     """Apply IEEE table formatting: horizontal rules, centered, styled text."""
-    WNS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
 
     # 1. Center the table
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -386,7 +384,6 @@ def insert_figure_after_para(doc, para_index, image_path, caption_text,
 
     IEEE standard: figure centered, caption below starting with 'Fig. X.'
     """
-    body = doc.element.body
     ref_para = doc.paragraphs[para_index]._element
 
     # Create the image paragraph (centered)
@@ -439,7 +436,6 @@ def add_figure_properly(doc, after_para_idx, image_path, caption, width=3.5):
 
 def add_figure_references(doc):
     """Update body paragraphs to reference figures where appropriate."""
-    WNS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
 
     for p in doc.paragraphs:
         if p.style.name not in ('PARA', 'PARA_Indent'):

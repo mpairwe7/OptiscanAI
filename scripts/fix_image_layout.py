@@ -6,11 +6,9 @@
 """
 import copy
 import subprocess
-from lxml import etree
+
 from docx import Document
-from docx.shared import Inches, Emu
-from docx.oxml.ns import qn, nsdecls
-from docx.oxml import parse_xml
+from lxml import etree
 
 FILE = "docs/IEEE_Concept_Paper_Final.docx"
 WNS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -90,7 +88,7 @@ def convert_author_photos_to_anchor(doc):
             graphic = inline_elem.find(f'{{{ANS}}}graphic')
 
             # Get the effect extent or create default
-            eff_ext = inline_elem.find(f'{{{WPNS}}}effectExtent')
+            inline_elem.find(f'{{{WPNS}}}effectExtent')
 
             # Build the anchor element
             # Spacing: 6pt right margin for text gap (76200 EMU = ~0.08")

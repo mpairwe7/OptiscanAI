@@ -9,11 +9,11 @@ IEEE author photo standards:
 """
 import subprocess
 from pathlib import Path
-from PIL import Image
+
 from docx import Document
-from docx.shared import Inches, Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml.ns import qn
+from docx.shared import Inches
+from PIL import Image
 
 INPUT = "docs/IEEE_Concept_Paper_Final.docx"
 OUTPUT = "docs/IEEE_Concept_Paper_Final.docx"
@@ -174,7 +174,7 @@ def main():
     count = insert_photos(doc)
     print(f"\nInserted {count} author photos")
 
-    ok = verify(doc)
+    verify(doc)
 
     print(f"\nSaving to {OUTPUT}...")
     doc.save(OUTPUT)

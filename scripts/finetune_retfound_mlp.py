@@ -8,25 +8,29 @@ This script uses a 2-layer MLP head (~0.3M params) with end-to-end fine-tuning.
 Usage:
     PYTHONPATH=. CUDA_VISIBLE_DEVICES=5 python3 -u scripts/finetune_retfound_mlp.py 2>&1 | tee outputs/full_pipeline/finetune_retfound_mlp.log
 """
-import logging, os, random, sys, time
+import logging
+import os
+import random
+import sys
+import time
 from copy import deepcopy
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import timm
 import torch
 import torch.nn as nn
-import timm
 import yaml
 from PIL import Image
 from torch.utils.data import DataLoader
 
-from src.data.datamodule import RetinalDataModule, DISEASE_COLUMNS
 from src.data.augmentation import get_train_transforms, get_val_transforms
-from src.training.losses import build_loss
-from src.training.metrics import MetricTracker
+from src.data.datamodule import RetinalDataModule
 from src.training.early_stopping import AdvancedEarlyStopping
 from src.training.ema import ModelEMA
+from src.training.losses import build_loss
+from src.training.metrics import MetricTracker
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s",
                     datefmt="%H:%M:%S", stream=sys.stdout)
@@ -241,7 +245,7 @@ def main():
         vm = met.compute(); met.reset()
         f1 = vm.get("f1_macro", 0); auc = vm.get("auc_roc", 0)
         prec = vm.get("precision_macro", 0); rec = vm.get("recall_macro", 0)
-        acc = vm.get("accuracy_sample", 0); mAP = vm.get("mAP", 0)
+        vm.get("accuracy_sample", 0); mAP = vm.get("mAP", 0)
         lr_bb = opt.param_groups[0]["lr"]; lr_hd = opt.param_groups[1]["lr"]
         log.info(f"  E{ep+1}/{EPOCHS} | L:{tloss/max(steps,1):.4f}/{vloss/max(vs,1):.4f} | "
                  f"F1:{f1:.4f} AUC:{auc:.4f} mAP:{mAP:.4f} P:{prec:.4f} R:{rec:.4f} "
@@ -302,7 +306,7 @@ def main():
     log.info("\n" + "=" * 60)
     log.info("  FINE-TUNING COMPLETE")
     log.info("=" * 60)
-    print(f"\n  Model:        RETFound + MLP head")
+    print("\n  Model:        RETFound + MLP head")
     print(f"  Backbone:     {BACKBONE} ({total_p-head_p:.1f}M params)")
     print(f"  Head:         2-layer MLP ({head_p:.2f}M params)")
     print(f"  Best F1:      {best_f1:.4f}")

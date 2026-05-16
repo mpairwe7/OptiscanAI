@@ -5,13 +5,13 @@ import logging
 import time
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Query
-from PIL import Image
 import torch
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from PIL import Image
 
-from backend.app.core.feature_gate import require_tier
-from backend.app.core.model_service import model_service, DISEASE_NAMES
 from backend.app.core.config import settings
+from backend.app.core.feature_gate import require_tier
+from backend.app.core.model_service import DISEASE_NAMES, model_service
 
 # Clinician-or-above gate for advanced XAI methods.
 _clinician = require_tier("clinician", feature="advanced_explainability")
@@ -347,7 +347,7 @@ async def explain_comprehensive(
                         "heatmap": _pil_to_base64(heatmap_pil),
                     })
                 except Exception as e:
-                    logger.warning("Heatmap generation failed for class %s: %s", ci, e)
+                    logger.warning("Heatmap generation failed for class %s: %s", idx, e)
 
     result["gradcam_heatmaps"] = gradcam_images
     result["original_image"] = _pil_to_base64(image.resize((224, 224)))
@@ -382,8 +382,11 @@ async def explain_comprehensive(
 async def get_available_methods():
     """List which explainability methods are available in the current environment."""
     from src.models.model_explainer import (
-        GRADCAM_AVAILABLE, CAPTUM_AVAILABLE, SHAP_AVAILABLE,
-        LIME_AVAILABLE, ELI5_AVAILABLE
+        CAPTUM_AVAILABLE,
+        ELI5_AVAILABLE,
+        GRADCAM_AVAILABLE,
+        LIME_AVAILABLE,
+        SHAP_AVAILABLE,
     )
     return {
         "model_loaded": model_service.is_loaded,

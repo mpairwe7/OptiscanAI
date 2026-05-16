@@ -22,7 +22,6 @@ module never breaks a deployment that lacks the ``flwr`` package.
 """
 from __future__ import annotations
 
-import copy
 import logging
 import sys
 from abc import ABC, abstractmethod
@@ -48,9 +47,9 @@ logger = logging.getLogger(__name__)
 
 _flwr_available = False
 try:
-    import flwr as fl                                  # noqa: F401
-    from flwr.client import NumPyClient                # noqa: F401
-    from flwr.common import NDArrays                   # noqa: F401
+    import flwr as fl  # noqa: F401
+    from flwr.client import NumPyClient  # noqa: F401
+    from flwr.common import NDArrays  # noqa: F401
 
     _flwr_available = True
 except ImportError:

@@ -11,12 +11,11 @@ Standards enforced:
 """
 
 from __future__ import annotations
+
 import contextlib
 from pathlib import Path
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
-import numpy as np
 
 # ---------------------------------------------------------------------------
 # Color palettes

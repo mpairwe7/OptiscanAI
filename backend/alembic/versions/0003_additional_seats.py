@@ -8,9 +8,8 @@ from __future__ import annotations
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision: str = "0003"
 down_revision: Union[str, None] = "0002"

@@ -3,6 +3,7 @@ AdvancedEarlyStopping - Extracted from notebook cell 29.
 Multi-metric monitoring, adaptive patience, overfitting detection.
 """
 from __future__ import annotations
+
 import copy
 from collections import defaultdict
 from typing import Optional

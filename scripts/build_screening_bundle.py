@@ -20,11 +20,9 @@ Produces:
 from __future__ import annotations
 
 import argparse
-import gzip
 import hashlib
 import json
 import logging
-import shutil
 import sys
 import tarfile
 import time

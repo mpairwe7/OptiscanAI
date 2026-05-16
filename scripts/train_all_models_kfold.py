@@ -8,9 +8,7 @@ Usage:
 
 import json
 import logging
-import os
 import random
-import sys
 import time
 from copy import deepcopy
 from pathlib import Path
@@ -20,22 +18,20 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import yaml
+from PIL import Image
 from sklearn.model_selection import StratifiedKFold
 from torch.amp import GradScaler, autocast
-from tqdm import tqdm
 
-from PIL import Image
+from src.data.augmentation import get_train_transforms, get_val_transforms
 from src.data.datamodule import (
-    RetinalDataModule,
     DISEASE_COLUMNS,
+    RetinalDataModule,
     build_multilabel_stratify_labels,
 )
-from src.data.dataset import RetinalDiseaseDataset
-from src.data.augmentation import get_train_transforms, get_val_transforms
-from src.training.losses import build_loss
-from src.training.metrics import MetricTracker
 from src.training.early_stopping import AdvancedEarlyStopping
 from src.training.ema import ModelEMA
+from src.training.losses import build_loss
+from src.training.metrics import MetricTracker
 
 logging.basicConfig(
     level=logging.INFO,
@@ -98,7 +94,6 @@ class MultiDirDataset(torch.utils.data.Dataset):
                         break
 
         # Placeholder for missing images
-        from torchvision import transforms as T
         image = Image.new("RGB", (224, 224), (0, 0, 0))
         if self.transform:
             image = self.transform(image)
@@ -233,7 +228,7 @@ def train_one_fold(
 
         scheduler.step()
         train_loss = total_loss / max(steps, 1)
-        t_metrics = train_metrics.compute()
+        train_metrics.compute()
         train_metrics.reset()
 
         # --- Validate (using EMA weights) ---
@@ -448,13 +443,13 @@ def print_leaderboard(all_results: list[dict]):
     best_model = max(scores, key=scores.get)
     best_row = df[df["Model"] == best_model].iloc[0]
 
-    print(f"\n  WEIGHTED SCORES (F1:40% | AUC:30% | Prec:15% | Rec:15%):")
+    print("\n  WEIGHTED SCORES (F1:40% | AUC:30% | Prec:15% | Rec:15%):")
     for name, score in sorted(scores.items(), key=lambda x: x[1], reverse=True):
         marker = " <-- BEST" if name == best_model else ""
         print(f"    {name:<28} {score:.4f}{marker}")
 
     print(f"\n{'='*70}")
-    print(f"  RECOMMENDATION")
+    print("  RECOMMENDATION")
     print(f"{'='*70}")
     print(f"\n  Recommended: {best_model}")
     print(f"    Overall Score: {scores[best_model]:.4f}")
@@ -463,8 +458,8 @@ def print_leaderboard(all_results: list[dict]):
     print(f"    Precision: {best_row['Precision']:.4f}")
     print(f"    Recall:   {best_row['Recall']:.4f}")
     print(f"    Parameters: {best_row['Parameters (M)']:.0f}M")
-    print(f"\n    Rationale: Weighted scoring (F1:40%, AUC:30%, Prec:15%, Rec:15%)")
-    print(f"    Best balance between accuracy and computational efficiency")
+    print("\n    Rationale: Weighted scoring (F1:40%, AUC:30%, Prec:15%, Rec:15%)")
+    print("    Best balance between accuracy and computational efficiency")
     print(f"{'='*70}\n")
 
     return best_model, scores

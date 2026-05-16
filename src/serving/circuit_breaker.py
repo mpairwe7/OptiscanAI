@@ -15,7 +15,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Awaitable, Callable, TypeVar
 
@@ -201,7 +201,7 @@ class CircuitBreaker:
 
         # Emit event bus notification
         try:
-            from src.agents.event_bus import event_bus, Event, EventType
+            from src.agents.event_bus import Event, EventType, event_bus
 
             if new_state == CircuitState.OPEN:
                 event_type = EventType.CIRCUIT_BREAKER_OPENED

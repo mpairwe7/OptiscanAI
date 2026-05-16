@@ -5,7 +5,7 @@ import enum
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Enum, String, UniqueConstraint
+from sqlalchemy import Enum, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.core.db import Base

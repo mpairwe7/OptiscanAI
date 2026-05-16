@@ -7,7 +7,6 @@ HL7 FHIR R4 for interoperability with Uganda eHMIS and international systems.
 from __future__ import annotations
 
 import datetime
-from typing import Any
 
 # SNOMED CT codes for common retinal diseases
 SNOMED_MAP: dict[str, str] = {
