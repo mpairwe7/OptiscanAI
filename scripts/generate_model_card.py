@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Generate model card and dataset card for the trained model."""
+
 import argparse
 import json
 import logging

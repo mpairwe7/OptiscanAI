@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Generate a styled PDF from the hackathon pitch guide markdown."""
+
 from pathlib import Path
 
 import markdown

@@ -33,6 +33,7 @@ Usage
         --manifest-path outputs/quantized/quantization_manifest.json \\
         && echo "QUALITY GATE PASSED" || echo "QUALITY GATE FAILED"
 """
+
 from __future__ import annotations
 
 import argparse

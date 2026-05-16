@@ -4,6 +4,7 @@
 2. Convert author photos to anchored with text wrap (IEEE standard)
 3. Regenerate both docx and pdf
 """
+
 import copy
 import subprocess
 

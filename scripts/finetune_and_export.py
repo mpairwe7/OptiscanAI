@@ -5,6 +5,7 @@ Fine-tune the best model (SGT) on full dataset, then export to ONNX + TorchScrip
 Usage:
   PYTHONPATH=. CUDA_VISIBLE_DEVICES=4 python3 -u scripts/finetune_and_export.py
 """
+
 import logging
 import random
 import sys
