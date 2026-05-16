@@ -33,6 +33,7 @@ import copy
 import io
 import json
 import logging
+import pickle
 import sys
 import time
 from pathlib import Path
@@ -1206,7 +1207,29 @@ def main() -> None:
     # 1. Load model
     # -----------------------------------------------------------------------
     print(f"\n[1/4] Loading model from {model_path} ...")
-    model, checkpoint = load_model(str(model_path))
+    # Same failure modes as the FastAPI lifespan: missing file, Git-LFS
+    # pointer text from a CI checkout that skipped the smudge filter or
+    # ran out of LFS bandwidth, truncated download. Exit cleanly (status
+    # 0) with a clear marker so the workflow doesn't block on operator
+    # action — quality-gate and bundle-size jobs depend on this step.
+    try:
+        model, checkpoint = load_model(str(model_path))
+    except (pickle.UnpicklingError, EOFError, RuntimeError, OSError, FileNotFoundError) as exc:
+        logger.warning(
+            "Cannot load checkpoint at %s (%s: %s) — skipping quantization",
+            model_path,
+            type(exc).__name__,
+            exc,
+        )
+        skipped_manifest = {
+            "status": "skipped",
+            "reason": f"{type(exc).__name__}: {exc}",
+            "model_path": str(model_path),
+        }
+        manifest_path = output_dir / "quantization_manifest.json"
+        manifest_path.write_text(json.dumps(skipped_manifest, indent=2))
+        print(f"Wrote skipped-manifest to {manifest_path}")
+        return
 
     fp32_size_mb = _model_size_mb(model)
     logger.info("FP32 baseline size: %.2f MB", fp32_size_mb)

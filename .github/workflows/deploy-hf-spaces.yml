@@ -55,10 +55,20 @@ jobs:
           lfs: true
 
       - name: Install Hugging Face CLI
-        run: pip install huggingface_hub[cli]
+        run: pip install "huggingface_hub[cli]"
 
       - name: Login to Hugging Face
-        run: huggingface-cli login --token ${{ secrets.HF_TOKEN }} --add-to-git-credential
+        # `huggingface-cli login` is deprecated in huggingface_hub>=1.0 and the
+        # command is now `hf auth login`. Read the token from env so an empty
+        # secret produces a clear error instead of a silent empty-token call.
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::error::HF_TOKEN secret is empty — set repo/org secret 'HF_TOKEN' to a Hugging Face write token before re-running."
+            exit 1
+          fi
+          hf auth login --token "$HF_TOKEN" --add-to-git-credential
 
       - name: Prepare Space repository
         run: |

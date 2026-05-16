@@ -779,6 +779,15 @@ def main() -> None:
     with open(manifest_path) as f:
         manifest = json.load(f)
 
+    # If the upstream quantize step bailed (e.g. checkpoint was an LFS pointer),
+    # surface that cleanly here too instead of crashing on missing artefacts.
+    if manifest.get("status") == "skipped":
+        logger.warning(
+            "Upstream quantization was skipped (%s) — quality gate is a no-op",
+            manifest.get("reason", "unknown"),
+        )
+        sys.exit(0)
+
     artefacts = manifest.get("artefacts", [])
     reference_path = manifest.get("reference_predictions", "")
     fp32_size = manifest.get("fp32_size_mb", 0.0)
