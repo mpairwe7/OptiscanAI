@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import pickle as _pickle
 import sys
 import time
 from pathlib import Path
@@ -141,8 +142,26 @@ class ModelService:
         )
 
         model_path = PROJECT_ROOT / settings.model_path
+        # The checkpoint can be unreadable for several recoverable reasons:
+        # absent (volume not mounted, dev box), a Git-LFS pointer text
+        # (CI checkout missed the smudge or exhausted LFS bandwidth), or
+        # truncated. Treat any of those as "demo mode" rather than crashing
+        # FastAPI's lifespan — endpoints that need the model already gate
+        # on `is_loaded`, and unrelated routes (/health, /, billing) stay
+        # reachable so tests and operator-facing checks still work.
+        checkpoint = None
         if model_path.exists():
-            checkpoint = torch.load(model_path, map_location="cpu", weights_only=False)
+            try:
+                checkpoint = torch.load(model_path, map_location="cpu", weights_only=False)
+            except (_pickle.UnpicklingError, EOFError, RuntimeError, OSError) as exc:
+                logger.warning(
+                    "Could not load checkpoint at %s (%s: %s) — running in demo mode",
+                    model_path,
+                    type(exc).__name__,
+                    exc,
+                )
+
+        if checkpoint is not None:
             model_name = checkpoint.get("model_name", "vignn")
             nc = len(self.disease_codes)
             logger.info(f"Loading model: {model_name} (from checkpoint)")
@@ -230,7 +249,11 @@ class ModelService:
             self._loaded = True
             logger.info(f"Model loaded from {model_path}")
         else:
-            logger.warning(f"Model not found at {model_path} - running in demo mode")
+            if model_path.exists():
+                # exists but torch.load already logged the reason
+                logger.warning("Continuing without model (checkpoint at %s unreadable)", model_path)
+            else:
+                logger.warning("Model not found at %s — running in demo mode", model_path)
             self.default_thresholds = None
             self._loaded = False
 
