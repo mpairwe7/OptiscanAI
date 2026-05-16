@@ -30,13 +30,17 @@ jobs:
     runs-on: ubuntu-latest
     needs: lint
     steps:
-      # lfs: true pulls the real models/model_vignn_rank1.pth payload (137 MB)
-      # instead of the LFS pointer text. Without it, FastAPI's lifespan calls
-      # torch.load() on the pointer and fails with
-      # `_pickle.UnpicklingError: invalid load key, 'v'.`
+      # lfs: true fetches LFS objects but actions/checkout@v4 on a shallow
+      # clone doesn't reliably smudge them into the working tree
+      # (actions/checkout#270). The explicit `git lfs pull` step below
+      # force-replaces every LFS pointer in the working tree with the real
+      # binary — required because pytest triggers FastAPI's lifespan, which
+      # torch.load()s models/model_vignn_rank1.pth (137 MB).
       - uses: actions/checkout@v4
         with:
           lfs: true
+      - name: Smudge LFS objects into working tree
+        run: git lfs pull
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'

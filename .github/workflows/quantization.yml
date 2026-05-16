@@ -43,11 +43,16 @@ jobs:
     outputs:
       manifest_path: ${{ steps.quantize.outputs.manifest_path }}
     steps:
-      # lfs: true pulls the real models/model_vignn_rank1.pth payload (137 MB)
-      # instead of the LFS pointer; quantize_models.py torch.load()s it.
+      # lfs: true fetches LFS objects but actions/checkout@v4 on a shallow
+      # clone doesn't reliably smudge them into the working tree
+      # (actions/checkout#270). The explicit `git lfs pull` below
+      # force-replaces every LFS pointer with the real binary —
+      # quantize_models.py torch.load()s models/model_vignn_rank1.pth (137 MB).
       - uses: actions/checkout@v4
         with:
           lfs: true
+      - name: Smudge LFS objects into working tree
+        run: git lfs pull
 
       - uses: actions/setup-python@v5
         with:
