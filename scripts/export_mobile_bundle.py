@@ -576,7 +576,8 @@ class OfflineRAGService {
     )
 
     # Bundle manager
-    (flutter_root / "lib" / "offline" / "bundle_manager.dart").write_text("""import 'dart:convert';
+    (flutter_root / "lib" / "offline" / "bundle_manager.dart").write_text(
+        """import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:path_provider/path_provider.dart';
@@ -667,10 +668,12 @@ class DeltaSyncResult {
     required this.success,
   });
 }
-""")
+"""
+    )
 
     # Sync service
-    (flutter_root / "lib" / "offline" / "sync_service.dart").write_text("""import 'dart:async';
+    (flutter_root / "lib" / "offline" / "sync_service.dart").write_text(
+        """import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'bundle_manager.dart';
 
@@ -733,10 +736,12 @@ class SyncService {
     return _lastSyncTime != null;
   }
 }
-""")
+"""
+    )
 
     # Voice service
-    (flutter_root / "lib" / "voice" / "voice_service.dart").write_text("""import 'dart:async';
+    (flutter_root / "lib" / "voice" / "voice_service.dart").write_text(
+        """import 'dart:async';
 import 'dart:typed_data';
 
 /// Voice-first interface service for offline ASR + TTS.
@@ -794,7 +799,8 @@ class VoiceService {
     // TODO: Yield partial transcriptions as they arrive
   }
 }
-""")
+"""
+    )
 
     # Voice chat screen
     (flutter_root / "lib" / "screens" / "voice_chat_screen.dart").write_text(
@@ -958,7 +964,8 @@ class _VoiceChatScreenState extends State<VoiceChatScreen>
     )
 
     # Waveform widget
-    (flutter_root / "lib" / "widgets" / "waveform_widget.dart").write_text("""import 'dart:math';
+    (flutter_root / "lib" / "widgets" / "waveform_widget.dart").write_text(
+        """import 'dart:math';
 import 'package:flutter/material.dart';
 
 /// Animated waveform visualization for voice-first interface.
@@ -1036,7 +1043,8 @@ class _WaveformPainter extends CustomPainter {
         oldDelegate.isActive != isActive;
   }
 }
-""")
+"""
+    )
 
     logger.info("Flutter scaffold generated at %s", flutter_root)
     logger.info("  Directories: %s", ", ".join(dirs))

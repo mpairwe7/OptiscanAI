@@ -43,7 +43,11 @@ jobs:
     outputs:
       manifest_path: ${{ steps.quantize.outputs.manifest_path }}
     steps:
+      # lfs: true pulls the real models/model_vignn_rank1.pth payload (137 MB)
+      # instead of the LFS pointer; quantize_models.py torch.load()s it.
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - uses: actions/setup-python@v5
         with:

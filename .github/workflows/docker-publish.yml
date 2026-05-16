@@ -33,7 +33,11 @@ jobs:
     if: ${{ !inputs.deploy_only }}
     runs-on: ubuntu-latest
     steps:
+      # lfs: true pulls the real models/model_vignn_rank1.pth payload (137 MB)
+      # — pytest triggers FastAPI's lifespan, which torch.load()s the file.
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - uses: actions/setup-python@v5
         with:
@@ -43,8 +47,9 @@ jobs:
         run: |
           pip install --upgrade pip
           # Pin black — its default style bumps yearly; a floating install
-          # would reformat the tree out from under the codebase.
-          pip install ruff "black==26.3.1"
+          # would reformat the tree out from under the codebase. 25.12.0
+          # matches uv.lock and avoids a pathspec conflict with flwr.
+          pip install ruff "black==25.12.0"
           pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
           pip install -e ".[dev]"
 
