@@ -21,7 +21,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Can I pay with mobile money?",
-    a: "Yes — MTN MoMo and Airtel Money for Uganda, Flutterwave for the broader African market, plus standard cards via Stripe.",
+    a: "Yes — subscriptions are paid via MTN Mobile Money. A push prompt is sent to your phone; enter your MoMo PIN to confirm.",
   },
   {
     q: "Do you offer educational pricing?",

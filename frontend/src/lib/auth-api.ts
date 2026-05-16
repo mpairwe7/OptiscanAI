@@ -152,42 +152,19 @@ export async function apiListInvoices() {
   return apiJson<InvoiceDTO[]>(`${API}/api/v1/billing/invoices`);
 }
 
-// ── Payments — Stripe ──
-
-export async function apiStripeCheckout(
-  plan_code: "clinician" | "practice",
-  billing_cycle: "monthly" | "annual",
-) {
-  return apiJson<{ url: string; session_id: string }>(
-    `${API}/api/v1/payments/stripe/checkout-session`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan_code, billing_cycle }),
-    },
-  );
-}
-
-export async function apiStripePortal() {
-  return apiJson<{ url: string }>(`${API}/api/v1/payments/stripe/portal-session`, {
-    method: "POST",
-  });
-}
-
-// ── Payments — MTN MoMo / Airtel Money ──
+// ── Payments — MTN MoMo ──
 
 export async function apiMomoCheckout(
   plan_code: "clinician" | "practice",
   billing_cycle: "monthly" | "annual",
   phone: string,
-  provider: "mtn" | "airtel",
 ) {
   return apiJson<{ intent_id: string; status: string; provider: string; poll_url: string }>(
     `${API}/api/v1/payments/momo/checkout`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan_code, billing_cycle, phone, provider }),
+      body: JSON.stringify({ plan_code, billing_cycle, phone }),
     },
   );
 }
@@ -205,23 +182,6 @@ export interface PaymentIntentDTO {
 
 export async function apiPollIntent(intentId: string) {
   return apiJson<PaymentIntentDTO>(`${API}/api/v1/payments/intents/${intentId}`);
-}
-
-// ── Payments — Flutterwave ──
-
-export async function apiFlutterwaveCheckout(
-  plan_code: "clinician" | "practice",
-  billing_cycle: "monthly" | "annual",
-  phone: string,
-) {
-  return apiJson<{ intent_id: string; payment_url: string }>(
-    `${API}/api/v1/payments/flutterwave/checkout`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan_code, billing_cycle, phone }),
-    },
-  );
 }
 
 // ── Orgs ──
