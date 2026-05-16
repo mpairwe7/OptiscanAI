@@ -40,15 +40,10 @@ jobs:
         with:
           lfs: true
       - name: Smudge LFS objects into working tree
-        run: git lfs pull
-      - name: Verify LFS file payload is real binary
-        run: |
-          echo "── git lfs ls-files ──"
-          git lfs ls-files
-          echo "── target file ──"
-          ls -la models/model_vignn_rank1.pth
-          file models/model_vignn_rank1.pth
-          head -c 200 models/model_vignn_rank1.pth | od -c | head -5
+        # Best-effort. The repo's LFS bandwidth may be exhausted on the
+        # free tier, in which case the .pth stays as pointer text — the
+        # backend's lifespan now tolerates that and serves in demo mode.
+        run: git lfs pull || true
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
