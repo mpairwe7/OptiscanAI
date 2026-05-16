@@ -5,6 +5,12 @@ __pycache__/
 dist/
 build/
 .venv/
+.pytest_cache/
+.ruff_cache/
+.tmp_pytest/
+.mypy_cache/
+.coverage
+htmlcov/
 
 # ML Artifacts
 outputs/

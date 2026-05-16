@@ -1,4 +1,4 @@
-# RetinalAI Clinical Screening Platform v4.0
+# OptiscanAI Clinical Screening Platform v4.0
 
 Offline-first retinal disease screening platform for rural Uganda. Classifies 24 retinal diseases from fundus photographs using **RETFound ViT-Large** with LoRA adapters, clinical knowledge graph reasoning, and a LangGraph agentic workflow. Designed for community health workers on mid-range Android phones with intermittent connectivity.
 
