@@ -1,0 +1,20 @@
+# Map legacy / agent-authored commits to mpairwe7 for any GitHub UI surface
+# that honors .mailmap (contributors graph, shortlog, blame).
+#
+# Format: <correct-name> <correct-email> <commit-name> <commit-email>
+#
+# Note: .mailmap does NOT affect commit metadata pages of already-closed PRs
+# (refs/pull/N/head). Those bypass mailmap rendering on github.com/.../pull/N/commits
+# and would require a GitHub Support ticket to purge.
+
+# Legacy contributor whose email was used in the working repo before the
+# migration history rewrite.
+mpairwe7 <mpairwelauben75@gmail.com> rodrichie <nabasarodrick@gmail.com>
+
+# Older Claude session co-author trailers (pre-global-rule). Strip-rewritten
+# in 2026-05-19 history filter; alias here as a belt-and-braces measure for
+# any GitHub UI path that doesn't honor the rewrite.
+mpairwe7 <mpairwelauben75@gmail.com> Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+mpairwe7 <mpairwelauben75@gmail.com> Claude Sonnet 4.6 (1M context) <noreply@anthropic.com>
+mpairwe7 <mpairwelauben75@gmail.com> Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+mpairwe7 <mpairwelauben75@gmail.com> Claude Sonnet 4.7 (1M context) <noreply@anthropic.com>
