@@ -53,8 +53,44 @@ export default function PricingPage() {
         </div>
       </div>
 
-      <div className="mt-16 text-center text-sm text-slate-500">
-        All prices in Ugandan Shillings (UGX). Pay with MTN Mobile Money.
+      <div className="mt-16 flex flex-col items-center gap-2 text-sm text-slate-500">
+        <span className="text-xs uppercase tracking-wider font-semibold text-slate-400">
+          Pay with
+        </span>
+        {/*
+          MTN Mobile Money mark — geometric reproduction of the brand:
+          yellow rounded rectangle (#FFCC00) with bold black "MTN" wordmark.
+          Kept inline so it ships with the bundle (no extra request) and
+          stays crisp at any DPR.
+        */}
+        <span
+          className="inline-flex items-center gap-2 rounded-full bg-white border border-slate-200 px-3 py-1.5 shadow-sm"
+          role="img"
+          aria-label="Pay with MTN Mobile Money"
+        >
+          <svg
+            viewBox="0 0 64 32"
+            className="h-6 w-12"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <rect x="0" y="0" width="64" height="32" rx="6" fill="#FFCC00" />
+            <text
+              x="32"
+              y="22"
+              textAnchor="middle"
+              fontFamily="Inter, system-ui, sans-serif"
+              fontWeight="900"
+              fontSize="18"
+              fill="#000000"
+              letterSpacing="-0.5"
+            >
+              MTN
+            </text>
+          </svg>
+          <span className="text-sm font-semibold text-slate-700">MoMo</span>
+        </span>
       </div>
     </div>
   );
