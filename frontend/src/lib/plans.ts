@@ -84,7 +84,7 @@ export const FEATURE_MATRIX: FeatureEntry[] = [
   { key: "grad_cam", label: "Grad-CAM heatmaps", byPlan: ["✓", "✓", "✓", "✓"] },
   { key: "advanced_xai", label: "LIME, SHAP, Integrated Gradients, ELI5", byPlan: ["—", "✓", "✓", "✓"] },
   { key: "clinical_reasoning", label: "Clinical knowledge-graph reasoning", byPlan: ["—", "✓", "✓", "✓"] },
-  { key: "voice_mode", label: "Voice-first mode", byPlan: ["—", "✓", "✓", "✓"] },
+  { key: "voice_mode", label: "Voice-first mode (coming soon)", byPlan: ["—", "Coming soon", "Coming soon", "Coming soon"] },
   { key: "pdf", label: "PDF report export", byPlan: ["Watermarked", "✓", "✓", "✓"] },
   { key: "retention", label: "Report retention", byPlan: ["7 days", "1 year", "3 years", "Custom"] },
   { key: "review_queue", label: "Multi-clinician review queue", byPlan: ["—", "—", "✓", "✓"] },

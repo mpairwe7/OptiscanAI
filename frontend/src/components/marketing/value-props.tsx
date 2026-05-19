@@ -1,5 +1,12 @@
+interface ValueProp {
+  title: string;
+  body: string;
+  icon: React.ReactNode;
+  comingSoon?: boolean;
+}
+
 export function ValueProps() {
-  const props = [
+  const props: ValueProp[] = [
     {
       title: "45-disease detection",
       body: "Multi-label inference covering diabetic retinopathy, AMD, glaucoma, hypertensive retinopathy, and 41 more.",
@@ -39,6 +46,7 @@ export function ValueProps() {
     {
       title: "Voice-first mode",
       body: "Dictate scan context, listen to clinical reasoning. Designed for clinicians whose hands stay on the patient.",
+      comingSoon: true,
       icon: (
         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
@@ -70,9 +78,27 @@ export function ValueProps() {
           {props.map((p) => (
             <div
               key={p.title}
-              className="rounded-2xl border border-slate-200 bg-white p-6 hover:shadow-lg transition-shadow"
+              aria-label={p.comingSoon ? `${p.title} — coming soon` : p.title}
+              className={`relative rounded-2xl border bg-white p-6 transition-shadow ${
+                p.comingSoon
+                  ? "border-slate-200 border-dashed hover:shadow-md"
+                  : "border-slate-200 hover:shadow-lg"
+              }`}
             >
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 text-white flex items-center justify-center shadow-sm">
+              {p.comingSoon && (
+                <span
+                  className="absolute top-4 right-4 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700"
+                  role="status"
+                >
+                  <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  Coming soon
+                </span>
+              )}
+              <div
+                className={`w-11 h-11 rounded-xl bg-gradient-to-br text-white flex items-center justify-center shadow-sm ${
+                  p.comingSoon ? "from-slate-400 to-slate-500" : "from-teal-500 to-cyan-500"
+                }`}
+              >
                 {p.icon}
               </div>
               <div className="mt-4 font-semibold text-slate-900">{p.title}</div>
