@@ -16,7 +16,7 @@ export function MarketingFooter() {
           </p>
 
           <form
-            action="mailto:hello@makstartup.com"
+            action="mailto:mpairwelauben75@gmail.com"
             method="post"
             encType="text/plain"
             className="mt-6 flex gap-2 max-w-md"
@@ -58,8 +58,8 @@ export function MarketingFooter() {
           <ul className="space-y-2 text-slate-400">
             <li><Link href="/contact-sales" className="hover:text-white">Contact sales</Link></li>
             <li>
-              <a href="mailto:hello@makstartup.com" className="hover:text-white">
-                hello@makstartup.com
+              <a href="mailto:mpairwelauben75@gmail.com" className="hover:text-white">
+                mpairwelauben75@gmail.com
               </a>
             </li>
             <li>
