@@ -137,6 +137,16 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Use SHA-pinned tags so Crane Cloud sees a different image string
+          # on every CI run and actually triggers a pod rollover. PATCHing the
+          # moving `:cpu` / `:latest` tags is a no-op (Crane diffs by image
+          # string, not by Docker manifest digest). The metadata-action in the
+          # build-and-push step publishes tags as `<tag>-<sha-7>` — these are
+          # the ones we point at here so deploy guarantees rollover.
+          SHA7="${GITHUB_SHA:0:7}"
+          CPU_TAG="landwind/optiscan-ai:cpu-${SHA7}"
+          GPU_TAG="landwind/optiscan-ai:latest-${SHA7}"
+
           # Login to Crane Cloud API
           TOKEN=$(curl -sf -X POST "$CRANE_CLOUD_API/users/login" \
             -H "Content-Type: application/json" \
@@ -151,8 +161,8 @@ jobs:
               "$CRANE_CLOUD_API/apps/$CRANE_CPU_APP_ID" \
               -H "Authorization: Bearer $TOKEN" \
               -H "Content-Type: application/json" \
-              -d '{"image": "landwind/optiscan-ai:cpu"}')
-            echo "CPU deploy: HTTP $STATUS"
+              -d "{\"image\": \"$CPU_TAG\"}")
+            echo "CPU deploy ($CPU_TAG): HTTP $STATUS"
           fi
 
           # Redeploy GPU app
@@ -161,8 +171,8 @@ jobs:
               "$CRANE_CLOUD_API/apps/$CRANE_GPU_APP_ID" \
               -H "Authorization: Bearer $TOKEN" \
               -H "Content-Type: application/json" \
-              -d '{"image": "landwind/optiscan-ai:latest"}')
-            echo "GPU deploy: HTTP $STATUS"
+              -d "{\"image\": \"$GPU_TAG\"}")
+            echo "GPU deploy ($GPU_TAG): HTTP $STATUS"
           fi
 
       - name: Health check (CPU)
