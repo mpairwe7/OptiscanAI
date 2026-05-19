@@ -97,9 +97,9 @@ const SECTIONS: LegalSection[] = [
     body: (
       <>
         <p>
-          Paid plans bill in advance, monthly or annually as selected at checkout, in US dollars.
-          Mobile-money charges are converted to UGX at the FX rate displayed at checkout time. You
-          may cancel at any time from{" "}
+          Paid plans bill in advance, monthly or annually as selected at checkout. All prices are
+          quoted and charged in Ugandan Shillings (UGX) via MTN Mobile Money. You may cancel at any
+          time from{" "}
           <Link href="/app/billing" className="text-teal-700 underline">/app/billing</Link>; access
           continues until the end of the current period. We don&apos;t offer prorated refunds for
           early cancellation, but we will refund duplicate or accidental charges within 30 days.

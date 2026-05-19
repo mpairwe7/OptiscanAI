@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useBillingStore } from "@/stores/billing-store";
-import { planById, type PlanId } from "@/lib/plans";
+import { formatPrice, planById, type PlanId } from "@/lib/plans";
 
 export function UpsellSheet() {
   const { upsellOpen, upsellPayload, closeUpsell } = useBillingStore();
@@ -41,9 +41,7 @@ export function UpsellSheet() {
           <div className="font-semibold text-slate-900">{required.name}</div>
           <div className="mt-0.5 text-xs text-slate-600">{required.description}</div>
           <div className="mt-3 text-2xl font-bold text-slate-900">
-            {required.priceUsd.monthly === "contact"
-              ? "Contact sales"
-              : `$${required.priceUsd.monthly}/mo`}
+            {formatPrice(required, "monthly")}
           </div>
         </div>
 

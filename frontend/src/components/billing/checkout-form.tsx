@@ -118,7 +118,7 @@ export function CheckoutForm({ planCode }: { planCode: string }) {
         plan_code: plan.id,
         billing_cycle: cycle,
         amount_cents: 0,
-        currency: "USD",
+        currency: "UGX",
         confirmed_at: null,
       });
     } catch (err) {
@@ -227,7 +227,7 @@ export function CheckoutForm({ planCode }: { planCode: string }) {
         </button>
 
         <p className="mt-3 text-xs text-slate-500">
-          Charged in UGX at the current FX rate. MoMo subscriptions don&apos;t auto-renew — we&apos;ll
+          Charged in Ugandan Shillings (UGX). MoMo subscriptions don&apos;t auto-renew — we&apos;ll
           email a reminder before your period ends.
         </p>
       </section>

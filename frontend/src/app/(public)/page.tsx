@@ -24,7 +24,7 @@ export default function MarketingHome() {
             offers: {
               "@type": "Offer",
               price: "0",
-              priceCurrency: "USD",
+              priceCurrency: "UGX",
               description: "Free tier — 10 scans/month",
             },
             aggregateRating: {

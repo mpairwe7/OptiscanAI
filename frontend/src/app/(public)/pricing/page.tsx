@@ -54,7 +54,7 @@ export default function PricingPage() {
       </div>
 
       <div className="mt-16 text-center text-sm text-slate-500">
-        Prices in USD, charged in UGX at the current FX rate. Pay with MTN Mobile Money.
+        All prices in Ugandan Shillings (UGX). Pay with MTN Mobile Money.
       </div>
     </div>
   );

@@ -21,7 +21,11 @@ export interface Plan {
   name: string;
   tagline: string;
   description: string;
-  priceUsd: { monthly: number | "contact"; annual: number | "contact" };
+  /**
+   * Price in Ugandan shillings. Whole UGX, no fractional units —
+   * mobile-money rails settle in whole shillings.
+   */
+  priceUgx: { monthly: number | "contact"; annual: number | "contact" };
   scanQuota: number | "unlimited";
   seats: number | "unlimited";
   cta: { label: string; href: string; variant: "primary" | "outline" };
@@ -36,7 +40,7 @@ export const PLANS: Plan[] = [
     name: "Free",
     tagline: "Try clinical screening with no commitment.",
     description: "10 scans/month, Grad-CAM, community support.",
-    priceUsd: { monthly: 0, annual: 0 },
+    priceUgx: { monthly: 0, annual: 0 },
     scanQuota: 10,
     seats: 1,
     cta: { label: "Get started", href: "/sign-up?plan=free", variant: "outline" },
@@ -46,7 +50,7 @@ export const PLANS: Plan[] = [
     name: "Clinician",
     tagline: "For solo ophthalmologists and optometrists.",
     description: "500 scans/month, all explainability methods, PDF reports.",
-    priceUsd: { monthly: 29, annual: 290 },
+    priceUgx: { monthly: 100_000, annual: 1_000_000 },
     scanQuota: 500,
     seats: 1,
     highlight: true,
@@ -57,7 +61,7 @@ export const PLANS: Plan[] = [
     name: "Practice",
     tagline: "For multi-clinician clinics.",
     description: "3,000 scans/month, 5 seats, audit log, review queue.",
-    priceUsd: { monthly: 149, annual: 1490 },
+    priceUgx: { monthly: 550_000, annual: 5_500_000 },
     scanQuota: 3000,
     seats: 5,
     cta: { label: "Subscribe", href: "/app/checkout/practice", variant: "primary" },
@@ -67,7 +71,7 @@ export const PLANS: Plan[] = [
     name: "Health System",
     tagline: "For hospitals and regional health offices.",
     description: "Unlimited scans, SSO/SCIM, BAA + PDP, DHIS2/FHIR/DICOM.",
-    priceUsd: { monthly: "contact", annual: "contact" },
+    priceUgx: { monthly: "contact", annual: "contact" },
     scanQuota: "unlimited",
     seats: "unlimited",
     cta: { label: "Contact sales", href: "/contact-sales", variant: "outline" },
@@ -120,25 +124,36 @@ export function planById(id: PlanId): Plan | undefined {
 }
 
 export function priceFor(plan: Plan, period: BillingPeriod): number | "contact" {
-  return plan.priceUsd[period];
+  return plan.priceUgx[period];
+}
+
+const ugxFormatter = new Intl.NumberFormat("en-UG", {
+  style: "currency",
+  currency: "UGX",
+  maximumFractionDigits: 0,
+});
+
+/** Format a raw UGX amount as e.g. "UGX 100,000". */
+function formatUgx(amount: number): string {
+  return ugxFormatter.format(amount);
 }
 
 export function formatPrice(plan: Plan, period: BillingPeriod): string {
   const p = priceFor(plan, period);
   if (p === "contact") return "Contact sales";
-  if (p === 0) return "$0";
+  if (p === 0) return formatUgx(0);
   if (period === "annual") {
-    const monthly = Math.round((p / 12) * 100) / 100;
-    return `$${monthly.toFixed(0)}/mo`;
+    const monthly = Math.round(p / 12);
+    return `${formatUgx(monthly)}/mo`;
   }
-  return `$${p}/mo`;
+  return `${formatUgx(p)}/mo`;
 }
 
 export function annualSavingsLabel(plan: Plan): string | null {
-  const m = plan.priceUsd.monthly;
-  const a = plan.priceUsd.annual;
+  const m = plan.priceUgx.monthly;
+  const a = plan.priceUgx.annual;
   if (m === "contact" || a === "contact" || m === 0) return null;
   const saved = m * 12 - a;
   if (saved <= 0) return null;
-  return `Save $${saved}/yr`;
+  return `Save ${formatUgx(saved)}/yr`;
 }

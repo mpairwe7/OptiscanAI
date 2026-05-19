@@ -5,7 +5,7 @@ import { annualSavingsLabel, formatPrice, type Plan, type BillingPeriod } from "
 export function PricingCard({ plan, period }: { plan: Plan; period: BillingPeriod }) {
   const price = formatPrice(plan, period);
   const savings = period === "annual" ? annualSavingsLabel(plan) : null;
-  const isPaid = plan.priceUsd[period] !== 0 && plan.priceUsd[period] !== "contact";
+  const isPaid = plan.priceUgx[period] !== 0 && plan.priceUgx[period] !== "contact";
   const href =
     plan.cta.href.startsWith("/app/checkout/") && isPaid
       ? `${plan.cta.href}?cycle=${period}`
@@ -28,7 +28,7 @@ export function PricingCard({ plan, period }: { plan: Plan; period: BillingPerio
       <div className="mt-5">
         <div className="text-3xl font-bold text-slate-900">{price}</div>
         {savings && <div className="mt-1 text-xs font-semibold text-teal-600">{savings}</div>}
-        {!savings && plan.priceUsd[period] !== "contact" && (
+        {!savings && plan.priceUgx[period] !== "contact" && (
           <div className="mt-1 text-xs text-slate-400">
             {period === "annual" ? `Billed annually` : `Billed monthly`}
           </div>
