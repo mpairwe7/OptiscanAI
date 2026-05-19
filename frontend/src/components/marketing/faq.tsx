@@ -25,7 +25,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Do you offer educational pricing?",
-    a: "Yes — Makerere students get a Practice license at no cost as part of our research partnership. Email sales@makstartup.com from your institutional address.",
+    a: "Yes — Makerere students get a Practice license at no cost as part of our research partnership. Email mpairwelauben25@gmail.com from your institutional address.",
   },
 ];
 
