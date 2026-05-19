@@ -2,7 +2,7 @@ name: Quantization Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
     paths:
       - 'scripts/quantize_models.py'
       - 'scripts/quantization_quality_gate.py'
@@ -10,7 +10,7 @@ on:
       - 'src/export/**'
       - '.github/workflows/quantization.yml'
   pull_request:
-    branches: [main]
+    branches: [main, dev]
     paths:
       - 'scripts/quantize_models.py'
       - 'scripts/quantization_quality_gate.py'

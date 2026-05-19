@@ -11,7 +11,7 @@ name: billing-smoke
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, dev]
     paths:
       - "backend/**"
       - "tests/test_billing_smoke.py"
@@ -19,7 +19,7 @@ on:
       - "uv.lock"
       - ".github/workflows/billing-smoke.yml"
   push:
-    branches: [main]
+    branches: [main, dev]
     paths:
       - "backend/**"
       - "tests/test_billing_smoke.py"
