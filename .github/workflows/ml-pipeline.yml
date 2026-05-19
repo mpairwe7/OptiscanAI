@@ -38,7 +38,7 @@ jobs:
       # torch.load()s models/model_vignn_rank1.pth (137 MB).
       - uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: false
       - name: Smudge LFS objects into working tree
         # Best-effort. The repo's LFS bandwidth may be exhausted on the
         # free tier, in which case the .pth stays as pointer text — the

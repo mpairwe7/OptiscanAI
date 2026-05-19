@@ -40,9 +40,9 @@ jobs:
       # triggers FastAPI's lifespan, which torch.load()s the .pth.
       - uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: false
       - name: Smudge LFS objects into working tree
-        run: git lfs pull
+        run: git lfs pull || true
 
       - uses: actions/setup-python@v5
         with:
@@ -87,7 +87,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: false
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
