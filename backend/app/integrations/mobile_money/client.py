@@ -6,7 +6,9 @@ from screening results.
 
 from __future__ import annotations
 
+import base64
 import logging
+import time
 from dataclasses import dataclass
 
 import aiohttp
@@ -51,6 +53,49 @@ class MobileMoneyClient:
         self._mtn_env = mtn_environment
         self._airtel_id = airtel_client_id
         self._airtel_secret = airtel_client_secret
+        # OAuth bearer cache for MTN MoMo Collections API.
+        # MTN tokens live 1h; we refresh ~5 min before expiry.
+        self._mtn_token: str | None = None
+        self._mtn_token_expiry: float = 0.0
+
+    def _mtn_base_url(self) -> str:
+        return (
+            "https://sandbox.momodeveloper.mtn.com"
+            if self._mtn_env == "sandbox"
+            else "https://momodeveloper.mtn.com"
+        )
+
+    async def _mtn_bearer(self) -> str:
+        """Fetch + cache a Collections OAuth bearer.
+
+        MTN MoMo Collections requires every requesttopay call to carry
+        `Authorization: Bearer <token>` (the subscription key alone returns
+        401). Tokens are obtained via Basic-auth on /collection/token/ using
+        the provisioned API User UUID + apiKey. They are valid for ~1h, so
+        we cache and refresh just before expiry.
+        """
+        now = time.time()
+        if self._mtn_token and now < self._mtn_token_expiry - 300:
+            return self._mtn_token
+        if not (self._mtn_key and self._mtn_secret and self._mtn_sub_key):
+            raise RuntimeError("MTN MoMo not configured (api_key/api_secret/subscription_key)")
+        basic = base64.b64encode(f"{self._mtn_key}:{self._mtn_secret}".encode()).decode()
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{self._mtn_base_url()}/collection/token/",
+                headers={
+                    "Ocp-Apim-Subscription-Key": self._mtn_sub_key,
+                    "Authorization": f"Basic {basic}",
+                },
+            ) as resp:
+                if resp.status != 200:
+                    raise RuntimeError(
+                        f"MTN MoMo /collection/token/ failed: {resp.status} {await resp.text()}"
+                    )
+                data = await resp.json()
+        self._mtn_token = data["access_token"]
+        self._mtn_token_expiry = now + int(data.get("expires_in", 3600))
+        return self._mtn_token
 
     def _detect_provider(self, phone: str) -> str:
         """Detect provider from Ugandan phone number prefix."""
@@ -92,22 +137,31 @@ class MobileMoneyClient:
         self, tx_id: str, phone: str, amount: int, currency: str, reason: str
     ) -> PaymentRequest:
         """MTN MoMo Collections API v1."""
-        base_url = (
-            "https://sandbox.momodeveloper.mtn.com"
-            if self._mtn_env == "sandbox"
-            else "https://momodeveloper.mtn.com"
-        )
+        base_url = self._mtn_base_url()
+
+        try:
+            bearer = await self._mtn_bearer()
+        except Exception as e:
+            logger.error("MTN MoMo bearer fetch failed: %s", e)
+            return PaymentRequest(transaction_id=tx_id, status="error", provider="mtn")
 
         headers = {
             "Ocp-Apim-Subscription-Key": self._mtn_sub_key,
+            "Authorization": f"Bearer {bearer}",
             "X-Reference-Id": tx_id,
             "X-Target-Environment": self._mtn_env,
             "Content-Type": "application/json",
         }
 
+        # MTN sandbox only accepts EUR on requesttopay (returns
+        # 500 INVALID_CURRENCY for UGX). Production accepts UGX. Override
+        # on the wire so callers can keep their UGX bookkeeping unchanged
+        # when running against sandbox.
+        wire_currency = "EUR" if self._mtn_env == "sandbox" else currency
+
         payload = {
             "amount": str(amount),
-            "currency": currency,
+            "currency": wire_currency,
             "externalId": tx_id,
             "payer": {"partyIdType": "MSISDN", "partyId": phone},
             "payerMessage": reason,
@@ -156,17 +210,15 @@ class MobileMoneyClient:
     ) -> PaymentStatus:
         """Poll for payment confirmation."""
         if provider == "mtn":
-            base_url = (
-                "https://sandbox.momodeveloper.mtn.com"
-                if self._mtn_env == "sandbox"
-                else "https://momodeveloper.mtn.com"
-            )
+            base_url = self._mtn_base_url()
             try:
+                bearer = await self._mtn_bearer()
                 async with aiohttp.ClientSession() as session:
                     async with session.get(
                         f"{base_url}/collection/v1_0/requesttopay/{transaction_id}",
                         headers={
                             "Ocp-Apim-Subscription-Key": self._mtn_sub_key,
+                            "Authorization": f"Bearer {bearer}",
                             "X-Target-Environment": self._mtn_env,
                         },
                     ) as resp:
