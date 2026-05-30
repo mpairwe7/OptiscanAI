@@ -82,7 +82,8 @@ async def search_patient(
             "count": len(results),
         }
     except Exception as e:
-        raise HTTPException(502, f"DHIS2 error: {e}")
+        logger.error("DHIS2 patient search failed: %s", e, exc_info=True)
+        raise HTTPException(502, "Upstream DHIS2 service error.")
 
 
 @router.post("/referral", response_model=ReferralResponse)

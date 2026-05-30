@@ -27,6 +27,19 @@ def _get_env(key: str, default: str = "") -> str:
     return os.environ.get(key, default)
 
 
+def _llm_timeout() -> float:
+    """Per-request timeout (seconds) for LLM calls. Env: LLM_TIMEOUT_SECONDS.
+
+    Without a timeout a hung provider would block the agent indefinitely; on
+    timeout the SDK raises and the Claude → Groq → deterministic fallback chain
+    degrades cleanly.
+    """
+    try:
+        return float(_get_env("LLM_TIMEOUT_SECONDS", "30"))
+    except ValueError:
+        return 30.0
+
+
 def get_model() -> str:
     """Return the active model name."""
     if _active_provider == "claude":
@@ -55,7 +68,7 @@ def _init_providers():
         try:
             import anthropic
 
-            _claude_client = anthropic.AsyncAnthropic(api_key=claude_key)
+            _claude_client = anthropic.AsyncAnthropic(api_key=claude_key, timeout=_llm_timeout())
             _claude_ok = True
             _active_provider = "claude"
             logger.info(
@@ -73,7 +86,7 @@ def _init_providers():
         try:
             from groq import AsyncGroq
 
-            _groq_client = AsyncGroq(api_key=groq_key)
+            _groq_client = AsyncGroq(api_key=groq_key, timeout=_llm_timeout())
             _groq_ok = True
             if _active_provider == "none":
                 _active_provider = "groq"
@@ -155,6 +168,22 @@ async def invoke(
         "provider": "none",
         "fallback": True,
     }
+
+
+async def call_llm(
+    prompt: str,
+    max_tokens: int = 1024,
+    system: str = CLINICAL_SYSTEM_PROMPT,
+) -> str:
+    """Text-in / text-out convenience wrapper around :func:`invoke`.
+
+    Callers that only need the response text (e.g. the voice history extractor)
+    use this instead of unpacking the full result dict. Returns an empty string
+    when every provider falls through to the deterministic fallback, so callers
+    should treat ``""`` as "no LLM output, use your own fallback".
+    """
+    result = await invoke(prompt, system=system, max_tokens=max_tokens)
+    return result.get("text", "")
 
 
 async def _invoke_claude(

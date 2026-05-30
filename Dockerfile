@@ -294,6 +294,6 @@ EXPOSE 8080
 STOPSIGNAL SIGTERM
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -sf http://localhost:8080/health || exit 1
+    CMD curl -sf http://localhost:8080/health/ready || exit 1
 
 CMD ["supervisord", "-c", "/etc/supervisor/conf.d/optiscan.conf"]

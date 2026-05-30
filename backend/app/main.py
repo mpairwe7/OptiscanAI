@@ -44,6 +44,8 @@ async def lifespan(app: FastAPI):
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
 
     # ── Stage -1: Database (must be up before auth/billing/quota) ──
+    # Fatal when explicitly enabled: auth/billing/quota are unusable without a
+    # DB, so abort startup rather than serve partially-broken endpoints.
     if settings.database.enabled:
         try:
             from backend.app.core.db import init_engine
@@ -51,7 +53,10 @@ async def lifespan(app: FastAPI):
             init_engine()
             logger.info("Database engine initialized")
         except Exception as e:
-            logger.error(f"Database init failed (non-fatal): {e}", exc_info=True)
+            logger.critical(
+                f"Database init failed (fatal — database.enabled=true): {e}", exc_info=True
+            )
+            raise
 
     # ── Stage 0: OpenTelemetry (first, so everything else is traced) ──
     if settings.telemetry.enabled:

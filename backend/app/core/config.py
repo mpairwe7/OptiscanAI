@@ -4,8 +4,13 @@ All Phase 1-4 features are opt-in via nested settings with env_nested_delimiter=
 Example: TELEMETRY__ENABLED=true, MLFLOW__TRACKING_URI=http://mlflow:5000
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from pydantic_settings import BaseSettings
+
+# Placeholder JWT secret shipped in defaults; production must override it.
+# Referenced by both the field default and the production-guard validator so
+# the two can never drift apart.
+DEFAULT_JWT_SECRET = "change-me-in-production-use-env-var"
 
 # ── Phase 1: Observability & MLOps ──────────────────────────────────────────
 
@@ -452,7 +457,7 @@ class Settings(BaseSettings):
 
     # Authentication
     auth_enabled: bool = False  # Set True in production
-    jwt_secret: str = "change-me-in-production-use-env-var"
+    jwt_secret: str = DEFAULT_JWT_SECRET
     jwt_expiry_seconds: int = 3600
 
     # Logging
@@ -487,6 +492,11 @@ class Settings(BaseSettings):
     # Agent scheduling
     agent_monitor_interval: float = 60.0
     agent_governance_interval: float = 300.0
+
+    # LLM request timeout (seconds) — caps how long a single Claude/Groq call
+    # may hang before the fallback chain (Claude → Groq → deterministic) kicks in.
+    # Env: LLM_TIMEOUT_SECONDS
+    llm_timeout_seconds: float = 30.0
 
     # ── Nested feature settings (all opt-in, all default disabled) ──
     telemetry: TelemetrySettings = TelemetrySettings()
@@ -536,6 +546,22 @@ class Settings(BaseSettings):
         "extra": "ignore",
         "env_nested_delimiter": "__",
     }
+
+    @model_validator(mode="after")
+    def _guard_production_secrets(self) -> "Settings":
+        """Abort startup if production is left on the default JWT secret.
+
+        A misconfigured Crane Cloud env (ENVIRONMENT=production but no
+        JWT_SECRET set) would otherwise sign tokens with a publicly-known
+        secret, making them forgeable. Fail fast instead of serving insecure.
+        """
+        if self.environment == "production" and self.jwt_secret == DEFAULT_JWT_SECRET:
+            raise ValueError(
+                "JWT_SECRET must be set to a strong, unique value in production. "
+                "environment=production but jwt_secret is still the default placeholder — "
+                "set the JWT_SECRET environment variable before starting the app."
+            )
+        return self
 
 
 settings = Settings()
