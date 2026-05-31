@@ -132,7 +132,7 @@ RUN groupadd -r optiscan && useradd -r -g optiscan -d /app -s /sbin/nologin opti
     && mkdir -p models/checkpoints logs uploads /var/lib/postgresql/data \
     && chown -R optiscan:optiscan /app /srv/nextjs \
     && chown -R optiscan:optiscan /var/log/nginx /var/lib/nginx /run \
-    && chown -R postgres:postgres /var/lib/postgresql \
+    && chown -R optiscan:optiscan /var/lib/postgresql \
     && ln -sf /dev/stdout /var/log/nginx/access.log \
     && ln -sf /dev/stderr /var/log/nginx/error.log
 
@@ -225,7 +225,7 @@ user=root
 
 [program:postgres]
 command=/usr/local/bin/postgres-bootstrap.sh
-user=root
+user=optiscan
 priority=10
 environment=PGDATA="/var/lib/postgresql/data",POSTGRES_USER="optiscan",POSTGRES_PASSWORD="optiscan",POSTGRES_DB="optiscan",PG_BIN="/usr/lib/postgresql/14/bin"
 stdout_logfile=/dev/stdout
