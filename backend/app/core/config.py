@@ -423,6 +423,11 @@ class Settings(BaseSettings):
     environment: str = "development"  # development | staging | production
     deployment_region: str = "default"
 
+    # Platform-superuser bootstrap: comma-separated emails auto-granted
+    # is_superuser on register/login (re-applies after an ephemeral-DB reset).
+    # Set via the SUPERUSER_EMAILS env var; never put passwords here.
+    superuser_emails: str = ""
+
     # Model
     model_path: str = "models/model_vignn_rank1.pth"
     model_name: str = "vignn"
