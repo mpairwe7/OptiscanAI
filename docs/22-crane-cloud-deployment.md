@@ -36,6 +36,27 @@ set `EMBEDDED_POSTGRES__ENABLED=true` on the api Deployment and the in-image
 Postgres takes over. **Mount a PVC at `/var/lib/postgresql/data` in that
 case** — without it, every pod restart resets the database.
 
+### Option 3 — managed Postgres (production)
+
+For multi-tenant production, point the app at an external **managed Postgres**
+(Crane Cloud managed DB, RDS, Neon, …) instead of the sidecar/embedded one. Set
+these env vars on the Crane Cloud app (Web UI, or automatically via the CI
+deploy):
+
+| Key | Value |
+|-----|-------|
+| `DATABASE__ENABLED` | `true` |
+| `EMBEDDED_POSTGRES__ENABLED` | `false` |
+| `DATABASE__URL` | `postgresql+asyncpg://USER:PASS@HOST:PORT/DB` — password **percent-encoded** (SQLAlchemy decodes the userinfo) |
+| `POSTGRES_HOST` / `POSTGRES_PORT` / `POSTGRES_USER` | mirror the URL — `scripts/container/backend-start.sh` uses them for `pg_isready` before `alembic upgrade head` |
+
+The credentials live only in the local `.env` and the GitHub **`DATABASE_URL`**
+secret. The deploy helper (`.github/scripts/crane_deploy.py`) reads that single
+secret, derives the `POSTGRES_*` vars from it, and PATCHes the apps' env on
+every deploy — Crane Cloud merges env vars, so the password is never committed
+and the other app vars are preserved. Append `?ssl=require` to `DATABASE__URL`
+to enforce TLS.
+
 See [docs/23-billing-platform.md](23-billing-platform.md) §§ 14–18 for the
 full architecture and runbook.
 
@@ -498,6 +519,7 @@ Set at `github.com/mpairwe7/OptiscanAI/settings/secrets/actions`:
 | `CRANE_CLOUD_CPU_APP_ID` | CPU app ID on RENU | `f58201b7-5ba1-48b1-a635-02ee29965352` |
 | `CRANE_CLOUD_GPU_APP_ID` | GPU (latest) app ID on RENU | `8efaf32a-c9be-4bf8-9fe3-f79d01940e88` |
 | `CRANE_CLOUD_CPU_URL` | CPU app URL for health check | `https://optiscan-ai-4fe6e1aa.renu-01.cranecloud.io` |
+| `DATABASE_URL` | Managed Postgres DSN (`postgresql+asyncpg://…`, password percent-encoded). CI derives `POSTGRES_HOST/PORT/USER` from it and PATCHes the apps' env on deploy. | *(secret — not shown)* |
 
 ---
 

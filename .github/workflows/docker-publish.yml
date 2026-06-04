@@ -128,52 +128,41 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - name: Deploy CPU app to Crane Cloud
+      # The deploy job runs on its own runner, so it must check out the repo to
+      # get .github/scripts/crane_deploy.py. lfs:false skips the big model blobs.
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - name: Deploy to Crane Cloud (image + managed DB env)
         env:
           CRANE_EMAIL: ${{ secrets.CRANE_CLOUD_EMAIL }}
           CRANE_PASSWORD: ${{ secrets.CRANE_CLOUD_PASSWORD }}
           CRANE_CPU_APP_ID: ${{ secrets.CRANE_CLOUD_CPU_APP_ID }}
           CRANE_GPU_APP_ID: ${{ secrets.CRANE_CLOUD_GPU_APP_ID }}
+          # Single secret carrying the DB password; pg_isready host/port/user
+          # are derived from it inside crane_deploy.py so they need not be
+          # stored (or committed) separately.
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DEPLOY_ONLY: ${{ inputs.deploy_only }}
         run: |
           set -euo pipefail
 
-          # Use SHA-pinned tags so Crane Cloud sees a different image string
-          # on every CI run and actually triggers a pod rollover. PATCHing the
-          # moving `:cpu` / `:latest` tags is a no-op (Crane diffs by image
-          # string, not by Docker manifest digest). The metadata-action in the
-          # build-and-push step publishes tags as `<tag>-<sha-7>` — these are
-          # the ones we point at here so deploy guarantees rollover.
-          SHA7="${GITHUB_SHA:0:7}"
-          CPU_TAG="landwind/optiscan-ai:cpu-${SHA7}"
-          GPU_TAG="landwind/optiscan-ai:latest-${SHA7}"
-
-          # Login to Crane Cloud API
-          TOKEN=$(curl -sf -X POST "$CRANE_CLOUD_API/users/login" \
-            -H "Content-Type: application/json" \
-            -d "{\"email\": \"$CRANE_EMAIL\", \"password\": \"$CRANE_PASSWORD\"}" \
-            | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
-
-          echo "Logged in to Crane Cloud"
-
-          # Redeploy CPU app (triggers new image pull)
-          if [ -n "$CRANE_CPU_APP_ID" ]; then
-            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" -X PATCH \
-              "$CRANE_CLOUD_API/apps/$CRANE_CPU_APP_ID" \
-              -H "Authorization: Bearer $TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "{\"image\": \"$CPU_TAG\"}")
-            echo "CPU deploy ($CPU_TAG): HTTP $STATUS"
+          # Normal run: point at the freshly built SHA-pinned tags so Crane Cloud
+          # (which diffs by image string) actually rolls the pod over —
+          # metadata-action publishes them as `<tag>-<sha-7>`.
+          # Deploy-only run: the build was skipped, so those tags don't exist —
+          # leave them empty and PATCH env_vars alone (switch DB, no rebuild).
+          if [ "${DEPLOY_ONLY:-false}" != "true" ]; then
+            SHA7="${GITHUB_SHA:0:7}"
+            export CPU_TAG="landwind/optiscan-ai:cpu-${SHA7}"
+            export GPU_TAG="landwind/optiscan-ai:latest-${SHA7}"
           fi
 
-          # Redeploy GPU app
-          if [ -n "$CRANE_GPU_APP_ID" ]; then
-            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" -X PATCH \
-              "$CRANE_CLOUD_API/apps/$CRANE_GPU_APP_ID" \
-              -H "Authorization: Bearer $TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "{\"image\": \"$GPU_TAG\"}")
-            echo "GPU deploy ($GPU_TAG): HTTP $STATUS"
-          fi
+          # Logs in, then PATCHes both apps. Crane Cloud MERGES env_vars on
+          # PATCH, so this asserts the managed-DB config without wiping
+          # MODEL_PATH/DEVICE/etc. DATABASE_URL is never printed.
+          python3 .github/scripts/crane_deploy.py
 
       - name: Health check (CPU)
         env:
