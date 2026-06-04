@@ -89,6 +89,20 @@ jobs:
         with:
           lfs: false
 
+      - name: Smudge LFS weights into the build context
+        run: |
+          # models/model_vignn_rank1.pth is tracked in Git LFS. Without this,
+          # the build context holds the LFS *pointer*, the image ships a ~134-byte
+          # text file, and torch.load() fails at runtime -> /health reports
+          # model_loaded:false. The test job pulls LFS for the same reason.
+          git lfs pull
+          sz=$(stat -c%s models/model_vignn_rank1.pth)
+          echo "model_vignn_rank1.pth: ${sz} bytes"
+          if [ "$sz" -lt 10000 ]; then
+            echo "::error::model checkpoint is still an LFS pointer (${sz} bytes) — git lfs pull did not fetch the real weights; refusing to build a broken image"
+            exit 1
+          fi
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
