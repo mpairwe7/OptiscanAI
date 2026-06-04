@@ -62,6 +62,106 @@ full architecture and runbook.
 
 ---
 
+## Database & model runtime fixes — audit (2026-06-04)
+
+> Root causes + fixes that made the **in-image (embedded) Postgres** and the
+> ViGNN model actually work on Crane Cloud. Before these fixes the app served
+> the frontend and `/health`, but `model_loaded:false` and every DB-backed
+> endpoint (billing/auth/orgs) returned `500` —
+> `asyncpg.exceptions.UndefinedTableError: relation "plans" does not exist`.
+
+### Fix 1 — model weights baked as a Git-LFS *pointer* (`model_loaded:false`)
+
+`models/model_vignn_rank1.pth` is a ~137 MB **Git LFS** object, but the repo had
+**no `.gitattributes`**, so Git never ran the LFS smudge filter. The image's
+`COPY models/model_vignn_rank1.pth` baked the **134-byte pointer text**;
+`torch.load()` raised, the loader caught it and ran in "demo mode"
+(`backend/app/core/model_service.py`), so `/health` reported `model_loaded:false`.
+CI's `build-and-push` job also checked out with `lfs:false` and never ran
+`git lfs pull` (only the `test` job did).
+
+**Fix** (commit `da43a13`):
+- Added **`.gitattributes`** — tracks `models/*.pth` and
+  `pretrained_weights/*.safetensors` as LFS so checkout / `git lfs pull`
+  materialise the real files.
+- `.github/workflows/docker-publish.yml` `build-and-push`: added a *Smudge LFS
+  weights* step (`git lfs pull` + a size guard that **fails the build** if the
+  checkpoint is still a pointer — prevents silent regressions).
+
+### Fix 2 — asyncpg `PermissionError: /root/.postgresql/postgresql.key`
+
+supervisord runs as `root` and launches `[program:backend]` as the non-root
+`optiscan` user, but the backend **inherited `HOME=/root`**. asyncpg's default
+SSL setup probes a client key at `~/.postgresql/postgresql.key` →
+`/root/.postgresql/postgresql.key`, which `optiscan` cannot `stat()` →
+`PermissionError` on **every** DB connection (embedded *and* managed).
+
+**Fix** (commit `acb04dc`): set `HOME="/tmp"` in the supervisord
+`[program:backend] environment=` in both Dockerfiles. (Runtime hotfix without a
+rebuild: add a `HOME=/tmp` env var to the Crane app — it inherits through
+supervisord.)
+
+### Fix 3 — migrations never ran (`relation "plans" does not exist`)
+
+`scripts/container/backend-start.sh` ran `alembic upgrade head` from `cwd=/app`,
+but `alembic.ini` is at **`/app/backend/alembic.ini`** (`COPY backend/ ./backend/`).
+alembic couldn't find its config, the migration silently failed (the script only
+logs *"alembic upgrade failed"* and continues to `exec uvicorn`), so the schema
+was **never created** — billing/auth never worked, on embedded *or* managed
+Postgres. **Pre-existing bug.**
+
+**Fix** (commit `acb04dc`): run `alembic -c backend/alembic.ini upgrade head`
+(the `script_location = backend/alembic` in `alembic.ini` resolves from the
+`/app` cwd; `PYTHONPATH=/app` makes the `backend.app…` imports in
+`backend/alembic/env.py` resolve).
+
+### Result / verification
+
+After deploying an image with all three fixes (`cpu-68d5c1b`) to the RENU app:
+- `/health` → `model_loaded:true`; `/health/ready` → 200
+- `/api/v1/billing/plans` → 200 with the seeded plans (`free`, `clinician`, …)
+- auth `register → login → /me` returns a JWT
+- full 92-endpoint sweep: 86 OK / expected, 6 feature-specific 404s
+  (`/offline/bundle*`, `/offline/sync`, `/dhis2/queue/status` — no bundle built /
+  DHIS2 not configured)
+
+### Embedded-Postgres checklist (what the image + app env need)
+
+| Requirement | Where |
+|---|---|
+| `EMBEDDED_POSTGRES__ENABLED=true`, `DATABASE__ENABLED=true` | app env |
+| `DATABASE__URL=postgresql+asyncpg://optiscan:optiscan@127.0.0.1:5432/optiscan` | app env |
+| `HOME=/tmp` for the backend process | `[program:backend] environment=` (Dockerfiles) |
+| `alembic -c backend/alembic.ini upgrade head` at boot | `scripts/container/backend-start.sh` |
+| Real model weights baked in (LFS smudged) | `.gitattributes` + CI `git lfs pull` |
+
+> **Embedded Postgres is ephemeral** — Crane Cloud has no volume mounts, so the
+> in-image DB **resets on every pod restart**. Use it for pilots/testing; for
+> persistent billing data use a managed/external Postgres reachable from the
+> app's cluster.
+
+### Crane Cloud platform gotchas (confirmed during this work)
+
+- **Managed Postgres is centralised + not cross-cluster reachable.** Crane's
+  open-source `database-api` provisions *every* managed Postgres on a single
+  `ADMIN_PSQL_HOST` (`102.134.147.233:32761`, on the **AHUMAIN-network**),
+  regardless of the requesting project's cluster. **RENU-cluster pods cannot
+  route to it** — in-pod `pg_isready` times out (the host is reachable only from
+  outside the cluster). So a RENU app **cannot use a Crane managed Postgres**;
+  creating another managed DB does not help (same host). Options: run the app on
+  the DB's cluster, use the embedded Postgres, or ask Crane support to allow
+  RENU→DB egress.
+- **`PATCH /apps/{id}` env_vars is *add-only*.** It adds new keys but never
+  overwrites existing ones (the CLI `apps update -e` uses the same API). To
+  change an existing env var (e.g. switch `DATABASE__URL`) you must **delete +
+  recreate** the app — which mints a **new `*.cranecloud.io` URL** each time
+  (so re-point the custom domain + the `CRANE_CLOUD_CPU_APP_ID`/`CPU_URL`
+  secrets after a recreate).
+- **No container logs.** Crane exposes no logs API/CLI; diagnose from the app's
+  own error responses or the dashboard log view.
+
+---
+
 ## Docker Images
 
 Two images are published to Docker Hub under `landwind/optiscan-ai`:
@@ -573,17 +673,17 @@ Both Dockerfiles pass all industry standards:
 
 ### `model_loaded: false` in health check
 
-**Symptom:** `/health` returns `{"model_loaded": false, "device": "cuda"}`.
+**Symptom:** `/health` returns `{"model_loaded": false, ...}`.
 
-**Cause:** GPU image deployed on CPU-only cluster. CUDA requested but no NVIDIA driver.
+**Cause A:** GPU image deployed on CPU-only cluster — CUDA requested, no NVIDIA driver.
+**Fix A:** Set `CUDA_VISIBLE_DEVICES=-1`, `DEVICE=cpu`, or use the `:cpu` tag.
 
-**Fix:** Set environment variables:
-```
-CUDA_VISIBLE_DEVICES=-1
-DEVICE=cpu
-```
-
-Or use the `:cpu` image tag instead.
+**Cause B (2026-06-04):** the checkpoint was baked as a **Git-LFS pointer**
+(134-byte text) instead of the real ~137 MB file — the repo lacked
+`.gitattributes` and CI didn't `git lfs pull`, so `torch.load()` fails → demo mode.
+**Fix B:** `.gitattributes` tracks the LFS files + `build-and-push` runs
+`git lfs pull` with a size guard (commit `da43a13`). Verify in-image:
+`docker run --rm <image> stat -c%s models/model_vignn_rank1.pth` (≈137 MB, not ~134 bytes).
 
 ### Container exits immediately / CrashLoopBackOff
 
@@ -632,6 +732,32 @@ for k, v in env.items():
 
 **Fix:** Use `:cpu` tag (2.4 GB) — pulls in ~60 seconds on RENU.
 
+### Billing/auth endpoints return 500 — `relation "plans" does not exist`
+
+**Symptom:** `/health` is 200 but `/api/v1/billing/plans` (and auth/orgs) return a
+sanitised `500`; logs show `asyncpg.exceptions.UndefinedTableError: relation "plans" does not exist`.
+
+**Cause:** migrations never ran — either (a) `alembic` couldn't find its config
+(must be `alembic -c backend/alembic.ini` run from `/app`), or (b) asyncpg
+couldn't connect at all due to `HOME=/root` (`PermissionError: /root/.postgresql/postgresql.key`).
+
+**Fix:** ensure the image sets `HOME=/tmp` for the backend **and**
+`backend-start.sh` runs `alembic -c backend/alembic.ini upgrade head` (both in
+commit `acb04dc`). See "Database & model runtime fixes — audit (2026-06-04)".
+
+### Managed Postgres reachable from my laptop but not from the app
+
+**Symptom:** `psql`/TCP to the managed DB succeeds from outside, but the in-pod
+`pg_isready` times out (backend takes the full `POSTGRES_WAIT_MAX` to start) and
+DB queries fail.
+
+**Cause:** Crane managed Postgres sits on one central host on the
+**AHUMAIN-network**; **RENU-cluster pods cannot route to it**. Creating another
+managed DB does not help (same host).
+
+**Fix:** use the in-image (embedded) Postgres, run the app on the DB's cluster,
+or ask Crane support to allow RENU→managed-DB networking.
+
 ---
 
 ## Deployment History
@@ -646,6 +772,7 @@ for k, v in env.items():
 | 2026-05-12 | RENU | `cpu` (2.4 GB, baked weights) | **Running** | `optiscan-ai-4fe6e1aa.renu-01.cranecloud.io` | All endpoints verified |
 | 2026-05-12 | RENU | `cpu` (fallback) | **Running** | `optiscan-cpu-fallback-e4d13933.renu-01.cranecloud.io` | CPU redundancy |
 | 2026-05-12 | RENU | `latest` (10.1 GB, DEVICE=auto) | **Running** | `optiscan-gpu-renu-9458f363.renu-01.cranecloud.io` | GPU image, auto-falls back to CPU |
+| 2026-06-04 | RENU | `cpu-68d5c1b` (LFS + HOME + alembic fixes) | **Running** | `optiscan-ai-d3a3669f.renu-01.cranecloud.io` | Embedded Postgres working (schema seeded), model loaded; 92-endpoint sweep passed. Managed DB abandoned (unreachable from RENU). App recreated several times → URL changed; re-point custom domain |
 
 **Lessons learned:**
 1. Always bake model weights — Crane Cloud has no volume mounts
@@ -653,9 +780,13 @@ for k, v in env.items():
 3. Never put spaces in env var keys/values on Crane Cloud
 4. Prefer RENU cluster over AHUMAIN for reliability
 5. Use `:cpu` tag for Crane Cloud — 4x smaller, faster pulls, no CUDA dependency
-6. PATCH `/apps/{id}` merges env vars — delete and recreate to replace them entirely
+6. PATCH `/apps/{id}` env_vars is **add-only** — it cannot overwrite an existing key; delete + recreate (new URL) to change one
 7. Use `DEVICE=auto` instead of `DEVICE=cuda` — graceful CPU fallback on clusters without GPUs
 8. Fundus gate must auto-detect device (fixed 2026-05-12) — CPU-only gate on GPU host caused 42x regression
+9. LFS-tracked weights need `.gitattributes` **and** `git lfs pull` in CI, else the image bakes a 134-byte pointer (fixed 2026-06-04)
+10. The non-root backend needs `HOME=/tmp`, or asyncpg fails on `/root/.postgresql/*` and no DB connection works (fixed 2026-06-04)
+11. Run alembic as `alembic -c backend/alembic.ini` from `/app` — otherwise it can't find its config and migrations silently never run (fixed 2026-06-04)
+12. Crane managed Postgres is centralised on the AHUMAIN-network host and is **not reachable from RENU pods** — use embedded Postgres or keep app + DB on the same cluster
 
 ---
 
