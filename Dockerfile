@@ -243,7 +243,7 @@ command=/usr/local/bin/backend-start.sh
 directory=/app
 user=optiscan
 priority=20
-environment=MODEL_PATH="models/model_vignn_rank1.pth",API_PORT="8081",LOG_FORMAT="text",PYTHONPATH="/app",POSTGRES_HOST="127.0.0.1",POSTGRES_PORT="5432",POSTGRES_USER="optiscan"
+environment=HOME="/tmp",MODEL_PATH="models/model_vignn_rank1.pth",API_PORT="8081",LOG_FORMAT="text",PYTHONPATH="/app",POSTGRES_HOST="127.0.0.1",POSTGRES_PORT="5432",POSTGRES_USER="optiscan"
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr
