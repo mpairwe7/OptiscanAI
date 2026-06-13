@@ -1,5 +1,5 @@
+import Image from "next/image";
 import Link from "next/link";
-import { FundusMockup } from "@/components/marketing/fundus-mockup";
 
 export function Hero() {
   return (
@@ -118,7 +118,16 @@ export function Hero() {
                     "linear-gradient(90deg, transparent, rgba(15,118,110,0.4), transparent)",
                 }}
               />
-              <FundusMockup />
+              <div className="aspect-[4/3] rounded-2xl overflow-hidden ring-1 ring-slate-900/5 bg-gradient-to-br from-white via-teal-50/50 to-cyan-50/50 flex items-center justify-center">
+                <Image
+                  src="/logo.png"
+                  alt="OptiscanAI"
+                  width={360}
+                  height={360}
+                  priority
+                  className="w-1/2 max-w-[240px] h-auto drop-shadow-[0_10px_30px_rgba(15,118,110,0.25)]"
+                />
+              </div>
 
               <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl bg-white/80 backdrop-blur border border-slate-200/70 p-3">
                 <div className="text-center">

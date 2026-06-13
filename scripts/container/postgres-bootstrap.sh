@@ -1,23 +1,36 @@
 #!/usr/bin/env bash
-# Initialize the embedded Postgres cluster on first boot, then exec the
-# postgres process so supervisord can supervise it.
+# Initialize + run the embedded Postgres cluster as the NON-ROOT app user.
+#
+# Hardened PaaS platforms (e.g. Crane Cloud) run the container as an
+# unprivileged user, so supervisord cannot `su` to the system `postgres`
+# account — the old root-only bootstrap silently failed there and the cluster
+# never came up. PostgreSQL itself refuses to run as root anyway, so we always
+# run as the app user (default `optiscan`), which must own PGDATA (the Dockerfile
+# chowns /var/lib/postgresql to it). When invoked directly as root (plain local
+# `docker run`), we drop to the app user first.
 #
 # Idempotent — re-running on an existing cluster just starts it.
 #
-# Used by the in-container Postgres (Option 1, development / single-tenant
-# pilots). For production multi-tenant deployments, move to a sidecar (Option
-# 2) or managed Postgres (Option 3) — see docs/23-billing-platform.md § 14.
+# Single-tenant / dev / pilot only. For multi-tenant production, point
+# DATABASE__URL at a managed Postgres and set EMBEDDED_POSTGRES__ENABLED=false.
 
 set -euo pipefail
 
-# Allow the embedded cluster to be silenced when a sidecar/managed Postgres
-# is in use (Options 2 + 3). supervisord still keeps the program alive via
-# `sleep infinity` so the [program:postgres] block stays "running" with zero
-# CPU; this avoids supervisord retry storms.
+log() { printf '[postgres-bootstrap] %s\n' "$*" >&2; }
+
+# Silence the embedded cluster when an external/managed Postgres is in use.
 if [ "${EMBEDDED_POSTGRES__ENABLED:-true}" = "false" ]; then
-  printf '[postgres-bootstrap] EMBEDDED_POSTGRES__ENABLED=false — sleeping; expect external Postgres at %s\n' \
-    "${POSTGRES_HOST:-unknown}:${POSTGRES_PORT:-5432}" >&2
+  log "EMBEDDED_POSTGRES__ENABLED=false — sleeping; expect external Postgres at ${POSTGRES_HOST:-unknown}:${POSTGRES_PORT:-5432}"
   exec sleep infinity
+fi
+
+APP_USER="${POSTGRES_RUN_AS:-optiscan}"
+
+# Postgres won't run as root. If we were started as root (local docker run),
+# re-exec as the unprivileged app user so everything below runs unprivileged.
+if [ "$(id -u)" = "0" ]; then
+  log "running as root — dropping to '$APP_USER'"
+  exec su -s /bin/bash "$APP_USER" -c "$(printf '%q ' "$0" "$@")"
 fi
 
 PG_BIN="${PG_BIN:-/usr/lib/postgresql/15/bin}"
@@ -27,49 +40,54 @@ PG_PASSWORD="${POSTGRES_PASSWORD:-optiscan}"
 PG_DATABASE="${POSTGRES_DB:-optiscan}"
 PG_LISTEN="${POSTGRES_LISTEN:-127.0.0.1}"
 PG_PORT="${POSTGRES_PORT:-5432}"
+# /var/run/postgresql is root-owned; use a dir the app user can write.
+PG_SOCK="${POSTGRES_SOCKET_DIR:-/tmp}"
 
-log() { printf '[postgres-bootstrap] %s\n' "$*" >&2; }
+export PATH="$PG_BIN:$PATH"
 
-# Ensure the data dir exists and is owned by postgres
 mkdir -p "$PGDATA"
-chown -R postgres:postgres "$PGDATA"
-chmod 700 "$PGDATA"
+chmod 700 "$PGDATA" 2>/dev/null || true
 
 if [ ! -s "$PGDATA/PG_VERSION" ]; then
-  log "Initializing new cluster at $PGDATA"
-  su -s /bin/bash postgres -c "$PG_BIN/initdb \
-    --pgdata=$PGDATA \
+  log "Initializing new cluster at $PGDATA (uid=$(id -u), superuser role=$PG_USER)"
+  # The OS user we run as becomes the bootstrap superuser role ($PG_USER), so
+  # local-socket (trust) connections authenticate without a password.
+  "$PG_BIN/initdb" \
+    --pgdata="$PGDATA" \
     --encoding=UTF8 \
     --locale=C.UTF-8 \
     --auth-host=scram-sha-256 \
     --auth-local=trust \
-    --username=postgres"
+    --username="$PG_USER"
 
-  # Loopback-only; the app talks to us at 127.0.0.1:5432 inside the container.
-  printf "listen_addresses = '%s'\nport = %s\nlog_destination = 'stderr'\nlog_statement = 'none'\nshared_buffers = 128MB\nmax_connections = 50\n" \
-    "$PG_LISTEN" "$PG_PORT" >> "$PGDATA/postgresql.conf"
+  {
+    printf "listen_addresses = '%s'\n" "$PG_LISTEN"
+    printf "port = %s\n" "$PG_PORT"
+    printf "unix_socket_directories = '%s'\n" "$PG_SOCK"
+    printf "log_destination = 'stderr'\n"
+    printf "log_statement = 'none'\n"
+    printf "shared_buffers = 128MB\n"
+    printf "max_connections = 50\n"
+  } >> "$PGDATA/postgresql.conf"
 
-  # Local md5/scram for the optiscan user
+  # App connects over TCP from 127.0.0.1 with a password (scram).
   printf "host all %s 127.0.0.1/32 scram-sha-256\nhost all %s ::1/128 scram-sha-256\n" \
     "$PG_USER" "$PG_USER" >> "$PGDATA/pg_hba.conf"
 
-  log "Starting temporary cluster to provision role + database"
-  su -s /bin/bash postgres -c "$PG_BIN/pg_ctl -D $PGDATA -l /tmp/pg-init.log -o '-c listen_addresses=127.0.0.1 -p $PG_PORT' -w start"
+  log "Starting temporary cluster to set password + create database"
+  "$PG_BIN/pg_ctl" -D "$PGDATA" -l /tmp/pg-init.log \
+    -o "-c unix_socket_directories=$PG_SOCK -c listen_addresses=127.0.0.1 -p $PG_PORT" -w start
 
-  su -s /bin/bash postgres -c "$PG_BIN/psql -p $PG_PORT -v ON_ERROR_STOP=1 <<SQL
-CREATE USER $PG_USER WITH PASSWORD '$PG_PASSWORD';
+  "$PG_BIN/psql" -h "$PG_SOCK" -p "$PG_PORT" -U "$PG_USER" -d postgres -v ON_ERROR_STOP=1 <<SQL
+ALTER USER $PG_USER WITH PASSWORD '$PG_PASSWORD';
 CREATE DATABASE $PG_DATABASE OWNER $PG_USER;
-ALTER USER $PG_USER WITH SUPERUSER;
-GRANT ALL PRIVILEGES ON DATABASE $PG_DATABASE TO $PG_USER;
-SQL"
+SQL
 
-  log "Stopping temporary cluster"
-  su -s /bin/bash postgres -c "$PG_BIN/pg_ctl -D $PGDATA -m fast -w stop"
+  "$PG_BIN/pg_ctl" -D "$PGDATA" -m fast -w stop
   log "Cluster bootstrap complete"
 else
   log "Existing cluster at $PGDATA (version $(cat "$PGDATA/PG_VERSION")) — skipping init"
 fi
 
-# Hand off to supervisord — exec so signals propagate cleanly
-log "Starting postgres in foreground"
-exec su -s /bin/bash postgres -c "$PG_BIN/postgres -D $PGDATA -c config_file=$PGDATA/postgresql.conf"
+log "Starting postgres in foreground (uid=$(id -u))"
+exec "$PG_BIN/postgres" -D "$PGDATA" -c config_file="$PGDATA/postgresql.conf"

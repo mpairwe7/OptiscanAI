@@ -384,8 +384,11 @@ async def compute_bundle_delta(body: DeltaRequest) -> Dict[str, Any]:
         latest_info = bundle_mgr.get_bundle_info()
         if not latest_info or latest_info.get("error"):
             raise HTTPException(status_code=404, detail="No bundles available on server")
+    except HTTPException:
+        raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Bundle lookup failed: {exc}")
+        logger.error("Bundle lookup failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Bundle lookup failed.")
 
     target_version = latest_info.get("version", "unknown")
 

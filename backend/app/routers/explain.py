@@ -120,7 +120,8 @@ async def explain_gradcam(
                 "elapsed_ms": round(elapsed, 2),
             }
         except Exception as e:
-            raise HTTPException(500, f"GradCAM failed: {str(e)}")
+            logger.error("GradCAM failed: %s", e, exc_info=True)
+            raise HTTPException(500, "Explainability computation failed.")
 
     # Multi-class: get CAM data for top-K predictions
     with torch.no_grad():

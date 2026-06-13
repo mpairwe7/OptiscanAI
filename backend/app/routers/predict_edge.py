@@ -121,7 +121,7 @@ async def _validate_and_open(file: UploadFile) -> Image.Image:
         image = Image.open(io.BytesIO(contents))  # re-open after verify
     except (OSError, SyntaxError) as exc:
         logger.warning("Invalid image upload: %s", exc)
-        raise HTTPException(status_code=400, detail=f"Invalid image file: {exc}")
+        raise HTTPException(status_code=400, detail="Invalid or corrupted image file.")
 
     if image.width < 32 or image.height < 32:
         raise HTTPException(status_code=400, detail="Image too small (minimum 32x32).")
@@ -156,11 +156,11 @@ async def predict_onnx(
 
     try:
         result = runtime.predict_onnx(image, threshold=threshold)
-    except Exception as exc:
+    except Exception:
         logger.exception("ONNX prediction failed")
         raise HTTPException(
             status_code=500,
-            detail=f"ONNX inference error: {exc}",
+            detail="ONNX inference failed.",
         )
 
     return {"success": True, **result}
@@ -189,11 +189,11 @@ async def predict_coreml(
 
     try:
         result = runtime.predict_coreml(image, threshold=threshold)
-    except Exception as exc:
+    except Exception:
         logger.exception("CoreML prediction failed")
         raise HTTPException(
             status_code=500,
-            detail=f"CoreML inference error: {exc}",
+            detail="CoreML inference failed.",
         )
 
     return {"success": True, **result}
@@ -224,11 +224,11 @@ async def predict_quantized(
 
     try:
         result = runtime.predict_quantized(image, threshold=threshold)
-    except Exception as exc:
+    except Exception:
         logger.exception("Quantized prediction failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Quantized inference error: {exc}",
+            detail="Quantized inference failed.",
         )
 
     result["precision"] = precision

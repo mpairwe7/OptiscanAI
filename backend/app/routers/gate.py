@@ -90,7 +90,8 @@ async def gate_validate(file: UploadFile = File(...)):
         image.verify()
         image = Image.open(io.BytesIO(contents))
     except (OSError, SyntaxError) as e:
-        raise HTTPException(400, f"Invalid image file: {e}")
+        logger.warning("Invalid image upload: %s", e)
+        raise HTTPException(400, "Invalid or corrupted image file.")
 
     # Always run with visual evidence enabled for the debug endpoint
     from src.data.fundus_gate_v2 import FundusGateV2

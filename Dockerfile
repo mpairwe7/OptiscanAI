@@ -132,7 +132,7 @@ RUN groupadd -r optiscan && useradd -r -g optiscan -d /app -s /sbin/nologin opti
     && mkdir -p models/checkpoints logs uploads /var/lib/postgresql/data \
     && chown -R optiscan:optiscan /app /srv/nextjs \
     && chown -R optiscan:optiscan /var/log/nginx /var/lib/nginx /run \
-    && chown -R postgres:postgres /var/lib/postgresql \
+    && chown -R optiscan:optiscan /var/lib/postgresql \
     && ln -sf /dev/stdout /var/log/nginx/access.log \
     && ln -sf /dev/stderr /var/log/nginx/error.log
 
@@ -225,7 +225,7 @@ user=root
 
 [program:postgres]
 command=/usr/local/bin/postgres-bootstrap.sh
-user=root
+user=optiscan
 priority=10
 environment=PGDATA="/var/lib/postgresql/data",POSTGRES_USER="optiscan",POSTGRES_PASSWORD="optiscan",POSTGRES_DB="optiscan",PG_BIN="/usr/lib/postgresql/14/bin"
 stdout_logfile=/dev/stdout
@@ -243,7 +243,7 @@ command=/usr/local/bin/backend-start.sh
 directory=/app
 user=optiscan
 priority=20
-environment=MODEL_PATH="models/model_vignn_rank1.pth",API_PORT="8081",LOG_FORMAT="text",PYTHONPATH="/app",POSTGRES_HOST="127.0.0.1",POSTGRES_PORT="5432",POSTGRES_USER="optiscan"
+environment=HOME="/tmp",MODEL_PATH="models/model_vignn_rank1.pth",API_PORT="8081",LOG_FORMAT="text",PYTHONPATH="/app",POSTGRES_HOST="127.0.0.1",POSTGRES_PORT="5432",POSTGRES_USER="optiscan"
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr
@@ -294,6 +294,6 @@ EXPOSE 8080
 STOPSIGNAL SIGTERM
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -sf http://localhost:8080/health || exit 1
+    CMD curl -sf http://localhost:8080/health/ready || exit 1
 
 CMD ["supervisord", "-c", "/etc/supervisor/conf.d/optiscan.conf"]

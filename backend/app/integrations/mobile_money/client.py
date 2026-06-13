@@ -46,6 +46,7 @@ class MobileMoneyClient:
         mtn_environment: str = "sandbox",
         airtel_client_id: str = "",
         airtel_client_secret: str = "",
+        request_timeout_s: float = 20.0,
     ):
         self._mtn_key = mtn_api_key
         self._mtn_secret = mtn_api_secret
@@ -53,6 +54,9 @@ class MobileMoneyClient:
         self._mtn_env = mtn_environment
         self._airtel_id = airtel_client_id
         self._airtel_secret = airtel_client_secret
+        # Cap every outbound call so a stalled MTN/Airtel endpoint can't hang
+        # the request (and, via the OAuth bearer fetch, the whole payment).
+        self._timeout = aiohttp.ClientTimeout(total=request_timeout_s)
         # OAuth bearer cache for MTN MoMo Collections API.
         # MTN tokens live 1h; we refresh ~5 min before expiry.
         self._mtn_token: str | None = None
@@ -80,7 +84,7 @@ class MobileMoneyClient:
         if not (self._mtn_key and self._mtn_secret and self._mtn_sub_key):
             raise RuntimeError("MTN MoMo not configured (api_key/api_secret/subscription_key)")
         basic = base64.b64encode(f"{self._mtn_key}:{self._mtn_secret}".encode()).decode()
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(timeout=self._timeout) as session:
             async with session.post(
                 f"{self._mtn_base_url()}/collection/token/",
                 headers={
@@ -169,7 +173,7 @@ class MobileMoneyClient:
         }
 
         try:
-            async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession(timeout=self._timeout) as session:
                 async with session.post(
                     f"{base_url}/collection/v1_0/requesttopay", headers=headers, json=payload
                 ) as resp:
@@ -213,7 +217,7 @@ class MobileMoneyClient:
             base_url = self._mtn_base_url()
             try:
                 bearer = await self._mtn_bearer()
-                async with aiohttp.ClientSession() as session:
+                async with aiohttp.ClientSession(timeout=self._timeout) as session:
                     async with session.get(
                         f"{base_url}/collection/v1_0/requesttopay/{transaction_id}",
                         headers={

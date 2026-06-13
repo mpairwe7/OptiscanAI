@@ -75,10 +75,11 @@ async def upload_dicom(file: UploadFile = File(...)):
         )
 
     except RuntimeError as e:
+        logger.error("DICOM support unavailable: %s", e)
         raise HTTPException(
             status_code=501,
-            detail=f"DICOM support requires pydicom: {e}",
+            detail="DICOM support is not available on this server.",
         )
     except Exception as e:
         logger.error("DICOM upload failed: %s", e, exc_info=True)
-        raise HTTPException(status_code=400, detail=f"Failed to parse DICOM: {e}")
+        raise HTTPException(status_code=400, detail="Invalid or unreadable DICOM file.")

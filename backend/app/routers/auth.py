@@ -42,6 +42,7 @@ from backend.app.services.auth_service import (
     issue_magic_link,
     issue_password_reset,
     issue_token_pair,
+    normalize_email,
     register_user,
     revoke_refresh_token,
     rotate_refresh_token,
@@ -142,6 +143,13 @@ async def _issue_session(
     org: Organization,
     role: str,
 ) -> AuthSuccessResponse:
+    # Platform-superuser bootstrap: promote emails listed in SUPERUSER_EMAILS.
+    # Idempotent and runs on every register/login/refresh, so it re-applies even
+    # after an ephemeral-DB reset. get_db commits the change on success.
+    _su = {normalize_email(e) for e in settings.superuser_emails.split(",") if e}
+    if _su and not user.is_superuser and user.email_normalized in _su:
+        user.is_superuser = True
+        logger.info("Granted is_superuser to %s via SUPERUSER_EMAILS", user.email)
     access, refresh, _refresh_ttl = await issue_token_pair(db, user, org, role)
     _set_auth_cookies(response, access_token=access, refresh_token=refresh)
     me = await _build_me_response(db, user, org, role)
