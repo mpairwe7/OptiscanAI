@@ -18,9 +18,10 @@ jobs:
       - name: Install linters
         # Pin formatter version — black bumps its default style annually, so
         # a floating install drifts on every minor release and reformats the
-        # tree out from under the codebase. 25.12.0 matches uv.lock and
-        # avoids a pathspec conflict with flwr (federated extra).
-        run: pip install ruff "black==25.12.0"
+        # tree out from under the codebase. 26.3.1 matches uv.lock and patches
+        # GHSA-3936-cmfr-pm3m. 26.x needs pathspec>=1.0, kept out of the flwr
+        # resolution fork via [tool.uv].conflicts.
+        run: pip install ruff "black==26.3.1"
       - name: Ruff lint
         run: ruff check src/ backend/ scripts/ train.py
       - name: Black format check
