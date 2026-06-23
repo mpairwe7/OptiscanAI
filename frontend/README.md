@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OptiscanAI Frontend
 
-## Getting Started
+The Next.js 16 web app for OptiscanAI — clinician dashboard, fundus screening,
+human-in-the-loop review, explainability, billing, and a voice-first mode.
 
-First, run the development server:
+> ⚠️ This is a **customized** Next.js — read [`AGENTS.md`](AGENTS.md) before
+> changing framework-level code.
+
+## Stack
+
+- **Next.js 16** (App Router) · **React 19** · **TypeScript** (strict)
+- **Bun** (package manager / runtime) · **Tailwind CSS v4**
+- **Zustand** (state) · **TanStack Query** (data fetching)
+
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+bun install
+bun dev            # dev server on http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Or from the repo root: `make frontend` (frontend only) / `make dev` (backend + frontend).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Build
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+bun run build      # production build (.next/standalone)
+bun run start      # serve the production build
+bun run lint       # ESLint
+```
 
-## Learn More
+In Docker the app is built to a standalone server and served behind nginx (see
+[`../deploy/`](../deploy/README.md)).
 
-To learn more about Next.js, take a look at the following resources:
+## Environment
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+`NEXT_PUBLIC_*` variables are **baked into the browser bundle at build time** —
+never put secrets here.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Variable | Dev (`.env.local`) | Prod (`.env.production`) |
+| --- | --- | --- |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8080` | `https://www.optiscan.makstartup.com` |
 
-## Deploy on Vercel
+In the full-stack Docker image this is left empty and nginx proxies `/api` to the
+backend. See [`../docs/24-environment-variables.md`](../docs/24-environment-variables.md).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Structure
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/
+├── app/          # App Router routes + layouts (dashboard, screening, review, auth, billing)
+├── components/   # UI + feature panels (results, explainability, knowledge graph, voice)
+├── stores/       # Zustand stores (auth, app, billing, voice)
+├── hooks/        # Custom React hooks
+└── lib/          # API client, formatters, plan definitions
+```
+
+More detail: [`../docs/07-frontend-setup.md`](../docs/07-frontend-setup.md).

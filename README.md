@@ -230,6 +230,12 @@ The HF Spaces deployment uses `deploy/Dockerfile.hf` — a CPU-optimized single 
 
 ## Documentation
 
+📚 **Full index with topic groupings: [`docs/README.md`](docs/README.md)** — including
+[Environment Variables](docs/24-environment-variables.md),
+[CI/CD Pipeline](docs/25-ci-cd-pipeline.md),
+[Database & Migrations](docs/26-database-migrations.md), and
+[Troubleshooting](docs/27-troubleshooting.md).
+
 | Doc | Topic |
 |---|---|
 | [Data Ingestion](docs/01-data-ingestion.md) | Dataset download, format, class imbalance |
