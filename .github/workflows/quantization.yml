@@ -104,7 +104,7 @@ jobs:
           pip install onnxruntime onnx
 
       - name: Download quantized artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: quantized-models
           path: outputs/quantized/
@@ -135,7 +135,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Download quantized artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: quantized-models
           path: outputs/quantized/
