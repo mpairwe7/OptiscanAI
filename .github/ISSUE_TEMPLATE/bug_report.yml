@@ -1,0 +1,55 @@
+name: Bug report
+description: Report a problem with OptiscanAI
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. …
+        2. …
+        3. …
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Backend (FastAPI)
+        - Frontend (Next.js)
+        - ML / training
+        - Deployment (Docker / K8s / HF Spaces)
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      description: Image tag, release, or commit SHA.
+    validations:
+      required: false
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python/Bun version, deployment (local / Docker / Crane Cloud / HF Spaces).
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste logs or stack traces. Redact any secrets or PII.
+      render: shell
+    validations:
+      required: false
