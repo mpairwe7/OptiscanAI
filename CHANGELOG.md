@@ -18,6 +18,11 @@ project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 ### Added
 - `requirements.txt` — pip mirror of the core dependencies so plain-pip
   workflows (and the `pip-audit` security scan) work without uv.
+- Crane Cloud deploy diagnostics & resilience (`.github/scripts/crane_deploy.py`):
+  the deploy step now logs Crane's HTTP error **body** (with the DB DSN/password
+  redacted) instead of a bare `HTTP 500`, and retries `5xx` up to 3× with linear
+  backoff. A new `redeploy_sha` `workflow_dispatch` input lets `deploy_only` runs
+  re-roll an already-built image without a rebuild (rollback / deploy re-attempt).
 - Repo-hygiene files: `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`,
   `CITATION.cff`, `.editorconfig`, PR + issue templates, and
   `.github/dependabot.yml`.
