@@ -4,8 +4,8 @@ on:
   push:
     branches: [main, dev]
     paths:
-      - 'Dockerfile'
-      - 'Dockerfile.cpu'
+      - 'deploy/Dockerfile'
+      - 'deploy/Dockerfile.cpu'
       - 'pyproject.toml'
       - 'src/**'
       - 'backend/**'
@@ -78,11 +78,11 @@ jobs:
       matrix:
         include:
           - variant: gpu
-            dockerfile: Dockerfile
+            dockerfile: deploy/Dockerfile
             image: optiscan-ai
             tag: latest
           - variant: cpu
-            dockerfile: Dockerfile.cpu
+            dockerfile: deploy/Dockerfile.cpu
             image: optiscan-ai
             tag: cpu
     steps:

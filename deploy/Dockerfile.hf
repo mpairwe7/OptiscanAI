@@ -64,8 +64,8 @@ RUN mkdir -p models/checkpoints logs uploads && chmod -R 755 /app
 COPY models/model_vignn_rank1.pth ./models/model_vignn_rank1.pth
 
 # ── Nginx + Supervisor configs ──
-COPY nginx.conf /etc/nginx/sites-available/default
-COPY supervisord.conf /etc/supervisor/conf.d/retinalai.conf
+COPY deploy/nginx.conf /etc/nginx/sites-available/default
+COPY deploy/supervisord.conf /etc/supervisor/conf.d/retinalai.conf
 
 EXPOSE 7860
 

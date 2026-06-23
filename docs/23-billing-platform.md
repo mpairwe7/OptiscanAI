@@ -565,7 +565,7 @@ Used when a sidecar isn't available — Hugging Face Spaces, standalone
 `EMBEDDED_POSTGRES__ENABLED=true` (default if unset). compose / k8s set it to
 `false` so the in-image cluster sleeps and the app talks to the sidecar.
 
-Both `Dockerfile` and `Dockerfile.cpu` install
+Both `deploy/Dockerfile` and `deploy/Dockerfile.cpu` install
 `postgresql-14` alongside the app. Supervisord runs four programs at startup
 (priority order — lower starts first):
 
@@ -592,7 +592,7 @@ Both `Dockerfile` and `Dockerfile.cpu` install
   503" instead
 
 **Persistence**
-- `docker-compose.yml` mounts the named volume `optiscan-pgdata` (or
+- `deploy/docker-compose.yml` mounts the named volume `optiscan-pgdata` (or
   `optiscan-pgdata-cpu`) at `/var/lib/postgresql/data`
 - Survives `docker compose down`; cleared by `docker compose down -v`
 - On Crane Cloud the equivalent is a `PersistentVolumeClaim` mounted at the
@@ -618,7 +618,7 @@ out when `EMBEDDED_POSTGRES__ENABLED=false`, which the api services set.
 
 **What's wired today**
 
-`docker-compose.yml` defines a `postgres` service running `postgres:16-alpine`:
+`deploy/docker-compose.yml` defines a `postgres` service running `postgres:16-alpine`:
 - env-driven credentials (`POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB`)
 - TCP healthcheck via `pg_isready`
 - Persistent `optiscan-pgdata` named volume mounted at

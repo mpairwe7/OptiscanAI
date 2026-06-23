@@ -25,7 +25,7 @@ uv sync --extra observability
 
 ```bash
 # Start observability stack
-docker compose -f docker-compose.yml -f docker-compose.otel.yml up -d
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.otel.yml up -d
 
 # Verify services
 curl http://localhost:16686  # Jaeger UI
@@ -40,7 +40,7 @@ export TELEMETRY__OTLP_ENDPOINT=http://localhost:4317
 
 ```bash
 # Start MLflow
-docker compose -f docker-compose.yml -f docker-compose.mlflow.yml up -d
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.mlflow.yml up -d
 
 # Verify MLflow UI
 curl http://localhost:5000
@@ -101,7 +101,7 @@ export MLFLOW__ENABLED=false
 export ACTIVE_LEARNING_LOOP__ENABLED=false
 
 # Stop infrastructure
-docker compose -f docker-compose.yml -f docker-compose.otel.yml -f docker-compose.mlflow.yml down
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.otel.yml -f deploy/docker-compose.mlflow.yml down
 ```
 
 ---
@@ -132,7 +132,7 @@ open http://localhost:8265
 
 ```bash
 # Start Kafka
-docker compose -f docker-compose.yml -f docker-compose.2026.yml up -d kafka zookeeper
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.2026.yml up -d kafka zookeeper
 
 # Enable in API
 export KAFKA__ENABLED=true
@@ -246,7 +246,7 @@ export FEDERATED__ENABLED=false
 pip install -e ".[full]"
 
 # Start full infrastructure
-docker compose -f docker-compose.yml -f docker-compose.2026.yml up -d
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.2026.yml up -d
 
 # Or use Makefile
 make up-full
@@ -294,7 +294,7 @@ TELEMETRY_ENABLED=true
 
 Ensure the MLflow container is running and healthy:
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.mlflow.yml ps
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.mlflow.yml ps
 curl http://localhost:5000/health
 ```
 

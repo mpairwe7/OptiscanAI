@@ -545,11 +545,11 @@ Both models auto-detect and use the same device. On CPU-only hosts, both run on 
 ```bash
 # CPU image (Crane Cloud)
 make docker-build-cpu
-# or: docker build -t landwind/optiscan-ai:cpu -f Dockerfile.cpu .
+# or: docker build -t landwind/optiscan-ai:cpu -f deploy/Dockerfile.cpu .
 
 # GPU image (NVIDIA servers)
 make docker-build
-# or: docker build -t landwind/optiscan-ai:latest -f Dockerfile .
+# or: docker build -t landwind/optiscan-ai:latest -f deploy/Dockerfile .
 
 # Push individual
 make docker-push          # GPU only
@@ -586,7 +586,7 @@ push to main → test (lint + pytest) → build & push (GPU + CPU) → deploy to
 | Stage | Job | What it does |
 |-------|-----|-------------|
 | 1. Test | `test` | Ruff lint, Black format check, pytest (CPU) |
-| 2. Build | `build-and-push` | Matrix: GPU (`Dockerfile` → `:latest`) + CPU (`Dockerfile.cpu` → `:cpu`) |
+| 2. Build | `build-and-push` | Matrix: GPU (`deploy/Dockerfile` → `:latest`) + CPU (`deploy/Dockerfile.cpu` → `:cpu`) |
 | 3. Deploy | `deploy-crane-cloud` | Login to Crane Cloud API, PATCH both apps to trigger image pull |
 | 4. Verify | Health check | Poll CPU app `/health` for up to 5 minutes |
 

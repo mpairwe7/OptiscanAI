@@ -27,14 +27,14 @@ Critical deployment fixes for Hugging Face Spaces free-tier compatibility.
 
 | Issue | Root Cause | Fix |
 |-------|-----------|-----|
-| Supervisor crash on startup | `%(ENV_CUDA_VISIBLE_DEVICES)s` expansion fails — HF Spaces doesn't inject CUDA env vars | Hardcoded `CUDA_VISIBLE_DEVICES="-1"` and `DEVICE="cpu"` in `supervisord.conf` |
-| Docker build fails / GPU warnings | `nvidia/cuda:12.1.1` base image on `cpu-basic` hardware | Switched `Dockerfile.hf` to `python:3.11-slim-bookworm` |
+| Supervisor crash on startup | `%(ENV_CUDA_VISIBLE_DEVICES)s` expansion fails — HF Spaces doesn't inject CUDA env vars | Hardcoded `CUDA_VISIBLE_DEVICES="-1"` and `DEVICE="cpu"` in `deploy/supervisord.conf` |
+| Docker build fails / GPU warnings | `nvidia/cuda:12.1.1` base image on `cpu-basic` hardware | Switched `deploy/Dockerfile.hf` to `python:3.11-slim-bookworm` |
 | PyTorch install bloated (~2GB CUDA libs) | CUDA PyTorch index `whl/cu121` on CPU-only platform | Changed to CPU-only index `whl/cpu` (~200MB) |
 | HF push rejected | `short_description` > 60 chars in README YAML frontmatter | Shortened to < 60 chars |
 
 **Key lesson**: Supervisor `%(ENV_X)s` syntax requires the variable to exist in the container environment — it does not default to empty. On restricted platforms (HF Spaces, some K8s pods), always hardcode or use shell-level defaults instead.
 
-**Files changed**: `Dockerfile.hf`, `supervisord.conf`
+**Files changed**: `deploy/Dockerfile.hf`, `deploy/supervisord.conf`
 
 ---
 

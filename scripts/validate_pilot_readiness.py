@@ -136,7 +136,7 @@ class PilotReadinessValidator:
         """Verify Docker deployment files."""
         return self._check(
             "Docker deployment",
-            Path("Dockerfile.hf").exists() and Path("docker-compose.yml").exists(),
+            Path("deploy/Dockerfile.hf").exists() and Path("deploy/docker-compose.yml").exists(),
         )
 
     def generate_report(self) -> dict:

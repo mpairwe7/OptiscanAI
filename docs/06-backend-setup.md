@@ -1226,7 +1226,7 @@ docker compose --profile cpu up -d api-cpu
 
 ### Hugging Face Spaces (Docker)
 
-The HF Spaces deployment (`Dockerfile.hf`) runs the full stack (backend + frontend + nginx) in a single container via supervisord, optimized for CPU-only free-tier hardware.
+The HF Spaces deployment (`deploy/Dockerfile.hf`) runs the full stack (backend + frontend + nginx) in a single container via supervisord, optimized for CPU-only free-tier hardware.
 
 **Architecture:**
 ```
@@ -1237,7 +1237,7 @@ supervisord (PID 1)
 ```
 
 **Key differences from GPU deployment:**
-| Aspect | GPU (`Dockerfile`) | HF Spaces (`Dockerfile.hf`) |
+| Aspect | GPU (`deploy/Dockerfile`) | HF Spaces (`deploy/Dockerfile.hf`) |
 |--------|-------------------|----------------------------|
 | Base image | `nvidia/cuda:12.1.1` | `python:3.11-slim-bookworm` |
 | PyTorch | CUDA 12.1 (`whl/cu121`) | CPU-only (`whl/cpu`) |
@@ -1246,13 +1246,13 @@ supervisord (PID 1)
 | Process manager | Single uvicorn | supervisord (3 processes) |
 | Device | `CUDA_VISIBLE_DEVICES=0` | `CUDA_VISIBLE_DEVICES=-1`, `DEVICE=cpu` |
 
-**Supervisord configuration** (`supervisord.conf`):
+**Supervisord configuration** (`deploy/supervisord.conf`):
 - Environment variables are hardcoded (not `%(ENV_*)s` expansion) because HF Spaces does not inject standard CUDA env vars
 - Backend binds to `127.0.0.1:8080` (internal, proxied by nginx)
 - Frontend binds to `127.0.0.1:3000` (internal, proxied by nginx)
 - All processes set `autorestart=true` with 3 retries
 
-**Nginx routing** (`nginx.conf`):
+**Nginx routing** (`deploy/nginx.conf`):
 | Path | Destination | Purpose |
 |------|-------------|---------|
 | `/_next/static/*` | `/srv/nextjs/` (filesystem) | Pre-built Next.js static assets (365d cache) |

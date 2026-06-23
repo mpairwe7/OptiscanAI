@@ -41,7 +41,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build Docker image
-        run: docker build -f Dockerfile.cpu -t mlops-scan:test .
+        run: docker build -f deploy/Dockerfile.cpu -t mlops-scan:test .
 
       - name: Trivy vulnerability scan
         uses: aquasecurity/trivy-action@master
