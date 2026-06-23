@@ -21,6 +21,14 @@ docs index [`docs/README.md`](README.md).
 | `COPY` fails in `deploy/Dockerfile.hf` | Build run with the wrong context | Build context must be the **repo root** (`docker build -f deploy/Dockerfile.hf .`); HF/`deploy_hf.sh` rsync `deploy/` into the Space first. |
 | Port already in use (8080/3000/7860) | Another process bound the port | Stop it or remap (`API_PORT`, Compose `ports:`). |
 
+## Deployment — Crane Cloud
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| `deploy-crane-cloud` fails with `HTTP 500` and a body like `HTTPSConnectionPool(host='hub.docker.com', ...): ... Temporary failure in name resolution` | Crane Cloud's backend validates the image tag by calling Docker Hub (`hub.docker.com`); **its own server can't resolve DNS / reach Docker Hub** — an upstream Crane infra issue, not a repo bug. The image exists; Crane just can't reach Docker Hub to verify it. | Wait for Crane Cloud to recover, then re-roll **without a rebuild**: `gh workflow run docker-publish.yml -f deploy_only=true -f redeploy_sha=<7-char-sha>`. Confirm the API is back first — an env-only run (`-f deploy_only=true`, no `redeploy_sha`) returns `HTTP 200` even while image rollouts 500. If it stays broken, report to Crane Cloud support. |
+| `deploy-crane-cloud` shows only `HTTP 500 Internal Server Error`, no detail | Old `crane_deploy.py` swallowed the response body | Fixed: the script now logs Crane's body (DSN/password redacted) and retries 5xx up to 3×. |
+| Need to roll back or re-attempt a deploy | App is on a bad image, or a deploy failed after a good build | `gh workflow run docker-publish.yml -f deploy_only=true -f redeploy_sha=<sha>` re-rolls an already-built image (no rebuild); omitting `redeploy_sha` just re-asserts the managed-DB env. |
+
 ## Database (Phase 6)
 
 | Symptom | Cause | Fix |

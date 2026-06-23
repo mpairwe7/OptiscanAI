@@ -27,11 +27,17 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 
 API = os.environ.get("CRANE_CLOUD_API", "https://api.cranecloud.io").rstrip("/")
+
+# A 5xx from Crane Cloud's deploy endpoint is frequently transient (control-
+# plane hiccup), so retry a few times with linear backoff before failing CI.
+MAX_RETRIES = 3
+RETRY_BACKOFF = 5  # seconds; multiplied by the attempt number
 
 
 def _request(method, path, payload, token=None):
@@ -39,12 +45,33 @@ def _request(method, path, payload, token=None):
     headers = {"Content-Type": "application/json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    req = urllib.request.Request(
-        API + path, data=data, headers=headers, method=method
-    )
+    req = urllib.request.Request(API + path, data=data, headers=headers, method=method)
     with urllib.request.urlopen(req, timeout=60) as resp:
         body = resp.read().decode() or "{}"
         return resp.status, json.loads(body)
+
+
+def _error_detail(exc):
+    """Return Crane's HTTP error body, with the DB DSN/password redacted.
+
+    The bare status line ("HTTP 500 Internal Server Error") is useless for
+    debugging — the real cause lives in the response body. We redact the DSN
+    and its password first, in case a server-side stack trace echoes the
+    request payload back to us (these must never reach CI logs).
+    """
+    try:
+        body = exc.read().decode("utf-8", "replace").strip()
+    except Exception:  # noqa: BLE001 — diagnostics must never raise
+        return ""
+    if not body:
+        return ""
+    dsn = os.environ.get("DATABASE_URL", "").strip()
+    if dsn:
+        body = body.replace(dsn, "***")
+        pwd = urllib.parse.urlparse(dsn).password
+        if pwd:
+            body = body.replace(pwd, "***").replace(urllib.parse.unquote(pwd), "***")
+    return body[:1500]
 
 
 def db_env_vars():
@@ -102,15 +129,30 @@ def main():
         if not payload:
             print(f"{label}: no image tag and no DB env — nothing to update, skipping")
             continue
-        try:
-            status, _ = _request("PATCH", f"/apps/{app_id}", payload, token)
-            print(f"{label} deploy ({tag or 'env-only'}): HTTP {status}")
-        except urllib.error.HTTPError as exc:
-            print(f"::error::{label} deploy failed: HTTP {exc.code} {exc.reason}")
-            rc = 1
-        except Exception as exc:  # noqa: BLE001 — surface any failure to CI
-            print(f"::error::{label} deploy failed: {exc}")
-            rc = 1
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                status, _ = _request("PATCH", f"/apps/{app_id}", payload, token)
+                print(f"{label} deploy ({tag or 'env-only'}): HTTP {status}")
+                break
+            except urllib.error.HTTPError as exc:
+                detail = _error_detail(exc)
+                suffix = f" — {detail}" if detail else ""
+                # 5xx is usually a transient control-plane error: back off and
+                # retry. 4xx is a contract problem — fail fast, no retry.
+                if exc.code >= 500 and attempt < MAX_RETRIES:
+                    print(
+                        f"::warning::{label} deploy attempt {attempt}/{MAX_RETRIES}: "
+                        f"HTTP {exc.code} {exc.reason}{suffix}; retrying"
+                    )
+                    time.sleep(RETRY_BACKOFF * attempt)
+                    continue
+                print(f"::error::{label} deploy failed: HTTP {exc.code} {exc.reason}{suffix}")
+                rc = 1
+                break
+            except Exception as exc:  # noqa: BLE001 — surface any failure to CI
+                print(f"::error::{label} deploy failed: {exc}")
+                rc = 1
+                break
     return rc
 
 
