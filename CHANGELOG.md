@@ -14,6 +14,10 @@ project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   file write via cache filename). black 26.x needs `pathspec≥1.0`, which is
   incompatible with flwr's `pathspec<0.13`, so the dev group/extra is declared
   mutually exclusive with the `federated` extra via `[tool.uv].conflicts`.
+- Force `@babel/core` ≥ 7.29.6 via the frontend `overrides` to patch
+  **GHSA-4x5r-pxfx-6jf8 / CVE-2026-49356** (arbitrary file read via
+  `sourceMappingURL`), which Next.js pulled in transitively at `7.29.0`
+  (Dependabot #17). Both lockfiles now resolve `@babel/core@7.29.7`.
 
 ### Added
 - `requirements.txt` — pip mirror of the core dependencies so plain-pip
