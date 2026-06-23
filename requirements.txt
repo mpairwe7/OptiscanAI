@@ -1,0 +1,70 @@
+# ============================================================================
+# OptiscanAI — core runtime dependencies (pip mirror of pyproject.toml)
+# ----------------------------------------------------------------------------
+# pyproject.toml + uv.lock are the source of truth. This file mirrors the core
+# [project.dependencies] so plain-pip workflows work without uv (e.g. the
+# security-scan CI's `pip install -r requirements.txt` + pip-audit).
+#
+#   Preferred install ... uv sync                 # uses uv.lock, fully pinned
+#   Pinned export ....... uv export --no-hashes -o requirements.lock.txt
+#   Optional extras ..... pip install -e ".[observability,edge,...]"
+#                         (see [project.optional-dependencies] in pyproject.toml)
+# ============================================================================
+
+# Core ML
+torch>=2.0.0
+torchvision>=0.15.0
+timm>=0.9.0
+torchmetrics>=1.0.0
+
+# Data
+numpy<2.0,>=1.24.0
+pandas>=2.0.0
+pillow>=9.5.0
+opencv-python-headless>=4.8.0
+scikit-learn>=1.3.0
+scikit-image>=0.21.0
+albumentations>=1.3.0
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+plotly>=5.14.0
+
+# Graph Neural Networks
+torch-geometric>=2.3.0
+networkx>=3.1
+
+# API Backend
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+python-multipart>=0.0.6
+aiofiles>=23.0.0
+
+# Subscription / billing platform
+sqlalchemy[asyncio]>=2.0.30
+asyncpg>=0.29.0
+alembic>=1.13.0
+argon2-cffi>=23.1.0
+pyjwt[crypto]>=2.8.0
+email-validator>=2.1.0
+stripe>=10.0.0
+httpx>=0.27.0
+
+# Config & Utilities
+pyyaml>=6.0
+python-dotenv>=1.0.0
+kagglehub>=0.3.0
+tqdm>=4.65.0
+rich>=13.0.0
+click>=8.1.0
+psutil>=5.9.0
+
+# Explainability
+grad-cam>=1.5.2
+captum>=0.6.0
+lime>=0.2.0.1
+shap>=0.43.0
+eli5>=0.13.0

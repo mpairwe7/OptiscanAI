@@ -1,35 +1,41 @@
 # ============================================================================
-# OptiscanAI — Full-Stack CPU Production Image (Crane Cloud / lightweight)
-# 3-stage build | uv (10x faster) | OCI-compliant | Non-root | ~2 GB
+# OptiscanAI — Full-Stack GPU Production Image
+# 3-stage build | uv (10x faster) | CUDA 12.4 | OCI-compliant | Non-root
 # Process manager: supervisord → nginx(:8080) + uvicorn(:8081) + node(:3000)
 # ============================================================================
 # syntax=docker/dockerfile:1
 
 # --------------- Stage 1: Python builder ---------------
-FROM python:3.11-slim-bookworm AS builder
+FROM docker.io/nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04 AS builder
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
     UV_LINK_MODE=copy \
-    UV_PYTHON_DOWNLOADS=never \
     UV_COMPILE_BYTECODE=0 \
     PATH="/opt/venv/bin:${PATH}"
 
+# Install Python 3.11 via deadsnakes (Ubuntu 22.04 ships 3.10)
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    software-properties-common \
+    && add-apt-repository -y ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 python3.11-venv python3.11-dev \
     build-essential git curl ca-certificates \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Create venv + install CPU PyTorch (separate layer — changes rarely)
+# Create venv + install CUDA PyTorch (separate layer — changes rarely)
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv venv /opt/venv && \
+    uv venv --python python3.11 /opt/venv && \
     uv pip install --python /opt/venv/bin/python \
-        torch torchvision \
-        --index-url https://download.pytorch.org/whl/cpu
+        "torch==2.6.0+cu124" "torchvision==0.21.0+cu124" \
+        --index-url https://download.pytorch.org/whl/cu124
 
 # Install project deps (torch already satisfied, skips re-download)
 COPY pyproject.toml /app/pyproject.toml
@@ -38,10 +44,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     find /opt/venv -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null; \
     find /opt/venv -name "*.pyc" -delete 2>/dev/null; \
     find /opt/venv -type d -name "tests" -exec rm -rf {} + 2>/dev/null; \
+    find /opt/venv -name "*.dist-info" -type d -exec rm -rf {} + 2>/dev/null; \
     true
-# NOTE: do NOT delete *.dist-info directories — Pydantic's EmailStr reads
-# `email-validator`'s version metadata via importlib.metadata at import time;
-# wiping dist-info causes PackageNotFoundError on every backend request.
 
 # --------------- Stage 2: Frontend builder ---------------
 FROM oven/bun:1 AS frontend-builder
@@ -61,34 +65,41 @@ RUN NEXT_PUBLIC_API_URL="" bun run build \
     && cp -r public .next/standalone/public
 
 # --------------- Stage 3: Production runtime ---------------
-FROM python:3.11-slim-bookworm
+FROM docker.io/nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 
 LABEL org.opencontainers.image.title="OptiscanAI" \
-      org.opencontainers.image.description="CPU Retinal Disease Screening Platform — Backend + Frontend" \
+      org.opencontainers.image.description="GPU Retinal Disease Screening Platform — Backend + Frontend" \
       org.opencontainers.image.version="3.0.0" \
       org.opencontainers.image.vendor="OptiscanAI" \
       org.opencontainers.image.source="https://github.com/mpairwe7/OptiscanAI" \
       org.opencontainers.image.licenses="CC-BY-4.0"
 
-ENV PYTHONUNBUFFERED=1 \
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    CUDA_VISIBLE_DEVICES=-1 \
-    DEVICE=cpu \
+    CUDA_HOME=/usr/local/cuda \
     MPLBACKEND=Agg \
-    PATH="/opt/venv/bin:${PATH}"
+    PATH="/opt/venv/bin:/usr/local/cuda/bin:${PATH}"
 
-# Runtime deps + embedded Postgres 15 (Option 1 — dev/pilot).
-# Postgres 15 is the default in Debian Bookworm; postgresql-14 isn't in
-# the default bookworm repos. For multi-tenant production use a sidecar /
-# managed Postgres (Options 2 + 3 — see docs/23-billing-platform.md § 14).
+# Runtime deps — Python 3.11, embedded Postgres 14 (Option 1 — dev/pilot),
+# no gnupg, no OpenGL.
+# For multi-tenant production move to a sidecar / managed Postgres
+# (Options 2 + 3 — see docs/23-billing-platform.md § 14).
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    software-properties-common \
+    && add-apt-repository -y ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 \
     curl ca-certificates \
     libglib2.0-0 libgomp1 \
     nginx supervisor \
-    postgresql-15 postgresql-client-15 \
+    postgresql-14 postgresql-client-14 \
+    && apt-get purge -y software-properties-common \
+    && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /var/lib/postgresql/15/main
+    # Disable the Debian-default cluster — our bootstrap script owns its own.
+    && rm -rf /var/lib/postgresql/14/main
 
 # Node.js binary from official image (replaces 100MB NodeSource apt install)
 COPY --from=node:20-slim /usr/local/bin/node /usr/local/bin/node
@@ -112,7 +123,7 @@ COPY scripts/container/postgres-bootstrap.sh /usr/local/bin/postgres-bootstrap.s
 COPY scripts/container/backend-start.sh /usr/local/bin/backend-start.sh
 RUN chmod +x /usr/local/bin/postgres-bootstrap.sh /usr/local/bin/backend-start.sh
 
-# Bake model weights into image (required for Crane Cloud — no volume mounts)
+# Bake model weights (required for Crane Cloud — no volume mounts)
 COPY models/model_vignn_rank1.pth ./models/model_vignn_rank1.pth
 COPY weights/fundus_gate.pth ./weights/fundus_gate.pth
 
@@ -121,30 +132,90 @@ RUN groupadd -r optiscan && useradd -r -g optiscan -d /app -s /sbin/nologin opti
     && mkdir -p models/checkpoints logs uploads /var/lib/postgresql/data \
     && chown -R optiscan:optiscan /app /srv/nextjs \
     && chown -R optiscan:optiscan /var/log/nginx /var/lib/nginx /run \
-    && chown -R postgres:postgres /var/lib/postgresql \
+    && chown -R optiscan:optiscan /var/lib/postgresql \
     && ln -sf /dev/stdout /var/log/nginx/access.log \
     && ln -sf /dev/stderr /var/log/nginx/error.log
 
-# Nginx — port 8080
+# Nginx config — single port 8080 (non-privileged, Crane Cloud compatible)
 RUN cat > /etc/nginx/sites-available/default <<'NGINX'
 server {
     listen 8080;
     server_name _;
     client_max_body_size 15M;
 
-    location /_next/static/ { root /srv/nextjs; expires 365d; access_log off; add_header Cache-Control "public, immutable"; }
-    location ~* \.(png|ico|svg|webmanifest|js)$ { root /srv/nextjs; try_files $uri @nextjs; expires 30d; access_log off; }
-    location /api/ { proxy_pass http://127.0.0.1:8081/api/; proxy_http_version 1.1; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; proxy_read_timeout 120s; }
-    location /v1/ { proxy_pass http://127.0.0.1:8081/v1/; proxy_http_version 1.1; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection 'upgrade'; proxy_read_timeout 120s; }
-    location /health { proxy_pass http://127.0.0.1:8081/health; proxy_http_version 1.1; }
-    location /docs { proxy_pass http://127.0.0.1:8081/docs; proxy_http_version 1.1; }
-    location /openapi.json { proxy_pass http://127.0.0.1:8081/openapi.json; proxy_http_version 1.1; }
-    location / { proxy_pass http://127.0.0.1:3000; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection 'upgrade'; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_cache_bypass $http_upgrade; }
-    location @nextjs { proxy_pass http://127.0.0.1:3000; proxy_http_version 1.1; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; }
+    location /_next/static/ {
+        root /srv/nextjs;
+        expires 365d;
+        access_log off;
+        add_header Cache-Control "public, immutable";
+    }
+
+    location ~* \.(png|ico|svg|webmanifest|js)$ {
+        root /srv/nextjs;
+        try_files $uri @nextjs;
+        expires 30d;
+        access_log off;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8081/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
+    }
+
+    location /v1/ {
+        proxy_pass http://127.0.0.1:8081/v1/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_read_timeout 120s;
+    }
+
+    location /health {
+        proxy_pass http://127.0.0.1:8081/health;
+        proxy_http_version 1.1;
+    }
+
+    location /docs {
+        proxy_pass http://127.0.0.1:8081/docs;
+        proxy_http_version 1.1;
+    }
+
+    location /openapi.json {
+        proxy_pass http://127.0.0.1:8081/openapi.json;
+        proxy_http_version 1.1;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    location @nextjs {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 }
 NGINX
 
-# Supervisord — CPU mode
+# Supervisord — graceful shutdown with SIGTERM propagation
 RUN cat > /etc/supervisor/conf.d/optiscan.conf <<'SUPER'
 [supervisord]
 nodaemon=true
@@ -154,9 +225,9 @@ user=root
 
 [program:postgres]
 command=/usr/local/bin/postgres-bootstrap.sh
-user=root
+user=optiscan
 priority=10
-environment=PGDATA="/var/lib/postgresql/data",POSTGRES_USER="optiscan",POSTGRES_PASSWORD="optiscan",POSTGRES_DB="optiscan",PG_BIN="/usr/lib/postgresql/15/bin"
+environment=PGDATA="/var/lib/postgresql/data",POSTGRES_USER="optiscan",POSTGRES_PASSWORD="optiscan",POSTGRES_DB="optiscan",PG_BIN="/usr/lib/postgresql/14/bin"
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr
@@ -172,7 +243,7 @@ command=/usr/local/bin/backend-start.sh
 directory=/app
 user=optiscan
 priority=20
-environment=MODEL_PATH="models/model_vignn_rank1.pth",CUDA_VISIBLE_DEVICES="-1",DEVICE="cpu",API_PORT="8081",LOG_FORMAT="text",PYTHONPATH="/app",POSTGRES_HOST="127.0.0.1",POSTGRES_PORT="5432",POSTGRES_USER="optiscan"
+environment=HOME="/tmp",MODEL_PATH="models/model_vignn_rank1.pth",API_PORT="8081",LOG_FORMAT="text",PYTHONPATH="/app",POSTGRES_HOST="127.0.0.1",POSTGRES_PORT="5432",POSTGRES_USER="optiscan"
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr
@@ -187,6 +258,7 @@ stopsignal=TERM
 command=node server.js
 directory=/app/frontend/.next/standalone
 user=optiscan
+priority=30
 environment=PORT="3000",HOSTNAME="127.0.0.1"
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
@@ -200,6 +272,7 @@ stopsignal=TERM
 
 [program:nginx]
 command=nginx -g "daemon off;"
+priority=40
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr
@@ -213,13 +286,14 @@ SUPER
 
 ENV MODEL_PATH=models/model_vignn_rank1.pth \
     API_HOST=0.0.0.0 \
-    API_PORT=8081
+    API_PORT=8081 \
+    CUDA_VISIBLE_DEVICES=0
 
 EXPOSE 8080
 
 STOPSIGNAL SIGTERM
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -sf http://localhost:8080/health || exit 1
+    CMD curl -sf http://localhost:8080/health/ready || exit 1
 
 CMD ["supervisord", "-c", "/etc/supervisor/conf.d/optiscan.conf"]

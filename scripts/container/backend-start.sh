@@ -32,7 +32,10 @@ if [ "${DATABASE__ENABLED:-false}" = "true" ]; then
   if /usr/bin/pg_isready -h "$PG_HOST" -p "$PG_PORT" -U "$PG_USER" -q; then
     log "Postgres ready after ${i}s — running alembic migrations"
     cd /app
-    if ! /opt/venv/bin/alembic upgrade head; then
+    # alembic.ini lives at /app/backend/alembic.ini (script_location=backend/alembic,
+    # resolved from this /app cwd). Without -c, alembic looks for /app/alembic.ini,
+    # fails to find it, and the schema is never created (billing/auth 5xx).
+    if ! /opt/venv/bin/alembic -c backend/alembic.ini upgrade head; then
       log "alembic upgrade failed — backend will start, but billing endpoints will 5xx"
     fi
   fi

@@ -11,6 +11,11 @@ __pycache__
 .pytest_cache
 .tmp_pytest
 
+# Notebooks (never belong in a runtime image)
+*.ipynb
+.ipynb_checkpoints
+notebooks
+
 # Node / Frontend (keep frontend/ for full-stack build)
 frontend/node_modules
 frontend/.next

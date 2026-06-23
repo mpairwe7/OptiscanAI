@@ -101,8 +101,8 @@ rsync -av --delete \
     --exclude='ipynb_checkpoints' \
     "${PROJECT_DIR}/" ./
 
-# Use Dockerfile.hf as the Space Dockerfile
-cp Dockerfile.hf Dockerfile
+# Use Dockerfile.hf as the Space Dockerfile (synced from deploy/ by rsync above)
+cp deploy/Dockerfile.hf Dockerfile
 
 echo "[4/5] Configuring Git LFS for model weights..."
 git lfs install

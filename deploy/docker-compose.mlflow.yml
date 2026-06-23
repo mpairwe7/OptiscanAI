@@ -1,5 +1,5 @@
 # MLflow Model Registry for RetinalAI.
-# Usage: docker compose -f docker-compose.yml -f docker-compose.mlflow.yml up -d
+# Usage: docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.mlflow.yml up -d
 #
 # Provides: MLflow Tracking Server with SQLite backend and local artifact store.
 # Set MLFLOW__ENABLED=true and MLFLOW__TRACKING_URI=http://mlflow:5000 in .env.

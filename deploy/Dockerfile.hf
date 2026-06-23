@@ -64,12 +64,12 @@ RUN mkdir -p models/checkpoints logs uploads && chmod -R 755 /app
 COPY models/model_vignn_rank1.pth ./models/model_vignn_rank1.pth
 
 # ── Nginx + Supervisor configs ──
-COPY nginx.conf /etc/nginx/sites-available/default
-COPY supervisord.conf /etc/supervisor/conf.d/retinalai.conf
+COPY deploy/nginx.conf /etc/nginx/sites-available/default
+COPY deploy/supervisord.conf /etc/supervisor/conf.d/retinalai.conf
 
 EXPOSE 7860
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:7860/health || exit 1
+    CMD curl -f http://localhost:7860/health/ready || exit 1
 
 CMD ["supervisord", "-c", "/etc/supervisor/conf.d/retinalai.conf"]

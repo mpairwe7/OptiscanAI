@@ -4,8 +4,8 @@ on:
   push:
     branches: [main, dev]
     paths:
-      - 'Dockerfile'
-      - 'Dockerfile.cpu'
+      - 'deploy/Dockerfile'
+      - 'deploy/Dockerfile.cpu'
       - 'pyproject.toml'
       - 'src/**'
       - 'backend/**'
@@ -52,9 +52,10 @@ jobs:
         run: |
           pip install --upgrade pip
           # Pin black — its default style bumps yearly; a floating install
-          # would reformat the tree out from under the codebase. 25.12.0
-          # matches uv.lock and avoids a pathspec conflict with flwr.
-          pip install ruff "black==25.12.0"
+          # would reformat the tree out from under the codebase. 26.3.1
+          # matches uv.lock and patches GHSA-3936-cmfr-pm3m. 26.x needs
+          # pathspec>=1.0, kept out of the flwr fork via [tool.uv].conflicts.
+          pip install ruff "black==26.3.1"
           pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
           pip install -e ".[dev]"
 
@@ -77,17 +78,31 @@ jobs:
       matrix:
         include:
           - variant: gpu
-            dockerfile: Dockerfile
+            dockerfile: deploy/Dockerfile
             image: optiscan-ai
             tag: latest
           - variant: cpu
-            dockerfile: Dockerfile.cpu
+            dockerfile: deploy/Dockerfile.cpu
             image: optiscan-ai
             tag: cpu
     steps:
       - uses: actions/checkout@v4
         with:
           lfs: false
+
+      - name: Smudge LFS weights into the build context
+        run: |
+          # models/model_vignn_rank1.pth is tracked in Git LFS. Without this,
+          # the build context holds the LFS *pointer*, the image ships a ~134-byte
+          # text file, and torch.load() fails at runtime -> /health reports
+          # model_loaded:false. The test job pulls LFS for the same reason.
+          git lfs pull
+          sz=$(stat -c%s models/model_vignn_rank1.pth)
+          echo "model_vignn_rank1.pth: ${sz} bytes"
+          if [ "$sz" -lt 10000 ]; then
+            echo "::error::model checkpoint is still an LFS pointer (${sz} bytes) — git lfs pull did not fetch the real weights; refusing to build a broken image"
+            exit 1
+          fi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -128,52 +143,41 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - name: Deploy CPU app to Crane Cloud
+      # The deploy job runs on its own runner, so it must check out the repo to
+      # get .github/scripts/crane_deploy.py. lfs:false skips the big model blobs.
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - name: Deploy to Crane Cloud (image + managed DB env)
         env:
           CRANE_EMAIL: ${{ secrets.CRANE_CLOUD_EMAIL }}
           CRANE_PASSWORD: ${{ secrets.CRANE_CLOUD_PASSWORD }}
           CRANE_CPU_APP_ID: ${{ secrets.CRANE_CLOUD_CPU_APP_ID }}
           CRANE_GPU_APP_ID: ${{ secrets.CRANE_CLOUD_GPU_APP_ID }}
+          # Single secret carrying the DB password; pg_isready host/port/user
+          # are derived from it inside crane_deploy.py so they need not be
+          # stored (or committed) separately.
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DEPLOY_ONLY: ${{ inputs.deploy_only }}
         run: |
           set -euo pipefail
 
-          # Use SHA-pinned tags so Crane Cloud sees a different image string
-          # on every CI run and actually triggers a pod rollover. PATCHing the
-          # moving `:cpu` / `:latest` tags is a no-op (Crane diffs by image
-          # string, not by Docker manifest digest). The metadata-action in the
-          # build-and-push step publishes tags as `<tag>-<sha-7>` — these are
-          # the ones we point at here so deploy guarantees rollover.
-          SHA7="${GITHUB_SHA:0:7}"
-          CPU_TAG="landwind/optiscan-ai:cpu-${SHA7}"
-          GPU_TAG="landwind/optiscan-ai:latest-${SHA7}"
-
-          # Login to Crane Cloud API
-          TOKEN=$(curl -sf -X POST "$CRANE_CLOUD_API/users/login" \
-            -H "Content-Type: application/json" \
-            -d "{\"email\": \"$CRANE_EMAIL\", \"password\": \"$CRANE_PASSWORD\"}" \
-            | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
-
-          echo "Logged in to Crane Cloud"
-
-          # Redeploy CPU app (triggers new image pull)
-          if [ -n "$CRANE_CPU_APP_ID" ]; then
-            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" -X PATCH \
-              "$CRANE_CLOUD_API/apps/$CRANE_CPU_APP_ID" \
-              -H "Authorization: Bearer $TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "{\"image\": \"$CPU_TAG\"}")
-            echo "CPU deploy ($CPU_TAG): HTTP $STATUS"
+          # Normal run: point at the freshly built SHA-pinned tags so Crane Cloud
+          # (which diffs by image string) actually rolls the pod over —
+          # metadata-action publishes them as `<tag>-<sha-7>`.
+          # Deploy-only run: the build was skipped, so those tags don't exist —
+          # leave them empty and PATCH env_vars alone (switch DB, no rebuild).
+          if [ "${DEPLOY_ONLY:-false}" != "true" ]; then
+            SHA7="${GITHUB_SHA:0:7}"
+            export CPU_TAG="landwind/optiscan-ai:cpu-${SHA7}"
+            export GPU_TAG="landwind/optiscan-ai:latest-${SHA7}"
           fi
 
-          # Redeploy GPU app
-          if [ -n "$CRANE_GPU_APP_ID" ]; then
-            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" -X PATCH \
-              "$CRANE_CLOUD_API/apps/$CRANE_GPU_APP_ID" \
-              -H "Authorization: Bearer $TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "{\"image\": \"$GPU_TAG\"}")
-            echo "GPU deploy ($GPU_TAG): HTTP $STATUS"
-          fi
+          # Logs in, then PATCHes both apps. Crane Cloud MERGES env_vars on
+          # PATCH, so this asserts the managed-DB config without wiping
+          # MODEL_PATH/DEVICE/etc. DATABASE_URL is never printed.
+          python3 .github/scripts/crane_deploy.py
 
       - name: Health check (CPU)
         env:

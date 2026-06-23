@@ -1,0 +1,42 @@
+version: 2
+updates:
+  # Python — pyproject.toml / requirements.txt at the repo root
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    labels: ["dependencies", "python"]
+    commit-message:
+      prefix: "build(deps)"
+    groups:
+      python-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # Frontend — Next.js app (npm ecosystem reads frontend/package.json + lock)
+  - package-ecosystem: npm
+    directory: "/frontend"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    labels: ["dependencies", "frontend"]
+    commit-message:
+      prefix: "build(deps)"
+    groups:
+      npm-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # GitHub Actions used by the workflows in .github/workflows/
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    labels: ["dependencies", "ci"]
+    commit-message:
+      prefix: "ci(deps)"
+    groups:
+      actions:
+        update-types: ["minor", "patch"]

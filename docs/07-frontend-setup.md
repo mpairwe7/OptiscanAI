@@ -240,7 +240,7 @@ Backend and frontend run as separate processes. Frontend proxies API calls to `h
 
 ### Docker — HF Spaces (production)
 
-In the HF Spaces deployment (`Dockerfile.hf`), the frontend is built at Docker build time and served via the Next.js standalone server + nginx:
+In the HF Spaces deployment (`deploy/Dockerfile.hf`), the frontend is built at Docker build time and served via the Next.js standalone server + nginx:
 
 ```
 Build time:

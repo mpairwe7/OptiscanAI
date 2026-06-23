@@ -56,7 +56,7 @@ async def predict(
         image = Image.open(io.BytesIO(contents))  # Re-open after verify
     except (OSError, SyntaxError) as e:
         logger.warning("Invalid image upload: %s", str(e))
-        raise HTTPException(400, f"Invalid image file: {e}")
+        raise HTTPException(400, "Invalid or corrupted image file.")
 
     if image.width < 32 or image.height < 32:
         raise HTTPException(400, "Image too small (min 32x32)")

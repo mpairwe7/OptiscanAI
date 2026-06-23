@@ -9,7 +9,7 @@ on:
       - 'frontend/**'
       - 'models/**'
       - 'configs/**'
-      - 'Dockerfile.hf'
+      - 'deploy/Dockerfile.hf'
       - 'pyproject.toml'
   workflow_dispatch:
 
@@ -102,7 +102,7 @@ jobs:
           EOF
 
           # Copy Dockerfile
-          cp Dockerfile.hf hf_space/Dockerfile
+          cp deploy/Dockerfile.hf hf_space/Dockerfile
 
           # Copy application code. pretrained_weights/ is excluded — the
           # vit_small_patch16_224.safetensors backbone is timm/HF-Hub

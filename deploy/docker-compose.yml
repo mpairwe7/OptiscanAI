@@ -1,3 +1,7 @@
+# Pinned project name so it stays stable regardless of the compose file's
+# location (the file lives in deploy/, so the default would otherwise be "deploy").
+name: optiscan
+
 services:
   # ─── Postgres sidecar (Option 2 — production-ready) ─────────────────────────
   # Decoupled DB lifecycle from the app: restart, scale, back up independently.
@@ -29,8 +33,8 @@ services:
   api:
     image: landwind/optiscan-ai:latest
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: deploy/Dockerfile
     container_name: retinal-api
     ports:
       - "8080:8080"
@@ -73,10 +77,10 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./models:/app/models
-      - ./weights:/app/weights
-      - ./outputs:/app/outputs
-      - ./data/offline_rag:/app/data/offline_rag
+      - ../models:/app/models
+      - ../weights:/app/weights
+      - ../outputs:/app/outputs
+      - ../data/offline_rag:/app/data/offline_rag
     deploy:
       resources:
         reservations:
@@ -96,8 +100,8 @@ services:
   api-cpu:
     image: landwind/optiscan-ai:latest
     build:
-      context: .
-      dockerfile: Dockerfile.cpu
+      context: ..
+      dockerfile: deploy/Dockerfile.cpu
     container_name: retinal-api-cpu
     profiles: [cpu]
     ports:
@@ -120,7 +124,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./models:/app/models
+      - ../models:/app/models
     restart: unless-stopped
 
   # Hugging Face Spaces build (local test before pushing)
@@ -129,8 +133,8 @@ services:
   # Postgres path active. SaaS billing is OFF here by default.
   hf:
     build:
-      context: .
-      dockerfile: Dockerfile.hf
+      context: ..
+      dockerfile: deploy/Dockerfile.hf
     container_name: retinal-hf
     profiles: [hf]
     ports:
@@ -145,8 +149,8 @@ services:
       - BILLING__ENABLED=${HF_BILLING__ENABLED:-false}
       - EMBEDDED_POSTGRES__ENABLED=${HF_EMBEDDED_POSTGRES__ENABLED:-true}
     volumes:
-      - ./models:/app/models
-      - ./weights:/app/weights
+      - ../models:/app/models
+      - ../weights:/app/weights
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7860/health"]
       interval: 30s
@@ -160,12 +164,12 @@ volumes:
   # removed by `docker compose down -v`.
   optiscan-pgdata:
 
-# Usage:
-#   docker compose up -d                 # GPU api + sidecar Postgres
-#   docker compose --profile cpu up      # CPU api + sidecar Postgres
-#   docker compose --profile hf up       # HF Spaces (full stack on 7860, no sidecar)
-#   docker compose exec postgres psql -U optiscan optiscan   # direct DB access
-#   docker compose logs -f
+# Usage (run from the repo root; the compose file lives in deploy/):
+#   docker compose -f deploy/docker-compose.yml up -d              # GPU api + sidecar Postgres
+#   docker compose -f deploy/docker-compose.yml --profile cpu up   # CPU api + sidecar Postgres
+#   docker compose -f deploy/docker-compose.yml --profile hf up    # HF Spaces (full stack on 7860, no sidecar)
+#   docker compose -f deploy/docker-compose.yml exec postgres psql -U optiscan optiscan   # direct DB access
+#   docker compose -f deploy/docker-compose.yml logs -f
 #
 # Required .env entries (see .env.example):
 #   JWT_SECRET=…                       # generate with: openssl rand -hex 32

@@ -121,12 +121,12 @@ All features are **opt-in via environment variables** and disabled by default. S
 make deploy-hf
 
 # Local test (full stack: backend + frontend + nginx on :7860)
-docker compose --profile hf up --build
+docker compose -f deploy/docker-compose.yml --profile hf up --build
 ```
 
 **Live Space**: [mpairwe49-retinal-screening.hf.space](https://mpairwe49-retinal-screening.hf.space)
 
-The HF Spaces deployment uses `Dockerfile.hf` — a CPU-optimized single container with supervisord orchestrating nginx (:7860), FastAPI backend (:8080), and Next.js standalone (:3000). See [Frontend Setup](docs/07-frontend-setup.md#deployment-modes) for architecture details.
+The HF Spaces deployment uses `deploy/Dockerfile.hf` — a CPU-optimized single container with supervisord orchestrating nginx (:7860), FastAPI backend (:8080), and Next.js standalone (:3000). See [Frontend Setup](docs/07-frontend-setup.md#deployment-modes) for architecture details.
 
 ## Project Structure
 
@@ -212,22 +212,29 @@ The HF Spaces deployment uses `Dockerfile.hf` — a CPU-optimized single contain
 │   ├── base/                Backend deployment + HPA + PDB + ServiceAccount
 │   └── chaos/               LitmusChaos experiments (pod-delete, network, latency)
 ├── scripts/                 Training, export, SBOM, benchmark, bias audit
-├── docs/                    23 documentation files + architecture
-├── docker-compose.yml       Base (API + API-CPU + HF)
-├── docker-compose.otel.yml  Phase 1: OTEL Collector + Jaeger + Prometheus
-├── docker-compose.mlflow.yml  Phase 1: MLflow tracking server
-├── docker-compose.2026.yml  Full stack (all phases)
-├── Dockerfile               GPU backend (nvidia/cuda:12.1.1)
-├── Dockerfile.cpu           CPU-only backend
-├── Dockerfile.hf            HF Spaces (python:3.11-slim, CPU PyTorch, supervisord)
-├── supervisord.conf         Process manager (backend + frontend + nginx)
-├── nginx.conf               Reverse proxy (port 7860 → backend:8080 + frontend:3000)
+├── docs/                    Runbooks + architecture (index: docs/README.md)
+├── deploy/                  Deployment & build files
+│   ├── docker-compose.yml       Base (API + API-CPU + HF)
+│   ├── docker-compose.otel.yml  Phase 1: OTEL Collector + Jaeger + Prometheus
+│   ├── docker-compose.mlflow.yml  Phase 1: MLflow tracking server
+│   ├── docker-compose.2026.yml  Full stack (all phases)
+│   ├── Dockerfile               GPU backend (nvidia/cuda:12.4)
+│   ├── Dockerfile.cpu           CPU-only backend
+│   ├── Dockerfile.hf            HF Spaces (python:3.11-slim, CPU PyTorch, supervisord)
+│   ├── supervisord.conf         Process manager (backend + frontend + nginx)
+│   └── nginx.conf               Reverse proxy (port 7860 → backend:8080 + frontend:3000)
 ├── train.py                 DDP training entry point
 ├── dvc.yaml                 Reproducible ML pipeline
 └── pyproject.toml           UV dependencies (9 optional groups)
 ```
 
 ## Documentation
+
+📚 **Full index with topic groupings: [`docs/README.md`](docs/README.md)** — including
+[Environment Variables](docs/24-environment-variables.md),
+[CI/CD Pipeline](docs/25-ci-cd-pipeline.md),
+[Database & Migrations](docs/26-database-migrations.md), and
+[Troubleshooting](docs/27-troubleshooting.md).
 
 | Doc | Topic |
 |---|---|

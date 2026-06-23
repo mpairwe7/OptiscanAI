@@ -104,23 +104,23 @@ hf-login:
 	huggingface-cli login --token $(HF_TOKEN)
 
 hf-local:
-	docker compose --profile hf up --build
+	docker compose -f deploy/docker-compose.yml --profile hf up --build
 
 # --- 2026 Production Infrastructure ---
 up-phase1:
-	docker compose -f docker-compose.yml -f docker-compose.otel.yml -f docker-compose.mlflow.yml up -d
+	docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.otel.yml -f deploy/docker-compose.mlflow.yml up -d
 	@echo "Phase 1 stack: OTEL + Jaeger + Prometheus + MLflow"
 
 up-phase2:
-	docker compose -f docker-compose.yml -f docker-compose.otel.yml -f docker-compose.mlflow.yml -f docker-compose.2026.yml up -d
+	docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.otel.yml -f deploy/docker-compose.mlflow.yml -f deploy/docker-compose.2026.yml up -d
 	@echo "Phase 2 stack: Phase 1 + Ray Serve + Kafka"
 
 up-full:
-	docker compose -f docker-compose.yml -f docker-compose.2026.yml up -d
+	docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.2026.yml up -d
 	@echo "Full 2026 stack running"
 
 down-full:
-	docker compose -f docker-compose.yml -f docker-compose.2026.yml down
+	docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.2026.yml down
 
 sbom:
 	bash scripts/generate_sbom.sh retinalai:latest
@@ -149,15 +149,15 @@ flutter-scaffold:
 
 # --- Phase 5 Docker ---
 up-offline:
-	OFFLINE_RAG__ENABLED=true docker compose up -d
+	OFFLINE_RAG__ENABLED=true docker compose -f deploy/docker-compose.yml up -d
 	@echo "API with offline RAG enabled"
 
 up-quantized:
-	QUANTIZATION__ENABLED=true QUANTIZATION__TORCH_COMPILE_ENABLED=true docker compose up -d
+	QUANTIZATION__ENABLED=true QUANTIZATION__TORCH_COMPILE_ENABLED=true docker compose -f deploy/docker-compose.yml up -d
 	@echo "API with quantized models + torch.compile"
 
 up-full-v2:
-	OFFLINE_RAG__ENABLED=true QUANTIZATION__ENABLED=true VOICE_FIRST__ENABLED=true docker compose -f docker-compose.yml -f docker-compose.otel.yml up -d
+	OFFLINE_RAG__ENABLED=true QUANTIZATION__ENABLED=true VOICE_FIRST__ENABLED=true docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.otel.yml up -d
 	@echo "Full Phase 5 stack: offline + quantized + voice + OTEL"
 
 # --- Phase 1: Mobile Distillation ---
@@ -184,17 +184,17 @@ pilot-readiness:
 	PYTHONPATH=. python3 scripts/validate_pilot_readiness.py
 
 up-phase4:
-	VOICE_FIRST__ENABLED=true DHIS2__ENABLED=true docker compose up -d
+	VOICE_FIRST__ENABLED=true DHIS2__ENABLED=true docker compose -f deploy/docker-compose.yml up -d
 
 # --- Docker Hub ---
 docker-login:
 	docker login -u $(DOCKERHUB_USERNAME)
 
 docker-build:
-	docker build -t landwind/optiscan-ai:latest -f Dockerfile .
+	docker build -t landwind/optiscan-ai:latest -f deploy/Dockerfile .
 
 docker-build-cpu:
-	docker build -t landwind/optiscan-ai:cpu -f Dockerfile.cpu .
+	docker build -t landwind/optiscan-ai:cpu -f deploy/Dockerfile.cpu .
 
 docker-push: docker-build
 	docker push landwind/optiscan-ai:latest

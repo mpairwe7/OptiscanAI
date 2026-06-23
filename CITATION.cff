@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+title: "OptiscanAI — Multi-label Retinal Disease Screening Platform"
+message: "If you use this software or its findings, please cite it as below."
+type: software
+# NOTE: verify/extend the author list before publishing or archiving (e.g. Zenodo).
+authors:
+  - family-names: Mpairwe
+    given-names: Lauben
+    affiliation: "Makerere University"
+license: CC-BY-4.0
+repository-code: "https://github.com/mpairwe7/OptiscanAI"
+abstract: >-
+  Offline-first, multi-label retinal disease classification (45 diseases) built
+  on a RETFound/LoRA hybrid model with clinical knowledge-graph reasoning, a
+  FastAPI backend, and a Next.js frontend — designed for clinical screening in
+  low-resource settings.
+keywords:
+  - retinal-imaging
+  - medical-ai
+  - multi-label-classification
+  - mlops
+  - global-health
