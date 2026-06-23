@@ -22,6 +22,10 @@ on:
         description: 'Skip build, only redeploy Crane Cloud'
         type: boolean
         default: false
+      redeploy_sha:
+        description: 'deploy_only: 7-char SHA of an already-built image to re-roll (e.g. 9793a58). Empty = env-only, no image change.'
+        type: string
+        default: ''
 
 env:
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -160,6 +164,7 @@ jobs:
           # stored (or committed) separately.
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DEPLOY_ONLY: ${{ inputs.deploy_only }}
+          REDEPLOY_SHA: ${{ inputs.redeploy_sha }}
         run: |
           set -euo pipefail
 
@@ -167,11 +172,16 @@ jobs:
           # (which diffs by image string) actually rolls the pod over —
           # metadata-action publishes them as `<tag>-<sha-7>`.
           # Deploy-only run: the build was skipped, so those tags don't exist —
-          # leave them empty and PATCH env_vars alone (switch DB, no rebuild).
+          # leave them empty and PATCH env_vars alone (switch DB, no rebuild),
+          # UNLESS redeploy_sha names an already-built image to re-roll
+          # (rollback / re-attempt a failed deploy without a rebuild).
           if [ "${DEPLOY_ONLY:-false}" != "true" ]; then
             SHA7="${GITHUB_SHA:0:7}"
             export CPU_TAG="landwind/optiscan-ai:cpu-${SHA7}"
             export GPU_TAG="landwind/optiscan-ai:latest-${SHA7}"
+          elif [ -n "${REDEPLOY_SHA:-}" ]; then
+            export CPU_TAG="landwind/optiscan-ai:cpu-${REDEPLOY_SHA}"
+            export GPU_TAG="landwind/optiscan-ai:latest-${REDEPLOY_SHA}"
           fi
 
           # Logs in, then PATCHes both apps. Crane Cloud MERGES env_vars on
