@@ -21,6 +21,8 @@ pydantic-settings classes in `backend/app/core/config.py`.
 | --- | --- | --- |
 | `MODEL_PATH` | `models/model_vignn_rank1.pth` | Active checkpoint |
 | `MODEL_NAME` | `vignn` | Architecture key |
+| `TRIAGE_MODEL_ENABLED` | `true` | Use the local learned triage head instead of calling an LLM. `false` restores the LLM → rules path |
+| `TRIAGE_MODEL_PATH` | `models/triage/triage_model.json` | 3 KB JSON weights for the triage head. Missing/unreadable ⇒ falls back to rules (never fails a scan) |
 | `NUM_CLASSES` | `45` | Multi-label output size |
 | `API_HOST` / `API_PORT` | `0.0.0.0` / `8080` | Uvicorn bind |
 | `DEBUG` | `false` | |

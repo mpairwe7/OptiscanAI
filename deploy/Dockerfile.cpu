@@ -115,6 +115,9 @@ RUN chmod +x /usr/local/bin/postgres-bootstrap.sh /usr/local/bin/backend-start.s
 # Bake model weights into image (required for Crane Cloud — no volume mounts)
 COPY models/model_vignn_rank1.pth ./models/model_vignn_rank1.pth
 COPY weights/fundus_gate.pth ./weights/fundus_gate.pth
+# Learned triage head: 3 KB of JSON weights (no pickle, no sklearn at serve
+# time). Replaces the external-LLM triage call; see docs/28 §0.5/§0.8.
+COPY models/triage/triage_model.json ./models/triage/triage_model.json
 
 # Non-root user + directories in single layer (postgres user is created by apt)
 RUN groupadd -r optiscan && useradd -r -g optiscan -d /app -s /sbin/nologin optiscan \
@@ -212,6 +215,8 @@ stopsignal=QUIT
 SUPER
 
 ENV MODEL_PATH=models/model_vignn_rank1.pth \
+    TRIAGE_MODEL_PATH=models/triage/triage_model.json \
+    TRIAGE_MODEL_ENABLED=true \
     API_HOST=0.0.0.0 \
     API_PORT=8081
 

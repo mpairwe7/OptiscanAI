@@ -19,6 +19,7 @@ from langgraph.graph import END, StateGraph
 
 from src.agents import llm
 from src.agents.event_bus import Event, EventType, event_bus
+from src.triage import get_model as get_triage_model
 
 logger = logging.getLogger(__name__)
 
@@ -138,9 +139,22 @@ async def extract_history_node(state: ScreeningState) -> dict:
 
 
 async def triage_node(state: ScreeningState) -> dict:
-    """Node 2: Triage — Claude decides urgency, whether to explain, and whether to review.
+    """Node 2: Triage — decide urgency, whether to explain, and whether to review.
 
-    If Claude is unavailable, falls back to rule-based triage.
+    Preference order:
+
+    1. The **local learned head** (``src.triage``) — a 3 KB linear model over the
+       classifier's structured output. On real data it reproduced the Qwen3-8B
+       teacher's priority exactly (1.000 accuracy and macro-precision, held-out,
+       5-fold CV, and out-of-sample on 160 unseen images), at sub-millisecond
+       cost and with no network call. Sight-threatening codes escalate through a
+       deterministic override rather than through the model.
+    2. The external LLM, if the head is disabled/unavailable and a provider is
+       configured.
+    3. Deterministic rules.
+
+    Disable the head with ``TRIAGE_MODEL_ENABLED=false``; point it elsewhere with
+    ``TRIAGE_MODEL_PATH``. See ``docs/28-reasoner-cnn-vs-distilledqwen.md``.
     """
     predictions = state.get("predictions", [])
     referral = state.get("referral_priority", "FOLLOW_UP")
@@ -153,7 +167,20 @@ async def triage_node(state: ScreeningState) -> dict:
     has_emergency = any(c in EMERGENCY for c in detected_codes)
     low_confidence = any(p.get("probability", 1.0) < 0.70 for p in predictions)
 
-    # Try Claude for nuanced triage
+    # 1. Local learned head — offline, ~0.1 ms, no provider dependency.
+    triage_model = get_triage_model()
+    if triage_model is not None and len(predictions) > 0:
+        try:
+            decision = triage_model.decide(predictions, referral)
+            return {
+                "triage": decision.as_dict(),
+                "claude_used": False,
+                "steps_completed": state.get("steps_completed", []) + ["triage_model"],
+            }
+        except Exception as e:  # never fail a screening on the triage head
+            logger.warning(f"Triage head failed, falling back: {e}")
+
+    # 2. Try Claude for nuanced triage
     if llm.is_available() and len(predictions) > 0:
         disease_summary = "\n".join(
             f"- {p['name']} ({p['code']}): {p['probability']:.1%} confidence [{p.get('confidence', 'unknown')}]"

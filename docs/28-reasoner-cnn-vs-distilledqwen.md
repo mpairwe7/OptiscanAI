@@ -5,6 +5,17 @@
 > [§0 Real-data results](#0-real-data-results-executed)). No Docker image is built
 > until the result is reviewed and signed off.
 >
+> ✅ **Shipped (triage half).** The learned triage head is wired into the
+> pipeline and baked into the Docker images: `src/triage/` serves
+> `models/triage/triage_model.json` (3 KB of JSON weights — no pickle, no
+> scikit-learn at serve time) from `triage_node`, ahead of the LLM, with a
+> deterministic emergency override and a rules fallback. Toggle with
+> `TRIAGE_MODEL_ENABLED` / `TRIAGE_MODEL_PATH` (see
+> [doc 24](24-environment-variables.md)). The exporter refuses to write weights
+> that disagree with the fitted model, and the loader refuses an artifact whose
+> feature layout has drifted. **The narrative half is not shipped** — the image
+> still contains no LLM and uses the grounded template.
+>
 > ⚠️ **Read [`29-narrator-verification-and-gaps.md`](29-narrator-verification-and-gaps.md)
 > before acting on §0.6–§0.9.** A review of the narrator work found the
 > generation-rate comparison confounded by a 200-token cap (~40% of teacher

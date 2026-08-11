@@ -126,6 +126,9 @@ RUN chmod +x /usr/local/bin/postgres-bootstrap.sh /usr/local/bin/backend-start.s
 # Bake model weights (required for Crane Cloud — no volume mounts)
 COPY models/model_vignn_rank1.pth ./models/model_vignn_rank1.pth
 COPY weights/fundus_gate.pth ./weights/fundus_gate.pth
+# Learned triage head: 3 KB of JSON weights (no pickle, no sklearn at serve
+# time). Replaces the external-LLM triage call; see docs/28 §0.5/§0.8.
+COPY models/triage/triage_model.json ./models/triage/triage_model.json
 
 # Non-root user + directories in single layer (postgres user is created by apt)
 RUN groupadd -r optiscan && useradd -r -g optiscan -d /app -s /sbin/nologin optiscan \
@@ -243,7 +246,7 @@ command=/usr/local/bin/backend-start.sh
 directory=/app
 user=optiscan
 priority=20
-environment=HOME="/tmp",MODEL_PATH="models/model_vignn_rank1.pth",API_PORT="8081",LOG_FORMAT="text",PYTHONPATH="/app",POSTGRES_HOST="127.0.0.1",POSTGRES_PORT="5432",POSTGRES_USER="optiscan"
+environment=HOME="/tmp",MODEL_PATH="models/model_vignn_rank1.pth",TRIAGE_MODEL_PATH="models/triage/triage_model.json",API_PORT="8081",LOG_FORMAT="text",PYTHONPATH="/app",POSTGRES_HOST="127.0.0.1",POSTGRES_PORT="5432",POSTGRES_USER="optiscan"
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr
@@ -285,6 +288,8 @@ stopsignal=QUIT
 SUPER
 
 ENV MODEL_PATH=models/model_vignn_rank1.pth \
+    TRIAGE_MODEL_PATH=models/triage/triage_model.json \
+    TRIAGE_MODEL_ENABLED=true \
     API_HOST=0.0.0.0 \
     API_PORT=8081 \
     CUDA_VISIBLE_DEVICES=0

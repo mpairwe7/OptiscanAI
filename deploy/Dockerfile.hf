@@ -62,6 +62,9 @@ RUN cd frontend && NEXT_PUBLIC_API_URL="" bun run build \
 # ── Model weights ──
 RUN mkdir -p models/checkpoints logs uploads && chmod -R 755 /app
 COPY models/model_vignn_rank1.pth ./models/model_vignn_rank1.pth
+# Learned triage head: 3 KB of JSON weights (no pickle, no sklearn at serve
+# time). Replaces the external-LLM triage call; see docs/28 §0.5/§0.8.
+COPY models/triage/triage_model.json ./models/triage/triage_model.json
 
 # ── Nginx + Supervisor configs ──
 COPY deploy/nginx.conf /etc/nginx/sites-available/default

@@ -21,34 +21,18 @@ from __future__ import annotations
 
 from typing import Any
 
-from .cases import DISEASE_VOCAB
-from .interface import (
-    CRITICAL_CODES,
-    EMERGENCY_CODES,
-    PRIORITIES,
-    Case,
-)
+from src.triage import features as _prod
 
+from .cases import DISEASE_VOCAB
+from .interface import Case
+
+#: Disease-probability column order, shared with the serving encoder.
 _DISEASE_CODES: list[str] = [code for code, _ in DISEASE_VOCAB]
-_LOW_CONF = 0.70
-_HIGH_CONF = 0.85
 
 
 def feature_names(include_referral: bool = True) -> list[str]:
     """Column names for :func:`case_features`, in vector order."""
-    names = [f"p_{code}" for code in _DISEASE_CODES]
-    names += [
-        "n_findings",
-        "max_prob",
-        "mean_prob",
-        "has_emergency",
-        "has_critical",
-        "any_low_conf",
-        "n_high_conf",
-    ]
-    if include_referral:
-        names += [f"referral_{p}" for p in PRIORITIES]
-    return names
+    return _prod.feature_names(include_referral, disease_codes=_DISEASE_CODES)
 
 
 #: Public, stable name list (referral included) — for reports / introspection.
@@ -62,26 +46,17 @@ def case_features(case: Case, include_referral: bool = True) -> list[float]:
     appended — a realistic inference-time input. The no-referral variant isolates
     how much a model can recover from the *findings alone*, which is the more
     honest generalizability probe (the referral passthrough can dominate).
-    """
-    by_code: dict[str, float] = {}
-    for p in case.predictions:
-        by_code[p.code] = max(by_code.get(p.code, 0.0), float(p.probability))
 
-    probs = [float(p.probability) for p in case.predictions]
-    codes = set(case.detected_codes)
-    vec = [by_code.get(code, 0.0) for code in _DISEASE_CODES]
-    vec += [
-        float(len(case.predictions)),
-        max(probs, default=0.0),
-        (sum(probs) / len(probs)) if probs else 0.0,
-        float(any(c in EMERGENCY_CODES for c in codes)),
-        float(any(c in CRITICAL_CODES for c in codes)),
-        float(any(p < _LOW_CONF for p in probs)),
-        float(sum(p >= _HIGH_CONF for p in probs)),
-    ]
-    if include_referral:
-        vec += [float(case.referral_priority == p) for p in PRIORITIES]
-    return vec
+    Delegates to :func:`src.triage.features.encode` — the same code the serving
+    path runs — so a model fitted here and served there cannot see different
+    columns.
+    """
+    return _prod.encode(
+        [(p.code, float(p.probability)) for p in case.predictions],
+        referral_priority=case.referral_priority,
+        include_referral=include_referral,
+        disease_codes=_DISEASE_CODES,
+    )
 
 
 class PriorityClassifier:
