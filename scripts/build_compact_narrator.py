@@ -131,6 +131,13 @@ def main() -> None:
     p.add_argument("--max-len", type=int, default=512)
     p.add_argument("--cut-frac", type=float, default=0.7, help="train/test split on the 80 traces")
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument(
+        "--keep-vocab",
+        action="store_true",
+        help="skip vocabulary pruning — required for GGUF conversion, "
+        "which bakes the tokenizer into the file and needs "
+        "vocab_size == len(tokenizer)",
+    )
     args = p.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 
@@ -190,6 +197,9 @@ def main() -> None:
     for tid in range(min(256, len(tok))):
         keep.add(tid)
     keep_ids = sorted(keep)
+    if args.keep_vocab:
+        keep_ids = list(range(len(tok)))
+        logger.info("--keep-vocab: pruning skipped, retaining all %d tokens", len(keep_ids))
     logger.info(
         "vocabulary: %d -> %d tokens (%.1f%% pruned)",
         len(tok),

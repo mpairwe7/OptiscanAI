@@ -137,7 +137,8 @@ Narrative --- server-hosted LLM &
 Narrative --- on-device / edge &
 \verd{holdAmber}{Reachable, not advisable} &
 54.2\,MB clears the 60\,MB gate, but drops reported findings in 42\% of cases.
-GGUF is the untested route that may avoid that cost (\S7). \\
+GGUF was tested as the alternative and does not deliver the saving
+projected for it (\S7). \\
 \bottomrule
 \end{tabularx}
 \end{center}
@@ -416,17 +417,20 @@ the recommendation, for a reason specific to this model: a 135M SmolLM2 is
 footprint.
 
 \begin{table}[H]
-\caption{Projections are arithmetic from published quantization layouts, not
-measurements --- none of the three could be run on this host.}
+\caption{AWQ/GPTQ rows remain arithmetic --- neither library would install here.
+The GGUF rows are \textbf{measured}: converted with \code{convert\_hf\_to\_gguf.py}
+and quantized with \code{llama-quantize} built from source.}
 \begin{tabularx}{\textwidth}{@{}YL{30mm}L{38mm}r@{}}
 \toprule
 \textbf{Format} & \textbf{Body} & \textbf{Embedding} & \textbf{Total} \\
 \midrule
-bnb NF4 & 4-bit & fp16, not quantized & 110\,MB \\
-bnb int8 & int8 & fp16, not quantized & 107\,MB \\
+bnb NF4 & 4-bit & fp16, not quantized & 109.8\,MB \\
+bnb int8 & int8 & fp16, not quantized & 107.3\,MB \\
 AWQ / GPTQ (W4A16) & 4-bit & fp16, conventionally excluded & $\sim$110\,MB \\
 \rowcolor{softTeal}
-\textbf{GGUF \code{Q4\_K\_M}} & $\sim$4.5-bit & \textbf{quantized too} & $\sim$\textbf{80\,MB} \\
+\textbf{GGUF \code{Q4\_K\_M}} & mixed, 6.17\,BPW & \textbf{q8\_0} & \textbf{105.5\,MB} \\
+GGUF \code{Q5\_K\_M} & mixed & q8\_0 & 112.1\,MB \\
+GGUF \code{Q8\_0} & q8\_0 & q8\_0 & 144.8\,MB \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -434,16 +438,40 @@ AWQ / GPTQ (W4A16) & 4-bit & fp16, conventionally excluded & $\sim$110\,MB \\
 \textbf{AWQ and GPTQ would not beat bitsandbytes on size here.} They exclude the
 embedding exactly as bnb does, landing at the same $\sim$110\,MB; their advantage
 is throughput via fused kernels, which does not address the binding constraint.
-\textbf{GGUF is the only one of the three that quantizes the embedding}, making
-\code{Q4\_K\_M}/\code{Q5\_K\_M} the most promising route into the 60--100\,MB band
-\emph{without} vocabulary surgery --- and therefore without the 42\% omission
-cost that pruning-plus-4-bit incurred.
+
+\textbf{The GGUF projection in Rev.~2 was wrong: 105.5\,MB measured against
+$\sim$80\,MB projected}, which leaves it barely smaller than the 109.8\,MB
+bitsandbytes build rather than the step change the arithmetic implied. Two
+architecture-specific facts the projection ignored:
+
+\begin{enumerate}[leftmargin=*,itemsep=3pt]
+\item \textbf{The embedding is quantized --- but to 8-bit, not 4-bit.}
+\code{token\_embd.weight} converts \code{f16 -> q8\_0}, 54.00\,MiB to 28.69\,MiB.
+The central claim (GGUF is the only one of the three that quantizes the embedding
+at all) \emph{holds}; the saving is 1.9$\times$, not the 4$\times$ assumed.
+\item \textbf{SmolLM2's hidden size is 576, which is not divisible by 256.}
+\code{q4\_K} requires that, so \textbf{180 tensors fell back} to larger types (166
+to \code{q5\_0}, 14 to \code{q8\_0}). llama.cpp's own summary reports the outcome:
+\code{quant size = 98.87 MiB (6.17 BPW)}, against the $\sim$4.5\,BPW assumed.
+\end{enumerate}
+
+That is a property of \emph{this} model's width, not of GGUF. A model whose
+hidden size is a multiple of 256 would avoid the fallback, so the projection may
+hold elsewhere --- but it does not hold here, and \textbf{no format tested reaches
+the 60--100\,MB band without vocabulary pruning}.
+
+\textbf{Fidelity under GGUF remains unmeasured.} \code{llama-cli} hung on this
+host even on a trivial prompt, so the open question --- whether \code{Q4\_K\_M}
+avoids the 42\% omission that made the pruned 4-bit build unusable --- is still
+open. At 105.5\,MB it would in any case compete with bf16 at 213\,MB rather than
+offer an edge-sized option.
 
 \textbf{Pruning and standard formats are alternatives, not complements.} The
 pruned checkpoint deliberately breaks the model/tokenizer correspondence
 (\code{vocab\_size} 920 against a 49{,}152-token tokenizer, bridged by an explicit
-id remap). GGUF bakes the tokenizer into the file, so conversion would emit
-something whose ids do not mean what the weights expect; AWQ/GPTQ would run
+id remap). GGUF bakes the tokenizer into the file --- confirmed here, since
+\code{convert\_hf\_to\_gguf.py} requires \code{vocab\_size} to equal the tokenizer
+size, which the pruned checkpoint violates (920 vs 49{,}152); AWQ/GPTQ would run
 mechanically but still need the custom wrapper, losing the vLLM/SGLang serving
 compatibility that justifies adopting them.
 
