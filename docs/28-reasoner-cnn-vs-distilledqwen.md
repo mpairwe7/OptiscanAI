@@ -13,8 +13,17 @@
 > `TRIAGE_MODEL_ENABLED` / `TRIAGE_MODEL_PATH` (see
 > [doc 24](24-environment-variables.md)). The exporter refuses to write weights
 > that disagree with the fitted model, and the loader refuses an artifact whose
-> feature layout has drifted. **The narrative half is not shipped** — the image
-> still contains no LLM and uses the grounded template.
+> feature layout has drifted.
+>
+> ✅ **Shipped (narrative half, opt-in).** A compact prose-only narrator
+> (SmolLM2-135M, vocabulary pruned 49,152 → 920) is published at
+> [`Mpairwe49/retinalai-narrator-135m`](https://huggingface.co/Mpairwe49/retinalai-narrator-135m)
+> and wired into `report_node` via `src/narrator/`. It is **off by default**
+> (`NARRATOR_ENABLED=false`) because it has not been clinically reviewed and was
+> scored on 24 cases; the grounded template remains the default. Only **bf16** is
+> recommended — 4-bit reaches 54 MB but drops reported findings in 42% of cases.
+> The AI-disclosure sentence is appended in code, since no teacher trace contains
+> one. See [doc 29 §3.11 and §3.13](29-narrator-verification-and-gaps.md).
 >
 > ⚠️ **Read [`29-narrator-verification-and-gaps.md`](29-narrator-verification-and-gaps.md)
 > before acting on §0.6–§0.9.** A review of the narrator work found the

@@ -19,6 +19,7 @@ from langgraph.graph import END, StateGraph
 
 from src.agents import llm
 from src.agents.event_bus import Event, EventType, event_bus
+from src.narrator.service import narrate as narrate_locally
 from src.triage import get_model as get_triage_model
 
 logger = logging.getLogger(__name__)
@@ -350,9 +351,14 @@ async def report_node(state: ScreeningState) -> dict:
     referral = state.get("referral_priority", "FOLLOW_UP")
     scan_id = state.get("scan_id", "unknown")
 
-    # Try Claude for natural-language report
-    clinical_narrative = ""
-    if llm.is_available() and len(predictions) > 0:
+    # 1. Local compact narrator — offline, no provider dependency. Opt-in via
+    #    NARRATOR_ENABLED; returns None when disabled/unavailable so the existing
+    #    LLM -> template chain below is untouched. The AI-disclosure sentence is
+    #    appended by the service, not trusted to the model.
+    clinical_narrative = narrate_locally(predictions, triage.get("priority", referral)) or ""
+
+    # 2. Try Claude for natural-language report
+    if not clinical_narrative and llm.is_available() and len(predictions) > 0:
         disease_list = ", ".join(f"{p['name']} ({p['probability']:.0%})" for p in predictions[:8])
         adjustments = reasoning.get("adjustments", [])
         adj_text = (

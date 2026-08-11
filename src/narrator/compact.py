@@ -64,12 +64,22 @@ class CompactNarrator:
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
-        model_dir = Path(model_dir)
         self._torch = torch
         self.device = device
         self.max_new_tokens = max_new_tokens
 
-        spec = json.loads((model_dir / "keep_ids.json").read_text())
+        # Accept either a local checkpoint directory or a Hub repo id. keep_ids
+        # is not a file transformers knows about, so it has to be fetched
+        # explicitly — without it the id remap is missing and the model emits
+        # garbage, so this must fail loudly rather than degrade.
+        local = Path(model_dir)
+        if (local / "keep_ids.json").is_file():
+            keep_path = local / "keep_ids.json"
+        else:
+            from huggingface_hub import hf_hub_download
+
+            keep_path = Path(hf_hub_download(repo_id=str(model_dir), filename="keep_ids.json"))
+        spec = json.loads(keep_path.read_text())
         self.keep_ids: list[int] = spec["keep_ids"]
         self.old2new: dict[int, int] = {o: n for n, o in enumerate(self.keep_ids)}
         #: tokens that could not be represented even byte-wise — should stay 0.

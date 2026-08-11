@@ -429,6 +429,18 @@ quantizer.** A genuine 60-100 MB target needs AWQ/GPTQ (which quantize with fuse
 kernels) or GGUF `Q5_K_M`-class weights under llama.cpp, neither of which is
 installed here — that is the next experiment, not a settled result.
 
+**bf16's clean held-out scores do not generalise off-distribution.** The audit
+set is dominated by multi-finding cases resembling training data. Given a
+*single*-finding case by hand, the bf16 model produced:
+
+> "a **75% detection** of diabetic retinopathy with a **prevalence of 88%**"
+
+The input was one finding at 88% confidence. Both figures are wrong and
+"prevalence" is invented — the exact `prob_infidelity` failure the audit scored
+at 0.000 on the held-out split. One ad-hoc probe is not a measurement, but it is
+enough to show the 0.000 is a property of that split rather than of the model,
+and it is why `NARRATOR_ENABLED` defaults to **false**.
+
 **A bug this work surfaced.** The vocabulary was first built from tokens observed
 in the 240 traces — which covered 14 of 16 harness names, while the classifier
 can emit **45 classes**. Any unseen disease name would have had its tokens
@@ -437,7 +449,70 @@ vocabulary is now seeded from the production `DISEASE_NAMES` map, unmappable
 tokens fall back to byte-level encoding rather than being dropped, and the
 evaluation asserts that **all 45 class names survive the round trip** (they do).
 
-## 3.12 Fixes applied — the Hugging Face Space
+## 3.13 Format evaluation — AWQ, GPTQ and GGUF
+
+§3.2 recommended AWQ/GPTQ over bitsandbytes. Evaluating that properly changes the
+recommendation, for a reason specific to this model.
+
+### The size problem is the embedding table, not the quantizer
+
+A 135M SmolLM2 is **21% embedding** (49,152 × 576 = 28.3M params). What each
+format does with that table decides the footprint:
+
+| format | body | embedding | projected total |
+|---|---|---|---:|
+| bnb NF4 | 4-bit | **fp16, not quantized** | 110 MB (measured 109.8) |
+| bnb int8 | int8 | **fp16, not quantized** | 107 MB (measured 107.3) |
+| AWQ / GPTQ (W4A16) | 4-bit | **fp16, conventionally excluded** | ~110 MB |
+| **GGUF `Q4_K_M`** | ~4.5 bit | **quantized too** | **~80 MB** |
+
+**AWQ and GPTQ would not beat bitsandbytes on size here.** They exclude the
+embedding from quantization exactly as bnb does, so they land at the same ~110 MB
+— their advantage is *throughput* (fused Marlin/ExLlama kernels), not footprint.
+For an embedding-dominated small model, that advantage does not address the
+constraint.
+
+**GGUF is the only one of the three that quantizes the embedding**, which makes
+`Q4_K_M`/`Q5_K_M` the most promising untested route into the 60-100 MB band
+*without* the vocabulary surgery of §3.11 — and therefore without the fidelity
+loss that 4-bit-plus-pruning incurred. That is the experiment worth running next.
+
+### Vocabulary pruning trades away format compatibility
+
+The pruned checkpoint deliberately breaks the model↔tokenizer correspondence:
+
+```
+config.vocab_size (model output dim) : 920
+tokenizer vocabulary entries         : 49152
+```
+
+`src/narrator/compact.py` bridges them with an explicit id remap. Any tool that
+assumes `vocab_size == len(tokenizer)` will mishandle the checkpoint:
+
+* **GGUF** bakes the tokenizer into the file, so conversion would either fail or
+  emit a file whose token ids do not mean what the weights expect.
+* **AWQ/GPTQ** quantize weights only and would run mechanically, but the artifact
+  would still need the custom wrapper — and the *reason* to adopt them is serving
+  under vLLM/SGLang/TGI, which assume standard tokenization. The cost would be
+  paid and the benefit lost.
+
+So pruning and standard-format quantization are **alternative** routes to a small
+narrator, not complementary ones. Pruning wins on footprint (54 MB) and loses
+ecosystem compatibility; GGUF keeps compatibility and should reach ~80 MB.
+
+### Tooling status on this host (measured, not assumed)
+
+| tool | status |
+|---|---|
+| `autoawq` 0.2.9 | installs, **cannot import**: `ImportError: cannot import name 'PytorchGELUTanh' from 'transformers.activations'` against transformers 4.57.1. Upstream is unmaintained; superseded by `llm-compressor`/`compressed-tensors`. |
+| `compressed-tensors` 0.11.0 | present (vLLM dependency) — the current AWQ/GPTQ path |
+| `gptqmodel` | not installable in the time budget here |
+| `gguf` (writer lib) | present, but can only write F16 — K-quants need `llama-quantize` |
+| `llama.cpp` binaries | absent (`llama-quantize`, `convert_hf_to_gguf.py`) |
+
+None of the three could be *measured* on this host. The size projections above
+are arithmetic from published quantization layouts, not measurements, and are
+labelled as such.
 
 The Space had been in `CONFIG_ERROR` since 23 June. Two independent bugs, both in
 `.github/workflows/deploy-hf-spaces.yml`, both now fixed:

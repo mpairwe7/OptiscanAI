@@ -23,6 +23,14 @@ pydantic-settings classes in `backend/app/core/config.py`.
 | `MODEL_NAME` | `vignn` | Architecture key |
 | `TRIAGE_MODEL_ENABLED` | `true` | Use the local learned triage head instead of calling an LLM. `false` restores the LLM → rules path |
 | `TRIAGE_MODEL_PATH` | `models/triage/triage_model.json` | 3 KB JSON weights for the triage head. Missing/unreadable ⇒ falls back to rules (never fails a scan) |
+| `NARRATOR_ENABLED` | **`false`** | Local narrative generation. Off by default: the narrator has not been clinically reviewed and was scored on 24 held-out cases. `false` ⇒ grounded template |
+| `NARRATOR_MODEL_PATH` | `models/narrator` | Checkpoint dir **or** a Hub repo id (`Mpairwe49/retinalai-narrator-135m`). Missing/unreadable ⇒ template |
+| `NARRATOR_PRECISION` | `bf16` | `bf16` (213 MB, recommended) \| `int8` (107 MB, ~8× slower) \| `nf4` (54 MB, **drops findings in 42% of cases** — not recommended) |
+| `NARRATOR_DEVICE` | `cpu` | `cpu` or `cuda:N` |
+
+> The narrator's output always has the AI-disclosure sentence appended by
+> `src/narrator/service.py` — the teacher traces contain none, so it is enforced
+> in code rather than trusted to the model.
 | `NUM_CLASSES` | `45` | Multi-label output size |
 | `API_HOST` / `API_PORT` | `0.0.0.0` / `8080` | Uvicorn bind |
 | `DEBUG` | `false` | |
