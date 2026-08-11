@@ -1,0 +1,98 @@
+name: Keep HF Space awake
+
+# Free (cpu-basic) Spaces sleep after their sleep_time of inactivity — 172800s
+# (48h) for this one. A sleeping Space cold-starts on the next request, which for
+# this image means re-loading a 131 MB checkpoint, so the first real user waits.
+# Pinging every 6h keeps it warm with a wide margin under the 48h window.
+#
+# Caveat worth knowing: GitHub disables scheduled workflows on a repository with
+# no commit activity for 60 days. If the repo goes quiet, this stops running and
+# the Space will sleep — re-enable it from the Actions tab.
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hf-keepalive
+  cancel-in-progress: false
+
+env:
+  HF_SPACE: landwind22/Retinal_Screening
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install huggingface_hub
+        run: pip install --quiet huggingface_hub
+
+      - name: Ping the Space, waking it if it has slept
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os, sys, time, json, urllib.request
+          from huggingface_hub import HfApi
+
+          space = os.environ["HF_SPACE"]
+          token = os.environ.get("HF_TOKEN") or None
+          api = HfApi()
+          host = space.replace("/", "-").replace("_", "-").lower()
+          url = f"https://{host}.hf.space"
+
+          def health(timeout=45):
+              """(ok, detail). A sleeping Space may hang or 5xx while it wakes."""
+              try:
+                  with urllib.request.urlopen(f"{url}/health", timeout=timeout) as r:
+                      body = r.read().decode()
+                      if r.status == 200:
+                          d = json.loads(body)
+                          return bool(d.get("model_loaded")), d
+                      return False, f"HTTP {r.status}"
+              except Exception as e:
+                  return False, f"{type(e).__name__}: {str(e)[:80]}"
+
+          ok, detail = health()
+          print(f"initial /health -> {detail}")
+          if ok:
+              print(f"::notice::Space awake and healthy: {url}")
+              sys.exit(0)
+
+          stage = None
+          try:
+              stage = getattr(api.space_info(space, token=token).runtime, "stage", None)
+          except Exception as e:
+              print(f"space_info failed: {type(e).__name__}")
+          print(f"runtime stage: {stage}")
+
+          # Requesting the page is normally enough to wake a sleeping Space; only
+          # restart explicitly when it is actually stopped, since a restart on a
+          # healthy Space is a needless cold start for whoever is using it.
+          if stage in {"SLEEPING", "PAUSED", "STOPPED"}:
+              if not token:
+                  print("::error::Space is asleep and no HF_TOKEN is set to restart it")
+                  sys.exit(1)
+              print(f"restarting the Space (stage={stage}) …")
+              api.restart_space(space, token=token)
+
+          for attempt in range(20):          # up to ~5 min of cold start
+              time.sleep(15)
+              ok, detail = health(timeout=30)
+              print(f"  attempt {attempt+1}/20 -> {detail}")
+              if ok:
+                  print(f"::notice::Space revived: {url}")
+                  sys.exit(0)
+
+          print(f"::error::Space did not come back. Logs: https://huggingface.co/spaces/{space}/logs")
+          sys.exit(1)
+          PY

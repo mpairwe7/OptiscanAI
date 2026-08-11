@@ -164,25 +164,67 @@ jobs:
           git remote set-url origin "https://${HF_USER}:${HF_TOKEN}@huggingface.co/spaces/${{ env.HF_SPACE }}"
           git push origin HEAD:main
 
-      - name: Wait for Space build
+      # A successful push only means git accepted the commit. The Space can still
+      # land in CONFIG_ERROR (bad README front-matter) or NO_APP_FILE (missing
+      # Dockerfile) and serve nothing, so the deploy is not considered done until
+      # the runtime reaches RUNNING and /health actually answers. Both have
+      # happened here; before this step the workflow reported success anyway.
+      - name: Verify the Space builds and serves
+        timeout-minutes: 30
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ env.HF_SPACE }}
         run: |
-          echo "Deployment triggered: ${{ env.HF_SPACE_URL }}"
-          echo "Monitor build at: ${{ env.HF_SPACE_URL }}/logs"
-          # Give HF a moment to start building
-          sleep 10
-          # Check Space status
-          python3 -c "
+          python3 - <<'PY'
+          import os, sys, time, urllib.request, json
           from huggingface_hub import HfApi
-          api = HfApi()
-          info = api.space_info('${{ env.HF_SPACE }}')
-          print(f'Space status: {info.runtime}')
-          print(f'URL: https://${{ env.HF_SPACE }}.hf.space')
-          " || echo "Space info check skipped"
 
-      - name: Post-deploy health check
-        run: |
-          echo "Space URL: https://mpairwe49-retinal-screening.hf.space"
-          echo "Health endpoint: https://mpairwe49-retinal-screening.hf.space/health"
-          echo "API docs: https://mpairwe49-retinal-screening.hf.space/docs"
-          # HF Spaces takes 5-15 min to build Docker images
-          # Health check will be verified in next workflow run
+          space = os.environ["HF_SPACE"]
+          token = os.environ.get("HF_TOKEN") or None
+          api = HfApi()
+
+          # owner/Name -> owner-name.hf.space
+          host = space.replace("/", "-").replace("_", "-").lower()
+          url = f"https://{host}.hf.space"
+
+          TERMINAL_BAD = {"BUILD_ERROR", "CONFIG_ERROR", "RUNTIME_ERROR", "NO_APP_FILE", "DELETING"}
+          deadline, last = time.time() + 25 * 60, None
+          stage = None
+          while time.time() < deadline:
+              try:
+                  stage = getattr(api.space_info(space, token=token).runtime, "stage", None)
+              except Exception as e:
+                  print(f"  space_info error (retrying): {type(e).__name__}")
+                  time.sleep(20); continue
+              if stage != last:
+                  print(f"  stage: {stage}", flush=True); last = stage
+              if stage == "RUNNING":
+                  break
+              if stage in TERMINAL_BAD:
+                  print(f"::error::Space is in {stage}. Build logs: https://huggingface.co/spaces/{space}/logs")
+                  sys.exit(1)
+              time.sleep(20)
+          else:
+              print(f"::error::Space did not reach RUNNING within 25 min (last stage: {stage})")
+              sys.exit(1)
+
+          # RUNNING only means the container started; confirm the app answers.
+          for attempt in range(12):
+              try:
+                  with urllib.request.urlopen(f"{url}/health", timeout=30) as r:
+                      body = r.read().decode()
+                      if r.status == 200:
+                          data = json.loads(body)
+                          print(f"  /health -> 200 {data}")
+                          if not data.get("model_loaded"):
+                              print("::error::Space is up but model_loaded is false")
+                              sys.exit(1)
+                          print(f"::notice::Space live and healthy: {url}")
+                          sys.exit(0)
+              except Exception as e:
+                  print(f"  attempt {attempt+1}/12: {type(e).__name__}")
+              time.sleep(15)
+
+          print(f"::error::Space reached RUNNING but {url}/health never answered")
+          sys.exit(1)
+          PY
