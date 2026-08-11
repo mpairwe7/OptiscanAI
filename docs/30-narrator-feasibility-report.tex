@@ -352,7 +352,8 @@ free teacher. \\
 
 The platform is deployed to the Space
 \code{landwind22/Retinal\_Screening} and is serving: \code{/health} returns
-\code{model\_loaded: true} across all 45 diseases.
+\code{model\_loaded: true} across all 45 diseases. It is the single deployment
+target --- the previous Space is retired and now points here.
 
 \textbf{The deploy pipeline used to lie.} It reported success as soon as the git
 push landed, and twice pushed a Space that then failed to start --- once from a
