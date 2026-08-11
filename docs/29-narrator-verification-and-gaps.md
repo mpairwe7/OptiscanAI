@@ -410,9 +410,24 @@ numbers.** 54.2 MB clears a gate §0.6 called impossible, and generation no long
 fails. The cost is content fidelity: the 4-bit model drops findings the teacher
 reported in **42%** of cases and misquotes probabilities in 17%, while rambling
 (89 words vs 68). That is a *worse* failure mode than the one it fixes — it now
-always produces fluent text, so omissions are harder to notice. bf16 at 213.5 MB
-is the quality-preserving option; an int8 middle point (~107 MB) is the obvious
-next measurement.
+always produces fluent text, so omissions are harder to notice.
+
+**There is no 60-100 MB option with this stack.** The obvious middle point was
+int8, and it misses on both axes:
+
+| precision | size | one-case latency | verdict |
+|---|---:|---:|---|
+| bf16 | 213.5 MB | 1.4 s | quality-preserving, too large for the edge |
+| int8 | **107.3 MB** | **37.5 s** | over the band *and* ~8x slower than 4-bit |
+| nf4 | 54.2 MB | 4.8 s | under the band, fast, but fidelity degrades |
+
+bitsandbytes' int8 path decomposes each matmul into mixed precision, which costs
+far more at batch 1 than the memory it saves — 37.5 s/case made a 24-case
+evaluation impractical to even complete. This is the same conclusion as §3.2 from
+the other direction: **bnb is a development convenience, not a serving
+quantizer.** A genuine 60-100 MB target needs AWQ/GPTQ (which quantize with fused
+kernels) or GGUF `Q5_K_M`-class weights under llama.cpp, neither of which is
+installed here — that is the next experiment, not a settled result.
 
 **A bug this work surfaced.** The vocabulary was first built from tokens observed
 in the 240 traces — which covered 14 of 16 harness names, while the classifier
