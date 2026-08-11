@@ -119,7 +119,17 @@ jobs:
           # `next build` (it referenced a store field that no longer exists), so
           # the Space failed to build even though the tree it was built from was
           # fine. Excluded paths (.git etc.) are protected from deletion.
-          rsync -av --delete --exclude='.git' --exclude='node_modules' --exclude='.next' \
+          #
+          # README.md and Dockerfile are excluded because both are *synthesised*
+          # into the Space above and neither exists at the repo root — so
+          # --delete would remove them again, and the repo's own README.md would
+          # also overwrite the Space one. Losing the README front-matter gives
+          # CONFIG_ERROR (no `sdk: docker`/`app_port`); losing the Dockerfile
+          # gives NO_APP_FILE. In both cases the push still reports success, so
+          # the failure only shows up in the Space's runtime stage.
+          rsync -av --delete --exclude='.git' \
+                    --exclude='README.md' --exclude='Dockerfile' \
+                    --exclude='node_modules' --exclude='.next' \
                     --exclude='__pycache__' --exclude='.venv' --exclude='outputs' \
                     --exclude='data' --exclude='wandb' --exclude='mlruns' \
                     --exclude='.env' --exclude='*.onnx' --exclude='docs' \
