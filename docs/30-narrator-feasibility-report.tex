@@ -86,10 +86,10 @@ narrator from a bad one.\par}
 
 \vspace{10pt}
 {\footnotesize\sffamily\color{inkMuted}
-Rev.~2 \textbullet\ 12 August 2026 \quad\textbar\quad
+Rev.~3 \textbullet\ 12 August 2026 \quad\textbar\quad
 Teacher: self-hosted Qwen3-8B-AWQ (vLLM) \quad\textbar\quad
 Data: 240 RFMiD images \quad\textbar\quad
-Status: triage shipped, narrator opt-in\par}
+Status: deployed and verified live\par}
 \end{flushleft}
 
 \vspace{2pt}
@@ -97,17 +97,16 @@ Status: triage shipped, narrator opt-in\par}
 \vspace{10pt}
 
 \begin{callout}
-\eyebrow{What changed since Rev.~1}
+\eyebrow{What changed since Rev.~2}
 
 \vspace{3pt}
-Rev.~1 concluded that triage was ready and the narrative was not qualifiable. The
-triage half is now \textbf{shipped} and baked into all three images. On the narrative
-half, two of the five blockers are closed and the edge verdict has moved from
-``not feasible'' to ``reachable at a cost'': a prose-only, vocabulary-pruned narrator
-reaches \textbf{54.2\,MB} with a generation rate of 1.000, where the previous
-4-bit build scored 0.000. It is shipped \emph{off by default} --- 4-bit costs
-42\% omission, and even bf16 drifts off-distribution. \S7 revises the
-recommendation; \S6 is new.
+Rev.~2 recorded triage as shipped and the narrator as opt-in. Since then the
+platform has been \textbf{deployed to a new Space and verified live}, end-to-end
+regression and mobile audits have been run against it, and two production
+defects found by those audits were fixed. \S1 answers the original brief
+directly; \S6 is new. The narrator verdict is unchanged, and \S4 now carries the
+measured reason: on the free CPU tier it costs 6--10\,s and 427\,MB per report,
+and its small quantized builds cannot run there at all.
 \end{callout}
 
 % ── verdict board ──
@@ -134,10 +133,54 @@ Narrative --- server-hosted LLM &
 Narrative --- on-device / edge &
 \verd{holdAmber}{Reachable, not advisable} &
 54.2\,MB clears the 60\,MB gate, but drops reported findings in 42\% of cases.
-GGUF is the untested route that may avoid that cost (\S6). \\
+GGUF is the untested route that may avoid that cost (\S7). \\
 \bottomrule
 \end{tabularx}
 \end{center}
+
+\section{Against the brief}
+
+The original request set four conditions. All four are met; the table cites the
+evidence rather than asserting it.
+
+\begin{table}[H]
+\begin{tabularx}{\textwidth}{@{}L{44mm}Y@{}}
+\toprule
+\textbf{Requirement} & \textbf{Outcome} \\
+\midrule
+``Lightweight final model, not much compute for inferencing'' &
+\code{feat\_logreg}: \textbf{3\,KB} of JSON weights, \textbf{0.14\,ms} on CPU,
+one matrix multiply. \code{src/triage/} is \textbf{pure stdlib} --- no
+scikit-learn, no numpy, no torch, no network at inference. \\
+\addlinespace[3pt]
+``Try other architectures too'' &
+Seven scored on one split (\S3). Five reached 1.000; the smallest and fastest was
+taken. The image CNN scored 0.792 / 0.492 at 6.1\,MB and 161\,ms. \\
+\addlinespace[3pt]
+``Over 75\% accuracy and equal or better precision'' &
+\textbf{1.000 accuracy, 1.000 macro-precision}, against a bar of 0.75 and the
+CNN's 0.492. \\
+\addlinespace[3pt]
+``Test generalizability \emph{before} creating a docker image'' &
+Done first, on four axes (\S3): out-of-sample on 160 fresh unseen images with a
+different label mix, repeated cross-validation, a learning curve, and an injected
+EMERGENCY stress test. The image was built only afterwards. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{callout}[stopRed]
+\eyebrow{Read the 1.000 correctly}
+
+\vspace{3pt}
+The perfect scores mean the \emph{task} is deterministic, not that the model is
+remarkable. On the out-of-sample set the 8B teacher's triage equalled the
+classifier's own \code{referral\_priority} in \textbf{160 of 160 cases}, so the
+deterministic rules, a 3\,KB linear model and an 8B LLM are indistinguishable
+here. The value delivered is the removal of an LLM dependency --- with its
+latency, cost and clinical-data egress --- from the decision path, not an
+accuracy gain.
+\end{callout}
 
 \section{What was actually assessed}
 
@@ -247,6 +290,32 @@ probe is not a measurement, but it shows the 0.000 belongs to that split rather
 than to the model.
 \end{callout}
 
+\subsection*{Why it is disabled on the deployed Space specifically}
+
+The Space runs on free \code{cpu-basic} (2 vCPU). Measured there, throttled to
+two threads:
+
+\begin{table}[H]
+\begin{tabularx}{\textwidth}{@{}Yrr@{}}
+\toprule
+& \textbf{Value} & \textbf{Against a \textasciitilde1\,s \code{/predict}} \\
+\midrule
+Model load                 & 8.6\,s    & once, at startup \\
+Resident memory (fp32)     & 426.9\,MB & fp16 is emulated on CPU, so bf16's 213\,MB does not apply \\
+Single-finding report      & 9.9\,s    & \textcolor{stopRed}{+10x latency} \\
+Three-finding report       & 6.3\,s    & \textcolor{stopRed}{+6x latency} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Two further constraints make it moot today. \code{transformers} is \textbf{not a
+declared dependency} anywhere in \code{pyproject.toml}, so on the deployed image
+the narrator import fails, the service catches it and serves the template ---
+setting \code{NARRATOR\_ENABLED=true} would change nothing without an image
+rebuild. And the small quantized builds \textbf{cannot run on CPU at all}:
+bitsandbytes NF4/int8 kernels are CUDA-only, so the 54\,MB and 107\,MB variants
+are unavailable on this tier. bf16 is the only option, at ten seconds a report.
+
 \section{Blockers --- two closed, three open}
 
 \begin{table}[H]
@@ -279,23 +348,60 @@ free teacher. \\
 \end{tabularx}
 \end{table}
 
-\section{Deployment infrastructure}
+\section{Deployment and live verification}
 
-The Hugging Face Space had been failing since 23 June for two reasons, both in
-the deploy workflow and both now fixed and verified by a green CI run:
+The platform is deployed to the Space
+\code{landwind22/Retinal\_Screening} and is serving: \code{/health} returns
+\code{model\_loaded: true} across all 45 diseases.
 
-\begin{enumerate}[leftmargin=*,itemsep=3pt]
-\item \code{short\_description} was 78 characters against a 60-character Hub
-limit and contained an unquoted colon, so the README failed YAML validation on
-every deploy and the Space never reached a build.
-\item \code{rsync} ran without \code{--delete}, so a stale
-\code{frontend/src/app/page.tsx} referencing a removed store field survived and
-broke \code{next build} once builds actually started.
-\end{enumerate}
+\textbf{The deploy pipeline used to lie.} It reported success as soon as the git
+push landed, and twice pushed a Space that then failed to start --- once from a
+clobbered README (\code{CONFIG\_ERROR} --- an over-length
+\code{short\_description} had also kept the previous Space dark since 23 June),
+once from a Dockerfile deleted by \code{rsync --delete} (\code{NO\_APP\_FILE}). A third deploy was silently dropped
+when a push-triggered run and a manual dispatch raced to push. All three are
+fixed: the workflow now polls the runtime stage and requires \code{/health} to
+answer before passing, runs are serialised by a concurrency group, and a rejected
+push refetches and retries. A 6-hourly keep-alive holds the free Space awake
+against its 48\,h sleep timer.
 
-The Space now serves: \code{/health} reports \code{model\_loaded: true} across 45
-diseases. Both Docker images (CPU and GPU) build and push with the triage head
-baked in. Crane Cloud deployment is out of scope for this revision.
+\textbf{End-to-end regression} against the live deployment: \code{/health},
+\code{/health/gate}, \code{/api/v1/diseases}, \code{/api/v1/predict/edge/status}
+and \code{/docs} all 200 in \textasciitilde0.73\,s, and the fundus gate correctly
+rejects a non-fundus image with \code{422 non\_fundus\_image}. The positive
+prediction path could \emph{not} be exercised: every fundus image in
+\code{data/} is a dangling symlink into a cleared cache, and the repository's own
+fixture is random noise, which the gate is trained to reject.
+
+\textbf{Mobile audit} (Lighthouse, Moto G Power emulation, throttled 4G --- the
+mid-range Android this product targets):
+
+\begin{table}[H]
+\begin{tabularx}{\textwidth}{@{}Yrrr@{}}
+\toprule
+& \textbf{Before} & \textbf{After} & \\
+\midrule
+Performance                & 80      & \textbf{95}  & \\
+Accessibility              & 96      & \textbf{100} & \\
+Largest Contentful Paint   & 5.0\,s  & \textbf{2.6\,s} & target 2.5\,s \\
+Transferred payload        & 776\,KB & \textbf{293\,KB} & $-62$\% \\
+Colour-contrast failures   & 31      & \textbf{0}   & \\
+Redundant-\code{alt} images& 2       & \textbf{0}   & \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Two defects, both real. \textbf{Text compression was off}: 481\,KB of 776\,KB
+shipped uncompressed, costing 2.4\,s on 4G. The fix needed \code{gzip\_proxied
+any} --- nginx reverse-proxies Next.js and uvicorn, and will not compress proxied
+responses without it, which is exactly where the payload was. \textbf{Contrast}
+failed on 31 nodes; the largest group was not a bad colour but
+\code{opacity-70} blending a passing \code{slate-500} down to 2.71:1. Colour
+values were recomputed per background --- on dark sections the correction runs
+lighter, not darker, a distinction that cost one regression before it was caught.
+
+Lighthouse scores move \textasciitilde5 points run to run on a shared runner; a
+single number should not be read as a trend.
 
 \section{Format evaluation --- AWQ, GPTQ, GGUF}
 
@@ -345,8 +451,9 @@ the \code{gguf} Python library alone writes only F16, not K-quants.
 
 \section{Recommendation}
 
-\textbf{Triage: done.} It is validated, effectively free, and removes an LLM
-dependency from the decision path outright.
+\textbf{Triage: done and deployed.} It is validated, effectively free, removes an
+LLM dependency from the decision path outright, and is live in all three images
+with the Space verified serving.
 
 \textbf{Narrative: keep the template as the default and leave
 \code{NARRATOR\_ENABLED=false}.} The bf16 narrator is shipped and usable for
