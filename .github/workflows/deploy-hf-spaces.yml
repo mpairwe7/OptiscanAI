@@ -14,8 +14,8 @@ on:
   workflow_dispatch:
 
 env:
-  HF_SPACE: Mpairwe49/retinal-screening
-  HF_SPACE_URL: https://huggingface.co/spaces/Mpairwe49/retinal-screening
+  HF_SPACE: landwind22/Retinal_Screening
+  HF_SPACE_URL: https://huggingface.co/spaces/landwind22/Retinal_Screening
 
 jobs:
   test:
@@ -147,7 +147,10 @@ jobs:
           # `hf auth login --add-to-git-credential` doesn't always wire the
           # HF Hub push path. Inject the token straight into the remote URL
           # (rewritten in-place — no other process sees it).
-          HF_USER="${HF_USER:-Mpairwe49}"
+          # Must match the owner of HF_SPACE. The repo secrets HF_TOKEN and
+          # HF_USER have to belong to that account too — a token for a different
+          # account gets 403 on push, however valid it is.
+          HF_USER="${HF_USER:-landwind22}"
           git remote set-url origin "https://${HF_USER}:${HF_TOKEN}@huggingface.co/spaces/${{ env.HF_SPACE }}"
           git push origin HEAD:main
 
