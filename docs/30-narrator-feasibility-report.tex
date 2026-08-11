@@ -72,457 +72,437 @@
   arc=0pt, outer arc=0pt, left=10pt, right=10pt, top=8pt, bottom=8pt,
   breakable}
 
+
+% Academic progress report, addressed from the project group to the supervisor.
 \begin{document}
 
-% ── masthead ──
 \begin{flushleft}
-\eyebrow{Feasibility assessment \quad\textbullet\quad RetinalAI screening pipeline}
+\eyebrow{Project progress report \quad\textbullet\quad RetinalAI screening pipeline}
 
 \vspace{6pt}
 {\huge\bfseries Replacing the external LLM reasoner\par}
 
-\vspace{8pt}
-{\large\color{inkMuted} Can the pipeline's two LLM-delegated jobs --- structured
-triage and a free-text clinical narrative --- be served by self-contained
-components? Both now ship. Triage is settled and enabled; the narrative ships
-behind an opt-in flag because the instrumentation still cannot tell a good
-narrator from a bad one.\par}
+\vspace{6pt}
+{\Large\color{inkMuted} A feasibility and deployment study\par}
 
 \vspace{10pt}
 {\footnotesize\sffamily\color{inkMuted}
-Rev.~3 \textbullet\ 12 August 2026 \quad\textbar\quad
-Teacher: self-hosted Qwen3-8B-AWQ (vLLM) \quad\textbar\quad
-Data: 240 RFMiD images \quad\textbar\quad
-Status: deployed and verified live\par}
+Revision~4 \textbullet\ 12 August 2026 \quad\textbar\quad
+Prepared for the project supervisor \quad\textbar\quad
+Teacher model: self-hosted Qwen3-8B-AWQ (vLLM) \quad\textbar\quad
+Evaluation data: 240 RFMiD images\par}
 \end{flushleft}
 
 \vspace{2pt}
 {\color{ruleGrey}\hrule height 1.5pt}
 \vspace{10pt}
 
-\begin{callout}
-\eyebrow{What changed since Rev.~2}
+\section*{Abstract}
+\addcontentsline{toc}{section}{Abstract}
 
-\vspace{3pt}
-Rev.~2 recorded triage as shipped and the narrator as opt-in. Since then the
-platform has been \textbf{deployed to a new Space and verified live}, end-to-end
-regression and mobile audits have been run against it, and two production
-defects found by those audits were fixed. \S1 answers the original brief
-directly; \S6 is new. The narrator verdict is unchanged, and \S4 now carries the
-measured reason: on the free CPU tier it costs 6--10\,s and 427\,MB per report,
-and its small quantized builds cannot run there at all.
-\end{callout}
+We were asked to obtain a lightweight model for the screening pipeline's
+reasoning stage, requiring modest inference compute, exceeding 75\% accuracy
+with precision at least equal to the incumbent, and to establish
+generalisability before any container image was produced. We report that the
+requirement is satisfied for the \emph{triage} sub-task by a 3\,KB logistic
+regression that attains accuracy and macro-precision of 1.000 at 0.14\,ms per
+inference, and that this model has been deployed and verified in service. We
+further report that the \emph{narrative} sub-task is not yet suitable for
+clinical enablement, and we set out the measurements supporting that judgement.
+We draw the supervisor's attention to two findings that qualify the headline
+result: the triage task proved to be deterministic, so the perfect scores
+indicate an eliminated dependency rather than a modelling advance; and a
+quantisation projection made in our previous revision has been tested and found
+incorrect, which we correct here.
 
-% ── verdict board ──
-\begin{center}
-\begin{tabularx}{\textwidth}{@{}L{51mm}L{31mm}Y@{}}
-\toprule
-\textbf{Component} & \textbf{Verdict} & \textbf{Basis} \\
-\midrule
-Triage --- structured decision &
-\verd{goGreen}{Shipped} &
-2\,KB model, enabled by default, baked into all three images. Reproduces the 8B
-teacher exactly; validated out-of-sample on 160 unseen images. \\
-\addlinespace[2pt]
-Narrative --- grounded template &
-\verd{goGreen}{Shipped (default)} &
-0\,MB, deterministic, grounded by construction. Remains the default narrative
-path. \\
-\addlinespace[2pt]
-Narrative --- server-hosted LLM &
-\verd{holdAmber}{Shipped, opt-in} &
-213.5\,MB bf16, published to the Hub and wired behind
-\code{NARRATOR\_ENABLED=false}. Three of five blockers remain. \\
-\addlinespace[2pt]
-Narrative --- on-device / edge &
-\verd{holdAmber}{Reachable, not advisable} &
-54.2\,MB clears the 60\,MB gate, but drops reported findings in 42\% of cases.
-GGUF was tested as the alternative and does not deliver the saving
-projected for it (\S7). \\
-\bottomrule
-\end{tabularx}
-\end{center}
+\section{Objectives}
 
-\section{Against the brief}
-
-The original request set four conditions. All four are met; the table cites the
-evidence rather than asserting it.
+The brief specified four conditions. We restate them and record where each is
+addressed.
 
 \begin{table}[H]
-\begin{tabularx}{\textwidth}{@{}L{44mm}Y@{}}
+\begin{tabularx}{\textwidth}{@{}L{52mm}L{18mm}Y@{}}
 \toprule
-\textbf{Requirement} & \textbf{Outcome} \\
+\textbf{Condition} & \textbf{Status} & \textbf{Evidence} \\
 \midrule
-``Lightweight final model, not much compute for inferencing'' &
-\code{feat\_logreg}: \textbf{3\,KB} of JSON weights, \textbf{0.14\,ms} on CPU,
-one matrix multiply. \code{src/triage/} is \textbf{pure stdlib} --- no
-scikit-learn, no numpy, no torch, no network at inference. \\
+A lightweight final model not requiring substantial inference compute &
+\verd{goGreen}{Met} &
+3\,KB of JSON weights; 0.14\,ms per inference on CPU; the serving package
+depends only on the Python standard library (\S3.1) \\
 \addlinespace[3pt]
-``Try other architectures too'' &
-Seven scored on one split (\S3). Five reached 1.000; the smallest and fastest was
-taken. The image CNN scored 0.792 / 0.492 at 6.1\,MB and 161\,ms. \\
+Alternative architectures to be explored &
+\verd{goGreen}{Met} &
+Seven candidates evaluated on a common split; five attained 1.000 (\S3.2) \\
 \addlinespace[3pt]
-``Over 75\% accuracy and equal or better precision'' &
-\textbf{1.000 accuracy, 1.000 macro-precision}, against a bar of 0.75 and the
-CNN's 0.492. \\
+Accuracy above 75\% with precision at least equal to the incumbent &
+\verd{goGreen}{Met} &
+Accuracy 1.000 and macro-precision 1.000, against a threshold of 0.75 and an
+incumbent precision of 0.492 (\S3.2) \\
 \addlinespace[3pt]
-``Test generalizability \emph{before} creating a docker image'' &
-Done first, on four axes (\S3): out-of-sample on 160 fresh unseen images with a
-different label mix, repeated cross-validation, a learning curve, and an injected
-EMERGENCY stress test. The image was built only afterwards. \\
+Generalisability established before a container image is produced &
+\verd{goGreen}{Met} &
+Four independent tests conducted prior to the build (\S3.3) \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
 \begin{callout}[stopRed]
-\eyebrow{Read the 1.000 correctly}
+\eyebrow{An important qualification}
 
 \vspace{3pt}
-The perfect scores mean the \emph{task} is deterministic, not that the model is
-remarkable. On the out-of-sample set the 8B teacher's triage equalled the
-classifier's own \code{referral\_priority} in \textbf{160 of 160 cases}, so the
-deterministic rules, a 3\,KB linear model and an 8B LLM are indistinguishable
-here. The value delivered is the removal of an LLM dependency --- with its
-latency, cost and clinical-data egress --- from the decision path, not an
-accuracy gain.
+We wish to be explicit that the perfect scores reported above should not be
+read as evidence of a superior model. On the out-of-sample set, the triage
+decision of the 8B teacher was identical to the disease classifier's own
+\code{referral\_priority} field in \textbf{160 of 160 cases}. The task is
+therefore deterministic, and the deterministic rules, a 3\,KB linear model and
+an 8B language model are indistinguishable on it. The contribution of this work
+is the removal of a language-model dependency --- with its associated latency,
+operating cost and clinical-data egress --- from the decision path, rather than
+an improvement in predictive accuracy.
 \end{callout}
 
-\section{What was actually assessed}
+\section{Method}
 
-The pipeline delegates two jobs to an external LLM. They are not the same problem
-and cannot share a verdict: \textbf{triage} is a four-way classification over the
-disease classifier's structured output; \textbf{narrative} is generation that no
-classifier can produce.
+The pipeline delegates two distinct tasks to an external language model, and we
+treated them separately throughout, as they are not comparable. \textbf{Triage}
+is a four-way classification over the disease classifier's structured output.
+\textbf{Narrative generation} produces free text that no classifier can emit.
 
-Everything below rests on measurements taken against a live, self-hosted
-Qwen3-8B-AWQ teacher on RTX A6000 hardware, not on estimates. Where a figure is
-arithmetic rather than a measurement, it is labelled.
+All figures reported below were obtained against a live, self-hosted
+Qwen3-8B-AWQ teacher on RTX A6000 hardware. Where a figure is derived
+arithmetically rather than measured, we state so explicitly.
 
 \begin{table}[H]
-\caption{Evidence base. Sample size remains the binding limitation on the
-narrative half.}
-\begin{tabularx}{\textwidth}{@{}Yr L{58mm} l@{}}
+\caption{Evaluation design. Sample size remains the principal limitation on the
+narrative results, and we return to this in \S6.}
+\begin{tabularx}{\textwidth}{@{}Yr L{56mm} l@{}}
 \toprule
-\textbf{Assessment} & \textbf{n} & \textbf{Design} & \textbf{Strength} \\
+\textbf{Evaluation} & \textbf{n} & \textbf{Design} & \textbf{Strength} \\
 \midrule
-Triage --- out-of-sample       & 160 & Fresh unseen images, different mix    & \textbf{Strong} \\
-Triage --- cross-validation    & 80  & 5-fold $\times$ 5 seeds (25 fits)     & Strong \\
-Triage --- emergency stress    & 80  & Injected CRAO/AION                    & Synthetic, decisive \\
-Narrative --- variant sweep    & 24  & 6 variants, one code path             & \textcolor{stopRed}{Weak} \\
-Narrative --- faithfulness     & 24  & Claim-level audit                     & \textcolor{stopRed}{Weak} \\
-Narrative --- off-distribution & 1   & Hand-built single-finding probe       & \textcolor{stopRed}{Anecdote} \\
+Triage, out-of-sample     & 160 & Unseen images, differing label distribution & \textbf{Strong} \\
+Triage, cross-validation  & 80  & 5-fold $\times$ 5 seeds (25 fits)           & Strong \\
+Triage, emergency stress  & 80  & Injected CRAO/AION cases                    & Synthetic, decisive \\
+Narrative, variant sweep  & 24  & Six variants, single code path              & \textcolor{stopRed}{Limited} \\
+Narrative, faithfulness   & 24  & Claim-level audit                           & \textcolor{stopRed}{Limited} \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\section{Triage --- shipped}
+\section{Results: triage}
 
-A 2\,KB structured-feature logistic head reproduces the teacher's priority
-exactly: accuracy and macro-precision \textbf{1.000} held-out, \textbf{1.000
-$\pm$ 0.000} under repeated cross-validation, and \textbf{1.000} out-of-sample on
-160 previously unseen images with a different label mix. The image CNN it
-replaces scored 0.792 / 0.492 at 6.1\,MB and 161\,ms.
+\subsection{Selected model}
 
-\begin{callout}
-\eyebrow{Why it is this cheap}
+We selected \code{feat\_logreg}, a multinomial logistic regression over 27
+structured features derived from the classifier's output. The artefact is 3\,KB
+of JSON weights and the forward pass is a single matrix multiplication, so the
+serving path requires neither scikit-learn nor a deserialisation step at
+start-up. We verified that the exported weights reproduce the fitted
+estimator's predictions on all 240 available cases before adopting them.
 
-\vspace{3pt}
-On the out-of-sample set the teacher's triage equals the classifier's own
-\code{referral\_priority} in \textbf{160 of 160 cases}. The 8B model adds nothing
-to the triage \emph{decision}, so a 2\,KB linear model, the deterministic rules
-and an 8B LLM all score identically. This is a cost elimination, not a modelling
-triumph.
-\end{callout}
-
-\textbf{Shipped as:} JSON weights rather than a pickle --- the model is one matrix
-multiply, so serving needs neither scikit-learn nor a pickle load at startup. The
-exporter refuses to write weights that disagree with the fitted estimator on all
-240 available cases, and the loader refuses an artifact whose feature layout has
-drifted. An emergency code escalates through a deterministic override, since
-EMERGENCY never appeared in training and the head cannot emit it.
-
-\section{Narrative --- what shipped, and what it costs}
-
-Two changes made the narrative half tractable.
-
-\textbf{Prose-only output.} Every reliability defect measured was a
-malformed-JSON defect, and the JSON existed only to carry the triage fields ---
-which the 2\,KB head now serves. A narrator emitting plain prose has no
-structured contract left to break. That is a stronger guarantee than
-grammar-constrained decoding (which prevents \emph{invalid} JSON) and needs no
-extra dependency.
-
-\textbf{Vocabulary pruning.} bitsandbytes leaves the embedding table unquantized,
-which was the entire size gap: 28.3M embedding params at bf16 (56.6\,MB) on top
-of a 53.1\,MB 4-bit body predicts 110\,MB, and 109.8\,MB was measured. Pruning
-the vocabulary to the tokens this task can reach --- \textbf{49{,}152 $\to$ 920}
---- collapses the embedding to under 1\,MB. It is done by id remapping rather
-than tokenizer surgery, so it is exact and reversible.
+\subsection{Comparison of architectures}
 
 \begin{table}[H]
-\caption{Compact narrator, 24 held-out cases. Generation rate is 1.000 at every
-precision --- the axis that previously discriminated is now flat, so fidelity
-decides.}
+\caption{Candidate architectures on a common held-out split. Five of the seven
+attained 1.000; we selected the smallest and fastest.}
+\begin{tabularx}{\textwidth}{@{}Yrrrrrl@{}}
+\toprule
+\textbf{Model} & \textbf{Acc.} & \textbf{Macro-P} & \textbf{Macro-F1} &
+\textbf{Size} & \textbf{p95} & \textbf{Gate} \\
+\midrule
+\rowcolor{softTeal}
+\code{feat\_logreg}   & 1.000 & 1.000 & 1.000 & 3\,KB    & 0.14\,ms & Pass \\
+\code{feat\_xgboost}  & 1.000 & 1.000 & 1.000 & 0.42\,MB & 1.8\,ms  & Pass \\
+\code{rule\_baseline} & 1.000 & 1.000 & 1.000 & 0        & 0.02\,ms & Pass \\
+\code{cnn\_triage}    & 0.792 & \textcolor{stopRed}{0.492} &
+\textcolor{stopRed}{0.520} & 6.1\,MB & 161\,ms & \textcolor{stopRed}{Fail} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The image-based convolutional model underperformed for a diagnosable reason: it
+infers triage from pixels, whereas the teacher derives it from the classifier's
+structured output. Supplying that structured vector to a small tabular model
+recovers the mapping directly.
+
+\subsection{Generalisability}
+
+We conducted four tests before producing any container image, in accordance with
+the brief.
+
+\begin{table}[H]
+\begin{tabularx}{\textwidth}{@{}YL{54mm}@{}}
+\toprule
+\textbf{Test} & \textbf{Result} \\
+\midrule
+Out-of-sample (train 80, test 160 unseen images, differing label mix) &
+Accuracy, macro-precision, F1 and $\kappa$ all \textbf{1.000} \\
+Repeated stratified 5-fold cross-validation (25 fits) & \textbf{1.000 $\pm$ 0.000} \\
+Learning curve & \textbf{1.000} from 20 training cases onward \\
+EMERGENCY stress test (80 injected CRAO/AION) & Recall and precision \textbf{1.000} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Safety provision}
+
+No EMERGENCY case occurs anywhere in the training sample; consequently the
+learned model cannot emit that class. Escalation for sight-threatening codes is
+enforced by a deterministic override in the serving path, so a learned model
+cannot downgrade such a finding. As no observed case exercises this path, we
+cover it by unit test. The loader additionally refuses any artefact whose
+feature layout has diverged from the one recorded at export, and degrades to the
+deterministic rules on any failure rather than failing a screening.
+
+\section{Results: narrative generation}
+
+We distilled a 135M-parameter narrator and evaluated it at three precisions on
+the held-out split. Output is plain prose rather than JSON, since the triage
+fields are now supplied by the model in \S3; this removes the parse-failure mode
+that rendered an earlier variant unusable, and generation succeeded in every
+case at every precision.
+
+\begin{table}[H]
+\caption{Compact narrator, 24 held-out cases. Generation succeeds uniformly, so
+fidelity rather than reliability distinguishes the variants.}
 \begin{tabularx}{\textwidth}{@{}Yrrrrr@{}}
 \toprule
 \textbf{Precision} & \textbf{Size} & \textbf{Gen.\ rate} & \textbf{Omission} &
-\textbf{Bad probs} & \textbf{Acuity drift} \\
+\textbf{Quoted probs} & \textbf{Acuity drift} \\
 \midrule
 \rowcolor{softTeal}
-bf16 (shipped) & 213.5\,MB & 1.000 & \textbf{0.000} & \textbf{0.000} & 0.250 \\
-int8           & 107.3\,MB & \multicolumn{4}{l}{\textcolor{stopRed}{37.5\,s/case --- evaluation impractical}} \\
-nf4            & \textbf{54.2\,MB} & 1.000 & \textcolor{stopRed}{\textbf{0.417}} &
+bf16 & 213.5\,MB & 1.000 & \textbf{0.000} & \textbf{0.000} & 0.250 \\
+int8 & 107.3\,MB & \multicolumn{4}{l}{\textcolor{stopRed}{37.5\,s per case; evaluation impracticable}} \\
+nf4  & 54.2\,MB  & 1.000 & \textcolor{stopRed}{\textbf{0.417}} &
 \textcolor{stopRed}{0.167} & \textcolor{stopRed}{0.583} \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
 \begin{callout}[stopRed]
-\eyebrow{Two reasons the narrator ships disabled}
+\eyebrow{Grounds for withholding clinical enablement}
 
 \vspace{3pt}
-\textbf{4-bit trades a visible failure for an invisible one.} It clears the
-60\,MB gate and always produces fluent text --- while dropping findings the
-teacher reported in 42\% of cases. Fluent omission is harder to catch than a
-blank output.
+\textbf{The 4-bit variant substitutes a visible failure for an invisible one.}
+It satisfies the 60\,MB constraint and produces fluent text in every case, while
+omitting findings the teacher reported in 42\% of cases. Fluent omission is
+considerably harder to detect in review than an absent output.
 
 \vspace{4pt}
-\textbf{bf16's clean scores do not generalise.} The audit set is dominated by
-multi-finding cases resembling training data. Given a \emph{single}-finding case
-by hand, bf16 produced ``a 75\% detection of diabetic retinopathy with a
-prevalence of 88\%'' --- for one finding at 88\%. Both figures invented. One
-probe is not a measurement, but it shows the 0.000 belongs to that split rather
-than to the model.
+\textbf{The bf16 variant's clean scores do not extend beyond the evaluation
+distribution.} The audit set is dominated by multi-finding cases resembling the
+training data. Presented with a single-finding case constructed by hand, the
+model reported ``a 75\% detection of diabetic retinopathy with a prevalence of
+88\%'' for one finding at 88\% confidence; both figures are fabrications. A
+single probe is not a measurement, but it demonstrates that the reported 0.000
+is a property of the evaluation split rather than of the model.
 \end{callout}
 
-\subsection*{Why it is disabled on the deployed Space specifically}
+\subsection{Cost on the deployed hardware}
 
-The Space runs on free \code{cpu-basic} (2 vCPU). Measured there, throttled to
-two threads:
+The deployed Space runs on free \code{cpu-basic} hardware (2 vCPU). Measured
+there, restricted to two threads, the narrator requires 8.6\,s to load, 426.9\,MB
+resident, and 6--10\,s per report, against a \code{/predict} endpoint that
+currently responds in approximately 1\,s. We note additionally that
+\code{transformers} is not a declared dependency of the deployed image, so
+enabling the narrator would require an image rebuild, and that the smaller
+quantised variants cannot run on this tier at all, since the bitsandbytes
+kernels require CUDA. The narrator is therefore published but disabled by
+default.
+
+\section{Quantisation format study}
+
+Our previous revision recommended AWQ or GPTQ over bitsandbytes, and projected
+that GGUF \code{Q4\_K\_M} would reach approximately 80\,MB. We have since tested
+the GGUF path and report that \textbf{the projection was incorrect}.
 
 \begin{table}[H]
+\caption{The AWQ/GPTQ row remains arithmetic, as neither library could be
+installed in this environment. The GGUF rows are measured, using
+\code{convert\_hf\_to\_gguf.py} and \code{llama-quantize} built from source.}
+\begin{tabularx}{\textwidth}{@{}YL{28mm}L{34mm}rr@{}}
+\toprule
+\textbf{Format} & \textbf{Body} & \textbf{Embedding} & \textbf{BPW} & \textbf{Total} \\
+\midrule
+bitsandbytes NF4 & 4-bit & fp16, not quantised & --- & 109.8\,MB \\
+bitsandbytes int8 & int8 & fp16, not quantised & --- & 107.3\,MB \\
+AWQ / GPTQ (W4A16) & 4-bit & fp16, excluded by convention & --- & $\sim$110\,MB \\
+\rowcolor{softTeal}
+\textbf{GGUF \code{Q4\_K\_M}} & mixed & \textbf{q8\_0} & 6.17 & \textbf{105.5\,MB} \\
+GGUF \code{Q5\_K\_M} & mixed & q8\_0 & --- & 112.1\,MB \\
+GGUF \code{Q8\_0} & q8\_0 & q8\_0 & --- & 144.8\,MB \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+At 105.5\,MB the GGUF build is only marginally smaller than the 109.8\,MB
+bitsandbytes build, rather than the substantial reduction our arithmetic
+implied. We identified two architecture-specific causes and then tested the
+explanation directly.
+
+\begin{enumerate}[leftmargin=*,itemsep=3pt]
+\item The embedding table \emph{is} quantised, confirming the principle we
+argued, but to \code{q8\_0} rather than 4-bit: 54.00\,MiB to 28.69\,MiB, a factor
+of 1.9 rather than the factor of 4 assumed.
+\item The hidden size of SmolLM2-135M is 576, which is not divisible by 256 as
+the \code{q4\_K} block structure requires. Consequently \textbf{180 tensors fell
+back} to larger types, and llama.cpp reports the result as 6.17 bits per weight
+against the 4.5 assumed.
+\end{enumerate}
+
+\subsection{Control experiment}
+
+To establish that the divisibility constraint, rather than GGUF itself, accounts
+for the discrepancy, we repeated the procedure on \code{pythia-160m}, whose
+hidden size of 768 is divisible by 256. The comparison isolates the effect.
+
+\begin{table}[H]
+\caption{Control experiment. The only material difference between the two models
+for this purpose is the hidden dimension.}
 \begin{tabularx}{\textwidth}{@{}Yrr@{}}
 \toprule
-& \textbf{Value} & \textbf{Against a \textasciitilde1\,s \code{/predict}} \\
+& \textbf{SmolLM2-135M (576)} & \textbf{pythia-160m (768)} \\
 \midrule
-Model load                 & 8.6\,s    & once, at startup \\
-Resident memory (fp32)     & 426.9\,MB & fp16 is emulated on CPU, so bf16's 213\,MB does not apply \\
-Single-finding report      & 9.9\,s    & \textcolor{stopRed}{+10x latency} \\
-Three-finding report       & 6.3\,s    & \textcolor{stopRed}{+6x latency} \\
+\code{q4\_K} fallbacks        & 180        & \textbf{0} \\
+Bits per weight               & 6.17       & \textbf{5.33} \\
+Embedding quantised to        & \code{q8\_0} & \textbf{\code{q4\_K}} \\
+Embedding reduction           & 1.9$\times$ & \textbf{3.6$\times$} \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-Two further constraints make it moot today. \code{transformers} is \textbf{not a
-declared dependency} anywhere in \code{pyproject.toml}, so on the deployed image
-the narrator import fails, the service catches it and serves the template ---
-setting \code{NARRATOR\_ENABLED=true} would change nothing without an image
-rebuild. And the small quantized builds \textbf{cannot run on CPU at all}:
-bitsandbytes NF4/int8 kernels are CUDA-only, so the 54\,MB and 107\,MB variants
-are unavailable on this tier. bf16 is the only option, at ten seconds a report.
+The control confirms the diagnosis: with a divisible hidden dimension the
+fallback does not occur, the embedding receives 4-bit treatment, and the encoding
+falls to 5.33 bits per weight. Applying that rate to our 134.5M-parameter
+narrator gives approximately \textbf{89.6\,MB}, which would fall inside the
+60--100\,MB band. We therefore conclude that the projection was directionally
+sound but arithmetically optimistic, and that it fails for this model on account
+of its width rather than on account of the format.
 
-\section{Blockers --- two closed, three open}
+\subsection{Compatibility with vocabulary pruning}
 
-\begin{table}[H]
-\begin{tabularx}{\textwidth}{@{}L{52mm}L{22mm}Y@{}}
-\toprule
-\textbf{Blocker} & \textbf{Status} & \textbf{Detail} \\
-\midrule
-Structured output best-effort &
-\verd{goGreen}{Closed} &
-Prose-only output removes the parse-failure mode outright. Generation rate 1.000
-at every precision. \\
-Compliance statement dropped &
-\verd{goGreen}{Closed} &
-0 of 80 teacher traces carry the AI-disclosure sentence, so it is appended
-deterministically in \code{src/narrator/service.py} rather than trusted to the
-model. \\
-No serving stack &
-\verd{stopRed}{Open} &
-Still \code{transformers.generate()} at batch 1. No defensible latency,
-throughput or cost model. \\
-Evaluation below clinical standard &
-\verd{stopRed}{Open} &
-One lexical check plus a first-pass claim audit. No NLI/judge cascade, no
-clinician review. \\
-Statistical power &
-\verd{stopRed}{Open} &
-24 held-out cases, 56 training rows, against $\sim$3{,}200 available images and a
-free teacher. \\
-\bottomrule
-\end{tabularx}
-\end{table}
+We confirmed that the vocabulary-pruned checkpoint cannot be converted to GGUF:
+the conversion script requires \code{vocab\_size} to equal the tokeniser size,
+and the pruned model reports 920 against 49{,}152. Pruning and standard
+quantisation formats are therefore alternative strategies rather than
+complementary ones.
 
-\section{Deployment and live verification}
+\subsection{Outstanding measurement}
 
-The platform is deployed to the Space
-\code{landwind22/Retinal\_Screening} and is serving: \code{/health} returns
-\code{model\_loaded: true} across all 45 diseases. It is the single deployment
-target --- the previous Space is retired and now points here.
+Fidelity under GGUF remains unmeasured, as \code{llama-cli} did not return on
+this host even for a trivial prompt. Whether \code{Q4\_K\_M} avoids the 42\%
+omission observed in the pruned 4-bit build is therefore still open. We note
+that at 105.5\,MB it would in any case compete against the bf16 build at
+213.5\,MB rather than offer an edge-deployable option.
 
-\textbf{The deploy pipeline used to lie.} It reported success as soon as the git
-push landed, and twice pushed a Space that then failed to start --- once from a
-clobbered README (\code{CONFIG\_ERROR} --- an over-length
-\code{short\_description} had also kept the previous Space dark since 23 June),
-once from a Dockerfile deleted by \code{rsync --delete} (\code{NO\_APP\_FILE}). A third deploy was silently dropped
-when a push-triggered run and a manual dispatch raced to push. All three are
-fixed: the workflow now polls the runtime stage and requires \code{/health} to
-answer before passing, runs are serialised by a concurrency group, and a rejected
-push refetches and retries. A 6-hourly keep-alive holds the free Space awake
-against its 48\,h sleep timer.
+\section{Deployment and verification}
 
-\textbf{End-to-end regression} against the live deployment: \code{/health},
-\code{/health/gate}, \code{/api/v1/diseases}, \code{/api/v1/predict/edge/status}
-and \code{/docs} all 200 in \textasciitilde0.73\,s, and the fundus gate correctly
-rejects a non-fundus image with \code{422 non\_fundus\_image}. The positive
-prediction path could \emph{not} be exercised: every fundus image in
-\code{data/} is a dangling symlink into a cleared cache, and the repository's own
-fixture is random noise, which the gate is trained to reject.
+The platform is deployed to the Space \code{landwind22/Retinal\_Screening} and is
+in service; \code{/health} reports \code{model\_loaded: true} across all 45
+disease classes. It is the single deployment target, the previous Space having
+been retired.
 
-\textbf{Mobile audit} (Lighthouse, Moto G Power emulation, throttled 4G --- the
-mid-range Android this product targets):
+We record three defects in the deployment pipeline identified during this work,
+all since corrected. The workflow previously reported success upon completion of
+the git push, and on two occasions published a Space that subsequently failed to
+start --- once through a README whose front matter was overwritten, and once
+through a Dockerfile removed by \code{rsync --delete}. A third deployment was
+lost when a push-triggered run and a manual dispatch executed concurrently and
+raced to push. The workflow now polls the runtime stage and requires
+\code{/health} to respond before reporting success, serialises runs, and retries
+a rejected push. A six-hourly keep-alive maintains the Space against its 48-hour
+inactivity timer.
 
 \begin{table}[H]
+\caption{Mobile audit (Lighthouse, Moto G Power emulation, throttled 4G),
+representing the mid-range Android hardware this product targets.}
 \begin{tabularx}{\textwidth}{@{}Yrrr@{}}
 \toprule
 & \textbf{Before} & \textbf{After} & \\
 \midrule
-Performance                & 80      & \textbf{95}  & \\
-Accessibility              & 96      & \textbf{100} & \\
-Largest Contentful Paint   & 5.0\,s  & \textbf{2.6\,s} & target 2.5\,s \\
-Transferred payload        & 776\,KB & \textbf{293\,KB} & $-62$\% \\
-Colour-contrast failures   & 31      & \textbf{0}   & \\
-Redundant-\code{alt} images& 2       & \textbf{0}   & \\
+Performance                 & 80      & \textbf{95}   & \\
+Accessibility               & 96      & \textbf{100}  & \\
+Largest Contentful Paint    & 5.0\,s  & \textbf{2.6\,s} & target 2.5\,s \\
+Transferred payload         & 776\,KB & \textbf{293\,KB} & $-62$\% \\
+Colour-contrast failures    & 31      & \textbf{0}    & \\
+Redundant \code{alt} attributes & 2   & \textbf{0}    & \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-Two defects, both real. \textbf{Text compression was off}: 481\,KB of 776\,KB
-shipped uncompressed, costing 2.4\,s on 4G. The fix needed \code{gzip\_proxied
-any} --- nginx reverse-proxies Next.js and uvicorn, and will not compress proxied
-responses without it, which is exactly where the payload was. \textbf{Contrast}
-failed on 31 nodes; the largest group was not a bad colour but
-\code{opacity-70} blending a passing \code{slate-500} down to 2.71:1. Colour
-values were recomputed per background --- on dark sections the correction runs
-lighter, not darker, a distinction that cost one regression before it was caught.
+Two substantive defects were corrected. Text compression was not enabled, so
+481\,KB of a 776\,KB payload was transmitted uncompressed at a cost of 2.4\,s on
+a throttled connection; the remedy required \code{gzip\_proxied any}, since nginx
+does not compress proxied responses by default and the payload in question is
+proxied. Colour contrast failed on 31 nodes, of which the largest group arose not
+from an unsuitable colour but from an opacity setting reducing a compliant
+colour to a ratio of 2.71:1. We recomputed each value against its actual
+background; we note that on dark sections the correction is lighter rather than
+darker, a distinction that produced one regression before we identified it.
 
-Lighthouse scores move \textasciitilde5 points run to run on a shared runner; a
-single number should not be read as a trend.
+Container image sizes are 1.01\,GB compressed and 2.66\,GB on disk for the CPU
+variant, and 5.90\,GB compressed for the GPU variant, of which 5.3\,GB is the
+CUDA runtime and the CUDA build of PyTorch.
 
-\section{Format evaluation --- AWQ, GPTQ, GGUF}
+\section{Limitations}
 
-Rev.~1 recommended AWQ/GPTQ over bitsandbytes. Evaluating that properly reverses
-the recommendation, for a reason specific to this model: a 135M SmolLM2 is
-\textbf{21\% embedding}, and what each format does with that table decides the
-footprint.
-
-\begin{table}[H]
-\caption{AWQ/GPTQ rows remain arithmetic --- neither library would install here.
-The GGUF rows are \textbf{measured}: converted with \code{convert\_hf\_to\_gguf.py}
-and quantized with \code{llama-quantize} built from source.}
-\begin{tabularx}{\textwidth}{@{}YL{30mm}L{38mm}r@{}}
-\toprule
-\textbf{Format} & \textbf{Body} & \textbf{Embedding} & \textbf{Total} \\
-\midrule
-bnb NF4 & 4-bit & fp16, not quantized & 109.8\,MB \\
-bnb int8 & int8 & fp16, not quantized & 107.3\,MB \\
-AWQ / GPTQ (W4A16) & 4-bit & fp16, conventionally excluded & $\sim$110\,MB \\
-\rowcolor{softTeal}
-\textbf{GGUF \code{Q4\_K\_M}} & mixed, 6.17\,BPW & \textbf{q8\_0} & \textbf{105.5\,MB} \\
-GGUF \code{Q5\_K\_M} & mixed & q8\_0 & 112.1\,MB \\
-GGUF \code{Q8\_0} & q8\_0 & q8\_0 & 144.8\,MB \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\textbf{AWQ and GPTQ would not beat bitsandbytes on size here.} They exclude the
-embedding exactly as bnb does, landing at the same $\sim$110\,MB; their advantage
-is throughput via fused kernels, which does not address the binding constraint.
-
-\textbf{The GGUF projection in Rev.~2 was wrong: 105.5\,MB measured against
-$\sim$80\,MB projected}, which leaves it barely smaller than the 109.8\,MB
-bitsandbytes build rather than the step change the arithmetic implied. Two
-architecture-specific facts the projection ignored:
+We ask the supervisor to weigh the following when interpreting this report.
 
 \begin{enumerate}[leftmargin=*,itemsep=3pt]
-\item \textbf{The embedding is quantized --- but to 8-bit, not 4-bit.}
-\code{token\_embd.weight} converts \code{f16 -> q8\_0}, 54.00\,MiB to 28.69\,MiB.
-The central claim (GGUF is the only one of the three that quantizes the embedding
-at all) \emph{holds}; the saving is 1.9$\times$, not the 4$\times$ assumed.
-\item \textbf{SmolLM2's hidden size is 576, which is not divisible by 256.}
-\code{q4\_K} requires that, so \textbf{180 tensors fell back} to larger types (166
-to \code{q5\_0}, 14 to \code{q8\_0}). llama.cpp's own summary reports the outcome:
-\code{quant size = 98.87 MiB (6.17 BPW)}, against the $\sim$4.5\,BPW assumed.
+\item The narrative evaluations rest on 24 held-out cases and 56 training
+examples. This is sufficient to separate a functioning model from a broken one
+and little else; confidence intervals on the reported proportions are
+correspondingly wide.
+\item No clinician has reviewed the generated text. We regard this as the
+principal barrier to clinical enablement.
+\item No EMERGENCY case occurs in the 240 available traces, so escalation
+behaviour is established only by injected stress testing.
+\item The positive prediction path could not be exercised end-to-end against the
+deployment, as the fundus images in the repository are dangling symbolic links
+into a cleared cache. The rejection path was verified.
+\item Lighthouse scores vary by approximately five points between runs on shared
+infrastructure; single values should not be read as trends.
 \end{enumerate}
 
-That is a property of \emph{this} model's width, not of GGUF. A model whose
-hidden size is a multiple of 256 would avoid the fallback, so the projection may
-hold elsewhere --- but it does not hold here, and \textbf{no format tested reaches
-the 60--100\,MB band without vocabulary pruning}.
+\section{Recommendations and further work}
 
-\textbf{Fidelity under GGUF remains unmeasured.} \code{llama-cli} hung on this
-host even on a trivial prompt, so the open question --- whether \code{Q4\_K\_M}
-avoids the 42\% omission that made the pruned 4-bit build unusable --- is still
-open. At 105.5\,MB it would in any case compete with bf16 at 213\,MB rather than
-offer an edge-sized option.
+We recommend that the triage model be considered complete: it is validated,
+computationally negligible, and removes a language-model dependency from the
+decision path. We recommend that the grounded template remain the default
+narrative and that \code{NARRATOR\_ENABLED} remain false, on the grounds that
+the available instrumentation cannot yet distinguish a sound narrator from an
+unsound one, which in a clinical screening context is the property that must be
+established first.
 
-\textbf{Pruning and standard formats are alternatives, not complements.} The
-pruned checkpoint deliberately breaks the model/tokenizer correspondence
-(\code{vocab\_size} 920 against a 49{,}152-token tokenizer, bridged by an explicit
-id remap). GGUF bakes the tokenizer into the file --- confirmed here, since
-\code{convert\_hf\_to\_gguf.py} requires \code{vocab\_size} to equal the tokenizer
-size, which the pruned checkpoint violates (920 vs 49{,}152); AWQ/GPTQ would run
-mechanically but still need the custom wrapper, losing the vLLM/SGLang serving
-compatibility that justifies adopting them.
+We propose the following sequence of further work:
 
-\textbf{Tooling status (measured).} \code{autoawq} 0.2.9 installs but cannot
-import against transformers 4.57.1 and is unmaintained upstream;
-\code{gptqmodel} and \code{llmcompressor} require torch $\geq$ 2.8;
-\code{compressed-tensors} 0.11.0 is present as a vLLM dependency; llama.cpp
-binaries (\code{llama-quantize}, \code{convert\_hf\_to\_gguf.py}) are absent, and
-the \code{gguf} Python library alone writes only F16, not K-quants.
-
-\section{Recommendation}
-
-\textbf{Triage: done and deployed.} It is validated, effectively free, removes an
-LLM dependency from the decision path outright, and is live in all three images
-with the Space verified serving.
-
-\textbf{Narrative: keep the template as the default and leave
-\code{NARRATOR\_ENABLED=false}.} The bf16 narrator is shipped and usable for
-evaluation, but nothing has changed about the reason not to enable it: the
-instrumentation still cannot distinguish a good narrator from a bad one, and in a
-clinical screening context that is the thing that has to work first. The
-off-distribution probe (\S3) is a concrete reminder that clean held-out numbers
-are not evidence of general reliability.
-
-\textbf{Next, in order:} (1) regenerate traces at scale with the disclosure
-mandated --- it closes the statistical-power and compliance gaps together and the
-teacher is free; (2) build a real faithfulness evaluation with clinician review;
-(3) try GGUF \code{Q4\_K\_M} for the 60--100\,MB target rather than more
-bitsandbytes; (4) measure under vLLM before quoting any latency. Only then
-revisit enabling the narrator by default.
-
-The honest summary is unchanged from Rev.~1: the expensive component turned out
-to be unnecessary for triage, and not yet trustworthy for narrative. The first is
-now banked.
+\begin{enumerate}[leftmargin=*,itemsep=3pt]
+\item Regenerate the teacher traces at scale with the AI-disclosure statement
+mandated, addressing the statistical-power and transparency limitations together.
+The teacher is self-hosted, so the marginal cost is time alone.
+\item Construct a faithfulness evaluation of appropriate rigour --- claim
+decomposition with entailment scoring --- and obtain clinician review of a
+sampled set.
+\item Should an edge-deployable narrator remain desirable, evaluate a base model
+whose hidden dimension is divisible by 256, as \S5.1 indicates this is the
+condition under which the 60--100\,MB band becomes attainable without vocabulary
+pruning.
+\item Measure serving latency under vLLM before quoting any figure, as the
+present measurements are dominated by framework overhead rather than by the
+models.
+\end{enumerate}
 
 \vspace{14pt}
-% keep the colophon on the final text page rather than orphaning it
-\enlargethispage{3\baselineskip}
-\vspace{9pt}
 {\color{ruleGrey}\hrule height 0.6pt}
-\vspace{4pt}
+\vspace{6pt}
 
 {\footnotesize\sffamily\color{inkMuted}\setlength{\parskip}{3pt}
-\textbf{Sources.}\\
-\code{docs/28-reasoner-cnn-vs-distilledqwen.md}\\
-\code{docs/29-narrator-verification-and-gaps.md}\\
-\code{outputs/reasoner\_comparison\_real/} \quad
-\code{outputs/generalizability/}
+\textbf{Supporting material.}\\
+\code{docs/28-reasoner-cnn-vs-distilledqwen.md} --- design and results\\
+\code{docs/29-narrator-verification-and-gaps.md} --- verification review\\
+\code{outputs/reasoner\_comparison\_real/} \quad \code{outputs/generalizability/}
 
-\textbf{Provenance.} Measurements on RTX A6000 against a live Qwen3-8B-AWQ
-teacher. Quantization-format sizes in \S6 are arithmetic, not measurements, and
-are labelled as such. Effort estimates carry no measurement behind them.\par}
+\textbf{Provenance.} Measurements were obtained on RTX A6000 hardware against a
+live Qwen3-8B-AWQ teacher. Figures derived arithmetically rather than measured
+are identified as such at each occurrence.\par}
 
 \end{document}
