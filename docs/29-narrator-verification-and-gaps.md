@@ -370,15 +370,85 @@ logged, alertable metric before any narrator ships.
 
 ---
 
+## 3.11 Fixes applied — the compact narrator
+
+Three of the gaps above compose into one change
+(`scripts/build_compact_narrator.py`, `src/narrator/`), evaluated on the same 24
+held-out cases → `outputs/reasoner_comparison_real/compact_narrator_report.json`.
+
+**Prose-only output (closes §3.1 without a grammar library).** Every reliability
+defect measured was a malformed-JSON defect, and the JSON existed only to carry
+the triage fields — which `src/triage` now serves. A narrator that emits the
+report as plain prose has no structured contract left to break. That is a
+stronger guarantee than constrained decoding: a grammar prevents *invalid* JSON,
+whereas having no JSON removes the failure mode. Measured generation rate
+**1.000 at every precision**, including the 4-bit variant that previously scored
+**0.000**.
+
+**Vocabulary pruning (closes §3.7).** bitsandbytes leaves the embedding table
+unquantized, which is the entire size gap — predicted and confirmed:
+
+| | params | footprint |
+|---|---:|---:|
+| embedding, 49,152 × 576, bf16 (not quantized by bnb) | 28.3M | 56.6 MB |
+| transformer body, 4-bit | ~106M | 53.1 MB |
+| **predicted total** | | **110 MB** (measured 109.8) |
+
+Pruning the vocabulary to the tokens this task can reach — **49,152 → 920** —
+collapses the embedding to under 1 MB. Done by **id remapping, not tokenizer
+surgery**: the original tokenizer is untouched and `keep_ids.json` maps between
+its id space and the model's compact one, which is exact and reversible where
+rewriting BPE merges is easy to get subtly wrong.
+
+| variant | size | gen rate | omission | bad probs | acuity drift | words |
+|---|---:|---:|---:|---:|---:|---:|
+| bf16 | 213.5 MB | 1.000 | **0.000** | 0.000 | 0.250 | 68 |
+| **nf4** | **54.2 MB** | 1.000 | **0.417** | 0.167 | 0.583 | 89 |
+
+**The 60 MB edge gate is now reachable — but 4-bit should not ship on these
+numbers.** 54.2 MB clears a gate §0.6 called impossible, and generation no longer
+fails. The cost is content fidelity: the 4-bit model drops findings the teacher
+reported in **42%** of cases and misquotes probabilities in 17%, while rambling
+(89 words vs 68). That is a *worse* failure mode than the one it fixes — it now
+always produces fluent text, so omissions are harder to notice. bf16 at 213.5 MB
+is the quality-preserving option; an int8 middle point (~107 MB) is the obvious
+next measurement.
+
+**A bug this work surfaced.** The vocabulary was first built from tokens observed
+in the 240 traces — which covered 14 of 16 harness names, while the classifier
+can emit **45 classes**. Any unseen disease name would have had its tokens
+silently dropped, handing the model a corrupted prompt with no error. The
+vocabulary is now seeded from the production `DISEASE_NAMES` map, unmappable
+tokens fall back to byte-level encoding rather than being dropped, and the
+evaluation asserts that **all 45 class names survive the round trip** (they do).
+
+## 3.12 Fixes applied — the Hugging Face Space
+
+The Space had been in `CONFIG_ERROR` since 23 June. Two independent bugs, both in
+`.github/workflows/deploy-hf-spaces.yml`, both now fixed:
+
+1. **`short_description` was 78 characters** against a 60-character Hub limit,
+   and contained an unquoted colon (invalid YAML). `/api/validate-yaml` rejected
+   the README on every deploy, so the Space never got as far as building.
+2. **`rsync` ran without `--delete`**, so files from older deploys survived. Once
+   (1) was fixed and a build actually started, it failed on a stale
+   `frontend/src/app/page.tsx` that referenced a store field
+   (`AppState.currentPage`) removed long ago. The current tree has no such file.
+
+With both fixed the Space builds and serves: `/health` returns
+`{"status":"healthy","model_loaded":true,"diseases_count":45}`.
+
 ## 4. Recommended sequence
 
 1. ~~Finish the 384-token re-measurement~~ ✅ **done** — §2.2. "Strictly beats"
    withdrawn; `qwen0.5b_nf4` (451 MB) emerged as the smallest fully-reliable
    variant and needs a faithfulness audit before it can be compared properly.
-2. **Add constrained decoding** (XGrammar via vLLM) and re-run — expect the
-   generation-rate axis to collapse to ~100% for every candidate, which would
-   make size/faithfulness the real discriminators and may revive the 110 MB
-   4-bit 135M.
+2. ~~Add constrained decoding~~ ✅ **superseded by §3.11** — moving triage to the
+   3 KB head let the narrator emit prose instead of JSON, which removes the
+   parse-failure mode outright rather than constraining it. Generation rate is
+   1.000 at every precision, so size and faithfulness are now the discriminators
+   as predicted. Constrained decoding is still the right tool if a structured
+   narrator is ever needed again.
 3. **Re-measure latency under vLLM** with CUDA graphs; report TTFT/TPOT.
 4. **Regenerate traces at scale** (hundreds–thousands, teacher is free) **with a
    mandated disclaimer**, fixing §3.5 and §3.9 together.

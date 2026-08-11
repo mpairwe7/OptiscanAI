@@ -86,7 +86,10 @@ jobs:
           app_port: 7860
           pinned: true
           license: cc-by-4.0
-          short_description: AI-powered retinal disease screening — 45 diseases, <200ms, clinical reasoning
+          # The Hub rejects a short_description over 60 characters, and an
+          # unquoted value containing a colon is invalid YAML. Either mistake
+          # fails /api/validate-yaml and leaves the Space in CONFIG_ERROR.
+          short_description: "AI retinal screening: 45 diseases, clinical reasoning"
           ---
 
           # RetinalAI: AI-Powered Retinal Disease Screening
@@ -111,7 +114,12 @@ jobs:
           # whenever the LFS object isn't in the runner's local store
           # (LFS bandwidth caps, partial fetch) — and there's no point
           # double-paying bandwidth for a public checkpoint.
-          rsync -av --exclude='.git' --exclude='node_modules' --exclude='.next' \
+          # --delete removes files left in the Space from earlier deploys.
+          # Without it a stale frontend/src/app/page.tsx survived here and broke
+          # `next build` (it referenced a store field that no longer exists), so
+          # the Space failed to build even though the tree it was built from was
+          # fine. Excluded paths (.git etc.) are protected from deletion.
+          rsync -av --delete --exclude='.git' --exclude='node_modules' --exclude='.next' \
                     --exclude='__pycache__' --exclude='.venv' --exclude='outputs' \
                     --exclude='data' --exclude='wandb' --exclude='mlruns' \
                     --exclude='.env' --exclude='*.onnx' --exclude='docs' \
