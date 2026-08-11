@@ -1,8 +1,12 @@
 % Feasibility report — replacing the external LLM reasoner.
 %
 % Build (tectonic fetches packages on demand; no local TeX install needed):
-%   tectonic -X compile docs/30-narrator-feasibility-report.tex \
-%       --outdir outputs/feasibility
+%   tectonic -X compile docs/30-narrator-feasibility-report.tex --outdir docs
+%
+% The built PDF is committed alongside this source in docs/, matching the other
+% tracked PDFs there, so readers who do not run LaTeX still get the report from a
+% plain checkout. Tectonic writes only the .pdf (intermediates are skipped), so
+% building into docs/ leaves no aux files behind.
 %
 % Figures are transcribed from:
 %   outputs/reasoner_comparison_real/{narrator_arch_sweep,faithfulness_audit}.json
