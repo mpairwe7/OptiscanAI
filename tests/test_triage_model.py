@@ -8,6 +8,7 @@ Two properties matter most and neither is covered by the offline sweep:
   the existing deterministic behaviour, never fail a screening.
 """
 
+import importlib.util
 import sys
 from pathlib import Path
 
@@ -77,14 +78,14 @@ def test_evaluation_encoder_delegates_to_production_encoder():
 
     case = Case(
         scan_id="c1",
-        predictions=[Prediction("DR", "Diabetic Retinopathy", 0.81),
-                     Prediction("CRVO", "Central Retinal Vein Occlusion", 0.62)],
+        predictions=[
+            Prediction("DR", "Diabetic Retinopathy", 0.81),
+            Prediction("CRVO", "Central Retinal Vein Occlusion", 0.62),
+        ],
         probabilities={},
         referral_priority="URGENT",
     )
-    assert case_features(case) == tf.encode(
-        [("DR", 0.81), ("CRVO", 0.62)], "URGENT"
-    )
+    assert case_features(case) == tf.encode([("DR", 0.81), ("CRVO", 0.62)], "URGENT")
 
 
 # ── shipped artifact ──
@@ -121,8 +122,10 @@ def test_non_emergency_case_uses_the_learned_head():
 @pytest.mark.skipif(not ARTIFACT.exists(), reason="triage artifact not built")
 def test_review_and_explain_flags_follow_the_rule_baseline():
     m = TriageModel.load(ARTIFACT)
-    assert m.decide([_pred("DR", 0.9), _pred("ARMD", 0.8), _pred("MH", 0.8)],
-                    "URGENT").should_explain is True
+    assert (
+        m.decide([_pred("DR", 0.9), _pred("ARMD", 0.8), _pred("MH", 0.8)], "URGENT").should_explain
+        is True
+    )
     assert m.decide([_pred("DR", 0.55)], "FOLLOW_UP").should_review is True  # low confidence
 
 
@@ -175,45 +178,63 @@ def test_enabled_by_default(monkeypatch):
 
 
 # ── pipeline wiring ──
+#
+# These exercise ``src.agents.graph``, which pulls in langgraph. The triage head
+# itself has no such dependency (pure stdlib), and some CI jobs install only the
+# lighter test extras — so skip rather than fail when the graph deps are absent.
+
+graph_required = pytest.mark.skipif(
+    importlib.util.find_spec("langgraph") is None,
+    reason="langgraph not installed (graph deps are optional in this job)",
+)
 
 
 @pytest.mark.asyncio
+@graph_required
 @pytest.mark.skipif(not ARTIFACT.exists(), reason="triage artifact not built")
 async def test_triage_node_uses_the_head_without_an_llm(monkeypatch):
     monkeypatch.setenv("TRIAGE_MODEL_PATH", str(ARTIFACT))
     from src.agents.graph import triage_node
 
-    out = await triage_node({
-        "predictions": [_pred("DR", 0.88, "Diabetic Retinopathy")],
-        "referral_priority": "URGENT",
-    })
+    out = await triage_node(
+        {
+            "predictions": [_pred("DR", 0.88, "Diabetic Retinopathy")],
+            "referral_priority": "URGENT",
+        }
+    )
     assert out["triage"]["source"].startswith("triage_model")
     assert out["claude_used"] is False
     assert "triage_model" in out["steps_completed"]
 
 
 @pytest.mark.asyncio
+@graph_required
 @pytest.mark.skipif(not ARTIFACT.exists(), reason="triage artifact not built")
 async def test_triage_node_escalates_emergency(monkeypatch):
     monkeypatch.setenv("TRIAGE_MODEL_PATH", str(ARTIFACT))
     from src.agents.graph import triage_node
 
-    out = await triage_node({
-        "predictions": [_pred("CRAO", 0.42, "Central Retinal Artery Occlusion")],
-        "referral_priority": "ROUTINE",
-    })
+    out = await triage_node(
+        {
+            "predictions": [_pred("CRAO", 0.42, "Central Retinal Artery Occlusion")],
+            "referral_priority": "ROUTINE",
+        }
+    )
     assert out["triage"]["priority"] == "EMERGENCY"
 
 
 @pytest.mark.asyncio
+@graph_required
 async def test_triage_node_falls_back_to_rules_when_head_disabled(monkeypatch):
     monkeypatch.setenv("TRIAGE_MODEL_ENABLED", "false")
     monkeypatch.setattr("src.agents.llm.is_available", lambda: False)
     from src.agents.graph import triage_node
 
-    out = await triage_node({
-        "predictions": [_pred("DR", 0.88, "Diabetic Retinopathy")],
-        "referral_priority": "URGENT",
-    })
+    out = await triage_node(
+        {
+            "predictions": [_pred("DR", 0.88, "Diabetic Retinopathy")],
+            "referral_priority": "URGENT",
+        }
+    )
     assert out["triage"]["source"] == "rules"
     assert "triage_rules" in out["steps_completed"]
