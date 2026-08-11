@@ -87,7 +87,7 @@ export function MarketingFooter() {
       </div>
 
       <div className="border-t border-slate-800">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
           <div>© 2026 OptiscanAI · A MakStartup project</div>
           <div className="flex items-center gap-4">
             <Link href="/legal/privacy" className="hover:text-white">Privacy</Link>

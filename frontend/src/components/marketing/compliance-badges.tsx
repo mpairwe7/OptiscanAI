@@ -10,7 +10,7 @@ export function ComplianceBadges() {
   return (
     <section className="py-12 bg-slate-900 text-white">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="text-center text-xs uppercase tracking-[0.18em] font-semibold text-slate-500">
+        <div className="text-center text-xs uppercase tracking-[0.18em] font-semibold text-slate-400">
           Built for clinical-grade compliance
         </div>
         <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
