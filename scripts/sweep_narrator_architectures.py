@@ -50,7 +50,9 @@ def load_test_cases(sft_path: Path, cut_frac: float) -> tuple[list[Case], dict[s
     cases: list[Case] = []
     for r in rows:
         preds = [
-            Prediction(p["code"], p["name"], float(p["probability"]), p.get("confidence", "unknown"))
+            Prediction(
+                p["code"], p["name"], float(p["probability"]), p.get("confidence", "unknown")
+            )
             for p in r["predictions"]
         ]
         for p in preds:
@@ -187,7 +189,10 @@ def main() -> None:
         logger.info(
             "%s -> %s",
             variant,
-            {k: results[variant][k] for k in ("size_mb", "grounding", "latency_p95_ms", "edge_gate_pass")},
+            {
+                k: results[variant][k]
+                for k in ("size_mb", "grounding", "latency_p95_ms", "edge_gate_pass")
+            },
         )
         del reasoner
         torch.cuda.empty_cache()
@@ -202,16 +207,20 @@ def main() -> None:
 
     print("\n=== Narrator base-model architecture sweep ===")
     print(f"cases: {len(cases)}  device: {args.device}  max_new_tokens: {args.max_new_tokens}\n")
-    hdr = (f"{'variant':20s} {'size MB':>9s} {'p50 ms':>9s} {'p95 ms':>9s} "
-           f"{'F1':>6s} {'ground':>7s} {'gen%':>6s} {'gen 95% CI':>14s} {'edge':>5s} {'server':>7s}")
+    hdr = (
+        f"{'variant':20s} {'size MB':>9s} {'p50 ms':>9s} {'p95 ms':>9s} "
+        f"{'F1':>6s} {'ground':>7s} {'gen%':>6s} {'gen 95% CI':>14s} {'edge':>5s} {'server':>7s}"
+    )
     print(hdr)
     for name, r in results.items():
         lo, hi = r["generation_rate_ci95"]
-        print(f"{name:20s} {r['size_mb']:>9.1f} {r['latency_p50_ms']:>9.1f} {r['latency_p95_ms']:>9.1f} "
-              f"{r['triage_macro_f1']:>6.3f} {r['grounding']:>7.3f} {r['generation_rate']:>6.1%} "
-              f"{f'[{lo:.2f},{hi:.2f}]':>14s} "
-              f"{'PASS' if r['edge_gate_pass'] else 'FAIL':>5s} "
-              f"{'PASS' if r['server_gate_pass'] else 'FAIL':>7s}")
+        print(
+            f"{name:20s} {r['size_mb']:>9.1f} {r['latency_p50_ms']:>9.1f} {r['latency_p95_ms']:>9.1f} "
+            f"{r['triage_macro_f1']:>6.3f} {r['grounding']:>7.3f} {r['generation_rate']:>6.1%} "
+            f"{f'[{lo:.2f},{hi:.2f}]':>14s} "
+            f"{'PASS' if r['edge_gate_pass'] else 'FAIL':>5s} "
+            f"{'PASS' if r['server_gate_pass'] else 'FAIL':>7s}"
+        )
     print(f"\nReport: {args.out}")
 
 

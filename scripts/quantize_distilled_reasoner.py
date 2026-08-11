@@ -46,7 +46,9 @@ def load_test_cases(sft_path: Path, cut_frac: float) -> tuple[list[Case], dict[s
     cases: list[Case] = []
     for r in rows:
         preds = [
-            Prediction(p["code"], p["name"], float(p["probability"]), p.get("confidence", "unknown"))
+            Prediction(
+                p["code"], p["name"], float(p["probability"]), p.get("confidence", "unknown")
+            )
             for p in r["predictions"]
         ]
         for p in preds:
@@ -134,8 +136,14 @@ def main() -> None:
             **opts,
         )
         results[variant] = measure(reasoner, cases, code_to_name)
-        logger.info("%s -> %s", variant, {k: results[variant][k] for k in
-                    ("size_mb", "grounding", "latency_p95_ms", "server_gate_pass")})
+        logger.info(
+            "%s -> %s",
+            variant,
+            {
+                k: results[variant][k]
+                for k in ("size_mb", "grounding", "latency_p95_ms", "server_gate_pass")
+            },
+        )
         del reasoner
         torch.cuda.empty_cache()
 
@@ -158,17 +166,23 @@ def main() -> None:
 
     print("\n=== DistilledQwen narrator on a SERVER (edge size/latency gate removed) ===")
     print(f"cases: {len(cases)}  device: {args.device}  max_new_tokens: {args.max_new_tokens}\n")
-    hdr = (f"{'variant':14s} {'size MB':>9s} {'p50 ms':>9s} {'p95 ms':>9s} "
-           f"{'grounding':>10s} {'words':>6s} {'server':>7s} {'edge':>5s}")
+    hdr = (
+        f"{'variant':14s} {'size MB':>9s} {'p50 ms':>9s} {'p95 ms':>9s} "
+        f"{'grounding':>10s} {'words':>6s} {'server':>7s} {'edge':>5s}"
+    )
     print(hdr)
     for name, r in results.items():
-        print(f"{name:14s} {r['size_mb']:>9.1f} {r['latency_p50_ms']:>9.1f} {r['latency_p95_ms']:>9.1f} "
-              f"{r['grounding']:>10.3f} {r['avg_words']:>6.0f} "
-              f"{'PASS' if r['server_gate_pass'] else 'FAIL':>7s} "
-              f"{'PASS' if r['edge_gate_pass'] else 'FAIL':>5s}")
-    print(f"\nbest server option: {best} "
-          f"(size {results[best]['size_mb']:.0f} MB, p95 {results[best]['latency_p95_ms']:.0f} ms, "
-          f"grounding {results[best]['grounding']:.3f})")
+        print(
+            f"{name:14s} {r['size_mb']:>9.1f} {r['latency_p50_ms']:>9.1f} {r['latency_p95_ms']:>9.1f} "
+            f"{r['grounding']:>10.3f} {r['avg_words']:>6.0f} "
+            f"{'PASS' if r['server_gate_pass'] else 'FAIL':>7s} "
+            f"{'PASS' if r['edge_gate_pass'] else 'FAIL':>5s}"
+        )
+    print(
+        f"\nbest server option: {best} "
+        f"(size {results[best]['size_mb']:.0f} MB, p95 {results[best]['latency_p95_ms']:.0f} ms, "
+        f"grounding {results[best]['grounding']:.3f})"
+    )
     print(f"\nReport: {args.out}")
 
 

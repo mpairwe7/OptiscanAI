@@ -126,7 +126,9 @@ def generate_oos_cases(args, train_scan_ids: set[str]) -> list[Case]:
                 )
                 preds = [
                     Prediction(
-                        p["code"], p["name"], float(p["probability"]),
+                        p["code"],
+                        p["name"],
+                        float(p["probability"]),
                         p.get("confidence", "unknown"),
                     )
                     for p in result.get("predictions", [])
@@ -139,8 +141,12 @@ def generate_oos_cases(args, train_scan_ids: set[str]) -> list[Case]:
                     "scan_id": scan_id,
                     "referral": referral,
                     "predictions": [
-                        {"code": p.code, "name": p.name, "probability": p.probability,
-                         "confidence": p.confidence}
+                        {
+                            "code": p.code,
+                            "name": p.name,
+                            "probability": p.probability,
+                            "confidence": p.confidence,
+                        }
                         for p in preds
                     ],
                     "teacher": {
@@ -155,8 +161,14 @@ def generate_oos_cases(args, train_scan_ids: set[str]) -> list[Case]:
                 fh.flush()
                 cache[scan_id] = tr
                 if (i + 1) % 10 == 0:
-                    logger.info("[%d/%d] generated (last %s -> %s, %.1fs)",
-                                i + 1, len(need), scan_id, out.priority, time.time() - t0)
+                    logger.info(
+                        "[%d/%d] generated (last %s -> %s, %.1fs)",
+                        i + 1,
+                        len(need),
+                        scan_id,
+                        out.priority,
+                        time.time() - t0,
+                    )
         finally:
             fh.close()
     return [_case_from_trace(cache[Path(p).stem]) for p in fresh]
@@ -215,15 +227,17 @@ def out_of_sample(panel, train, oos) -> list[dict]:
     for arch, factory in panel.items():
         r = fit_reasoner(factory, train, f"feat_{arch}")
         m = triage_metrics([c.reference for c in oos], [r.reason(c) for c in oos])
-        rows.append({
-            "arch": arch,
-            "oos_accuracy": m["priority_accuracy"],
-            "oos_macro_precision": m["priority_macro_precision"],
-            "oos_macro_f1": m["priority_macro_f1"],
-            "oos_kappa": m["cohen_kappa"],
-            "emergency_recall": m["emergency_recall"],
-            "emergency_support": m["emergency_support"],
-        })
+        rows.append(
+            {
+                "arch": arch,
+                "oos_accuracy": m["priority_accuracy"],
+                "oos_macro_precision": m["priority_macro_precision"],
+                "oos_macro_f1": m["priority_macro_f1"],
+                "oos_kappa": m["cohen_kappa"],
+                "emergency_recall": m["emergency_recall"],
+                "emergency_support": m["emergency_support"],
+            }
+        )
     return rows
 
 
@@ -244,12 +258,17 @@ def repeated_cv(panel, cases, seeds, k=5) -> list[dict]:
                 yt = [int(v) for v in y[te]]
                 accs.append(sum(a == b for a, b in zip(yt, yp)) / len(yt))
                 precs.append(macro_precision(yt, yp))
-        rows.append({
-            "arch": arch, "cv_folds": n_splits, "cv_runs": len(accs),
-            "cv_acc_mean": round(float(np.mean(accs)), 4), "cv_acc_std": round(float(np.std(accs)), 4),
-            "cv_macroP_mean": round(float(np.mean(precs)), 4),
-            "cv_macroP_std": round(float(np.std(precs)), 4),
-        })
+        rows.append(
+            {
+                "arch": arch,
+                "cv_folds": n_splits,
+                "cv_runs": len(accs),
+                "cv_acc_mean": round(float(np.mean(accs)), 4),
+                "cv_acc_std": round(float(np.std(accs)), 4),
+                "cv_macroP_mean": round(float(np.mean(precs)), 4),
+                "cv_macroP_std": round(float(np.std(precs)), 4),
+            }
+        )
     return rows
 
 
@@ -264,8 +283,13 @@ def learning_curve(factory, train, oos, fracs, seed=0) -> list[dict]:
             continue
         r = fit_reasoner(factory, sub, "feat_lc")
         m = triage_metrics([c.reference for c in oos], [r.reason(c) for c in oos])
-        rows.append({"train_n": k, "oos_accuracy": m["priority_accuracy"],
-                     "oos_macro_precision": m["priority_macro_precision"]})
+        rows.append(
+            {
+                "train_n": k,
+                "oos_accuracy": m["priority_accuracy"],
+                "oos_macro_precision": m["priority_macro_precision"],
+            }
+        )
     return rows
 
 
@@ -296,9 +320,12 @@ def emergency_stress(factory, train, oos, seed=0) -> dict:
     m = triage_metrics(refs, preds)
     pc = m["per_class"]["EMERGENCY"]
     return {
-        "n_cases": len(sample), "n_emergency_injected": n_emerg,
-        "emergency_recall": pc["recall"], "emergency_precision": pc["precision"],
-        "emergency_f1": pc["f1"], "overall_accuracy": m["priority_accuracy"],
+        "n_cases": len(sample),
+        "n_emergency_injected": n_emerg,
+        "emergency_recall": pc["recall"],
+        "emergency_precision": pc["precision"],
+        "emergency_f1": pc["f1"],
+        "overall_accuracy": m["priority_accuracy"],
     }
 
 
@@ -309,15 +336,18 @@ def main() -> None:
     p.add_argument("--train-sft", default="outputs/reasoner_comparison_real/sft_data.jsonl")
     p.add_argument("--oos-traces", default="outputs/generalizability/oos_traces.jsonl")
     p.add_argument("--images-dir", default="data/rfmid_extracted")
-    p.add_argument("--skip", type=int, default=80, help="skip the first N sorted images (training set)")
+    p.add_argument(
+        "--skip", type=int, default=80, help="skip the first N sorted images (training set)"
+    )
     p.add_argument("--n", type=int, default=160, help="fresh out-of-sample images to score")
     p.add_argument("--threshold", type=float, default=0.53)
     p.add_argument("--base-url", default="http://localhost:8011/v1")
     p.add_argument("--out", default="outputs/generalizability")
     p.add_argument("--seeds", type=int, default=5)
     args = p.parse_args()
-    logging.basicConfig(level=logging.INFO,
-                        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+    )
 
     train = load_train_cases(Path(args.train_sft))
     train_ids = {c.scan_id for c in train}
@@ -335,47 +365,68 @@ def main() -> None:
     emerg = emergency_stress(panel["logreg"], train, oos)
 
     summary = {
-        "train_n": len(train), "oos_n": len(oos),
-        "train_spread": spread(train), "oos_spread": spread(oos),
-        "out_of_sample": oos_rows, "repeated_cv": cv_rows,
-        "learning_curve": lc_rows, "emergency_stress": emerg,
+        "train_n": len(train),
+        "oos_n": len(oos),
+        "train_spread": spread(train),
+        "oos_spread": spread(oos),
+        "out_of_sample": oos_rows,
+        "repeated_cv": cv_rows,
+        "learning_curve": lc_rows,
+        "emergency_stress": emerg,
     }
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "generalizability_report.json").write_text(json.dumps(summary, indent=2))
 
     # markdown
-    md = ["# Generalizability test — triage (accuracy + precision)",
-          f"- teacher: Qwen3-8B-AWQ · train (in-sample): {len(train)} · "
-          f"**out-of-sample (fresh unseen images): {len(oos)}**",
-          f"- train spread: {spread(train)} · OOS spread: {spread(oos)}",
-          "",
-          "## 1. True out-of-sample (train on 80, test on fresh unseen images)",
-          "| arch | OOS acc | OOS macro-P | OOS macro-F1 | κ | EMERG recall (n) |",
-          "|---|---:|---:|---:|---:|---:|"]
+    md = [
+        "# Generalizability test — triage (accuracy + precision)",
+        f"- teacher: Qwen3-8B-AWQ · train (in-sample): {len(train)} · "
+        f"**out-of-sample (fresh unseen images): {len(oos)}**",
+        f"- train spread: {spread(train)} · OOS spread: {spread(oos)}",
+        "",
+        "## 1. True out-of-sample (train on 80, test on fresh unseen images)",
+        "| arch | OOS acc | OOS macro-P | OOS macro-F1 | κ | EMERG recall (n) |",
+        "|---|---:|---:|---:|---:|---:|",
+    ]
     for r in oos_rows:
         es = r["emergency_support"]
-        md.append(f"| `feat_{r['arch']}` | {r['oos_accuracy']:.3f} | {r['oos_macro_precision']:.3f} | "
-                  f"{r['oos_macro_f1']:.3f} | {r['oos_kappa']:.3f} | "
-                  f"{r['emergency_recall']:.3f} ({es}) |")
-    md += ["", "## 2. Repeated stratified 5-fold CV (mean ± std over all data)",
-           f"- {cv_rows[0]['cv_runs']} fits/arch ({args.seeds} seeds × {cv_rows[0]['cv_folds']} folds)",
-           "| arch | CV acc (mean±std) | CV macro-P (mean±std) |", "|---|---:|---:|"]
+        md.append(
+            f"| `feat_{r['arch']}` | {r['oos_accuracy']:.3f} | {r['oos_macro_precision']:.3f} | "
+            f"{r['oos_macro_f1']:.3f} | {r['oos_kappa']:.3f} | "
+            f"{r['emergency_recall']:.3f} ({es}) |"
+        )
+    md += [
+        "",
+        "## 2. Repeated stratified 5-fold CV (mean ± std over all data)",
+        f"- {cv_rows[0]['cv_runs']} fits/arch ({args.seeds} seeds × {cv_rows[0]['cv_folds']} folds)",
+        "| arch | CV acc (mean±std) | CV macro-P (mean±std) |",
+        "|---|---:|---:|",
+    ]
     for r in cv_rows:
-        md.append(f"| `feat_{r['arch']}` | {r['cv_acc_mean']:.3f} ± {r['cv_acc_std']:.3f} | "
-                  f"{r['cv_macroP_mean']:.3f} ± {r['cv_macroP_std']:.3f} |")
-    md += ["", "## 3. Learning curve (logreg, tested out-of-sample)",
-           "| train n | OOS acc | OOS macro-P |", "|---:|---:|---:|"]
+        md.append(
+            f"| `feat_{r['arch']}` | {r['cv_acc_mean']:.3f} ± {r['cv_acc_std']:.3f} | "
+            f"{r['cv_macroP_mean']:.3f} ± {r['cv_macroP_std']:.3f} |"
+        )
+    md += [
+        "",
+        "## 3. Learning curve (logreg, tested out-of-sample)",
+        "| train n | OOS acc | OOS macro-P |",
+        "|---:|---:|---:|",
+    ]
     for r in lc_rows:
         md.append(f"| {r['train_n']} | {r['oos_accuracy']:.3f} | {r['oos_macro_precision']:.3f} |")
-    md += ["", "## 4. EMERGENCY stress test (injected CRAO/AION — real data had none)",
-           f"- {emerg['n_emergency_injected']}/{emerg['n_cases']} cases given an emergency code; "
-           f"ground truth = EMERGENCY (production escalation rule)",
-           f"- **emergency recall {emerg['emergency_recall']:.3f}, "
-           f"precision {emerg['emergency_precision']:.3f}, F1 {emerg['emergency_f1']:.3f}**, "
-           f"overall acc {emerg['overall_accuracy']:.3f}",
-           "- the deterministic override guarantees an emergency code is never downgraded, "
-           "even though the learned head never saw EMERGENCY in training."]
+    md += [
+        "",
+        "## 4. EMERGENCY stress test (injected CRAO/AION — real data had none)",
+        f"- {emerg['n_emergency_injected']}/{emerg['n_cases']} cases given an emergency code; "
+        f"ground truth = EMERGENCY (production escalation rule)",
+        f"- **emergency recall {emerg['emergency_recall']:.3f}, "
+        f"precision {emerg['emergency_precision']:.3f}, F1 {emerg['emergency_f1']:.3f}**, "
+        f"overall acc {emerg['overall_accuracy']:.3f}",
+        "- the deterministic override guarantees an emergency code is never downgraded, "
+        "even though the learned head never saw EMERGENCY in training.",
+    ]
     (out_dir / "generalizability_report.md").write_text("\n".join(md) + "\n")
 
     print("\n".join(md))

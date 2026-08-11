@@ -137,9 +137,7 @@ class TriageModel:
         return TriageDecision(
             priority=priority,
             should_explain=has_critical or len(findings) >= 3,
-            should_review=(
-                any(p < _LOW_CONF for p in probs) or len(findings) > 5 or has_emergency
-            ),
+            should_review=(any(p < _LOW_CONF for p in probs) or len(findings) > 5 or has_emergency),
             reasoning=_reasoning(len(findings), priority, has_critical, has_emergency),
             source=source,
         )
@@ -166,7 +164,10 @@ _load_attempted = False
 def is_enabled() -> bool:
     """``TRIAGE_MODEL_ENABLED`` (default on) gates the learned head."""
     return os.getenv("TRIAGE_MODEL_ENABLED", "true").strip().lower() not in {
-        "0", "false", "no", "off",
+        "0",
+        "false",
+        "no",
+        "off",
     }
 
 

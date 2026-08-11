@@ -157,25 +157,38 @@ def main() -> None:
             continue
         logger.info("loading %s …", name)
         reasoner = DistilledLLMReasoner(
-            model_dir, device=args.device, max_new_tokens=args.max_new_tokens,
-            dtype="bfloat16", name=name,
+            model_dir,
+            device=args.device,
+            max_new_tokens=args.max_new_tokens,
+            dtype="bfloat16",
+            name=name,
         )
         per_case, dump = [], []
         for row in rows:
             preds = [
-                Prediction(q["code"], q["name"], float(q["probability"]), q.get("confidence", "unknown"))
+                Prediction(
+                    q["code"], q["name"], float(q["probability"]), q.get("confidence", "unknown")
+                )
                 for q in row["predictions"]
             ]
             case = Case(
-                scan_id=row["scan_id"], predictions=preds, probabilities={},
+                scan_id=row["scan_id"],
+                predictions=preds,
+                probabilities={},
                 referral_priority=row.get("referral", "FOLLOW_UP"),
             )
             out = reasoner.reason(case)
             a = audit_one(out.narrative, row)
             a["generated"] = out.narrative_generated
             per_case.append(a)
-            dump.append({"scan_id": row["scan_id"], "generated": out.narrative_generated,
-                         "narrative": out.narrative, "teacher": row["teacher"].get("narrative", "")})
+            dump.append(
+                {
+                    "scan_id": row["scan_id"],
+                    "generated": out.narrative_generated,
+                    "narrative": out.narrative,
+                    "teacher": row["teacher"].get("narrative", ""),
+                }
+            )
         n = len(per_case)
         gen = [c for c in per_case if c["generated"]]  # only model-authored text is auditable
         ng = len(gen)
@@ -196,8 +209,19 @@ def main() -> None:
             "example_bad_probs": [c["bad_probs"] for c in gen if c["bad_probs"]][:3],
         }
         dumps[name] = dump
-        logger.info("%s -> %s", name, {k: results[name][k] for k in
-                    ("generation_rate", "severity_escalation_rate", "prob_infidelity_rate", "omission_rate")})
+        logger.info(
+            "%s -> %s",
+            name,
+            {
+                k: results[name][k]
+                for k in (
+                    "generation_rate",
+                    "severity_escalation_rate",
+                    "prob_infidelity_rate",
+                    "omission_rate",
+                )
+            },
+        )
         del reasoner
         torch.cuda.empty_cache()
 
@@ -206,16 +230,22 @@ def main() -> None:
     dump_path.write_text(json.dumps(dumps, indent=2))
 
     print("\n=== Claim-level faithfulness audit (bf16, held-out split) ===")
-    print(f"{'variant':14s} {'gen%':>6s} {'severity↑':>10s} {'CI95':>14s} "
-          f"{'bad prob%':>10s} {'omission%':>10s}")
+    print(
+        f"{'variant':14s} {'gen%':>6s} {'severity↑':>10s} {'CI95':>14s} "
+        f"{'bad prob%':>10s} {'omission%':>10s}"
+    )
     for name, r in results.items():
         lo, hi = r["severity_escalation_ci95"]
-        print(f"{name:14s} {r['generation_rate']:>6.1%} "
-              f"{(r['severity_escalation_rate'] or 0):>10.1%} {f'[{lo:.2f},{hi:.2f}]':>14s} "
-              f"{(r['prob_infidelity_rate'] or 0):>10.1%} {(r['omission_rate'] or 0):>10.1%}")
+        print(
+            f"{name:14s} {r['generation_rate']:>6.1%} "
+            f"{(r['severity_escalation_rate'] or 0):>10.1%} {f'[{lo:.2f},{hi:.2f}]':>14s} "
+            f"{(r['prob_infidelity_rate'] or 0):>10.1%} {(r['omission_rate'] or 0):>10.1%}"
+        )
     for name, r in results.items():
         if r["invented_terms"]:
-            print(f"\n{name} invented severity terms (teacher never used them): {r['invented_terms']}")
+            print(
+                f"\n{name} invented severity terms (teacher never used them): {r['invented_terms']}"
+            )
     print(f"\nReport: {args.out}\nNarratives: {dump_path}")
 
 

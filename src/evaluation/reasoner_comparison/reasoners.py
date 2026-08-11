@@ -356,9 +356,7 @@ class DistilledLLMReasoner(Reasoner):
         else:
             if dtype:
                 kwargs["torch_dtype"] = getattr(torch, dtype)
-            self.model = (
-                AutoModelForCausalLM.from_pretrained(model_dir, **kwargs).to(device).eval()
-            )
+            self.model = AutoModelForCausalLM.from_pretrained(model_dir, **kwargs).to(device).eval()
         self.device = device
         self.max_new_tokens = max_new_tokens
         self.model_dir = model_dir

@@ -38,8 +38,22 @@ CRITICAL_CODES: frozenset[str] = frozenset({"CRAO", "AION", "CRVO", "VH", "RS"})
 #: from the ones recorded at export time. This constant is only the default for
 #: standalone use.
 DISEASE_CODES: tuple[str, ...] = (
-    "CRAO", "AION", "CRVO", "VH", "RS", "DR", "ARMD", "BRVO",
-    "CSR", "MH", "ERM", "DN", "MYA", "ODC", "TSLN", "LS",
+    "CRAO",
+    "AION",
+    "CRVO",
+    "VH",
+    "RS",
+    "DR",
+    "ARMD",
+    "BRVO",
+    "CSR",
+    "MH",
+    "ERM",
+    "DN",
+    "MYA",
+    "ODC",
+    "TSLN",
+    "LS",
 )
 
 _LOW_CONF = 0.70

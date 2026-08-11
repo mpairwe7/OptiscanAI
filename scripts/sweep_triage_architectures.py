@@ -56,7 +56,9 @@ def load_cases(sft_path: Path) -> list[Case]:
     cases: list[Case] = []
     for r in rows:
         preds = [
-            Prediction(p["code"], p["name"], float(p["probability"]), p.get("confidence", "unknown"))
+            Prediction(
+                p["code"], p["name"], float(p["probability"]), p.get("confidence", "unknown")
+            )
             for p in r["predictions"]
         ]
         t = r["teacher"]
@@ -284,8 +286,12 @@ def main() -> None:
 
     (out_dir / "triage_sweep.json").write_text(
         json.dumps(
-            {"n_cases": len(cases), "spread": dist, "with_referral": _clean(full),
-             "no_referral": _clean(ablation)},
+            {
+                "n_cases": len(cases),
+                "spread": dist,
+                "with_referral": _clean(full),
+                "no_referral": _clean(ablation),
+            },
             indent=2,
         )
     )
@@ -317,8 +323,10 @@ def main() -> None:
     )
 
     print("\n" + md + "\n")
-    print(f"best -> {best['arch']} (held-out macroF1={best['holdout_macro_f1']:.3f}, "
-          f"macroP={best['holdout_macro_precision']:.3f}); saved to {model_dir}")
+    print(
+        f"best -> {best['arch']} (held-out macroF1={best['holdout_macro_f1']:.3f}, "
+        f"macroP={best['holdout_macro_precision']:.3f}); saved to {model_dir}"
+    )
 
 
 if __name__ == "__main__":
