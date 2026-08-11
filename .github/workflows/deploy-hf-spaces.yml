@@ -13,6 +13,15 @@ on:
       - 'pyproject.toml'
   workflow_dispatch:
 
+# A push to frontend/** and a manual dispatch both trigger this workflow, which
+# produced two concurrent runs on the same commit: both cloned the Space, one
+# pushed, the other was rejected non-fast-forward. Queue them instead of running
+# in parallel; do not cancel in-progress runs, since cancelling mid-push can
+# leave the Space with a partial tree.
+concurrency:
+  group: hf-space-deploy
+  cancel-in-progress: false
+
 env:
   HF_SPACE: landwind22/Retinal_Screening
   HF_SPACE_URL: https://huggingface.co/spaces/landwind22/Retinal_Screening
@@ -162,7 +171,18 @@ jobs:
           # account gets 403 on push, however valid it is.
           HF_USER="${HF_USER:-landwind22}"
           git remote set-url origin "https://${HF_USER}:${HF_TOKEN}@huggingface.co/spaces/${{ env.HF_SPACE }}"
-          git push origin HEAD:main
+          # The Space is a build artifact regenerated wholly from this repo on
+          # every run — it is never a source of truth — so if the remote moved
+          # (a queued run, or a manual recovery push), our freshly built tree is
+          # the state we want. Refetch and retry once before forcing, so a
+          # genuine concurrent deploy is preserved rather than silently lost.
+          git push origin HEAD:main || {
+            echo "push rejected — refetching and retrying"
+            git fetch origin main
+            git reset --soft origin/main
+            git commit -m "Deploy $(date +%Y%m%d-%H%M%S) from ${GITHUB_SHA::8} (retry)" || true
+            git push origin HEAD:main
+          }
 
       # A successful push only means git accepted the commit. The Space can still
       # land in CONFIG_ERROR (bad README front-matter) or NO_APP_FILE (missing
