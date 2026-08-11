@@ -33,12 +33,12 @@ export function MarketingFooter() {
             />
             <button
               type="submit"
-              className="px-4 py-2 rounded-lg bg-teal-500 hover:bg-teal-400 text-white text-sm font-semibold"
+              className="px-4 py-2 rounded-lg bg-teal-700 hover:bg-teal-600 text-white text-sm font-semibold"
             >
               Subscribe
             </button>
           </form>
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-2 text-xs text-slate-400">
             Product updates and clinical-AI research — once a month, never spam.
           </p>
         </div>

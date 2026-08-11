@@ -31,15 +31,15 @@ export function LogoCloud() {
         <div className="mt-10 space-y-7">
           {GROUPS.map((g) => (
             <div key={g.label}>
-              <div className="text-[10px] uppercase tracking-widest text-slate-400 font-bold text-center mb-3">
+              <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold text-center mb-3">
                 {g.label}
               </div>
-              <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 sm:gap-x-12 text-slate-500 hover:text-slate-700 transition-colors">
+              <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 sm:gap-x-12 text-slate-600 hover:text-slate-800 transition-colors">
                 {g.partners.map((p) => (
                   <PartnerLogo
                     key={p}
                     name={p}
-                    className="opacity-70 hover:opacity-100 transition-opacity"
+                    className="transition-opacity"
                   />
                 ))}
               </div>
@@ -47,7 +47,7 @@ export function LogoCloud() {
           ))}
         </div>
 
-        <p className="mt-10 text-center text-[11px] text-slate-400">
+        <p className="mt-10 text-center text-[11px] text-slate-500">
           Logos shown represent active and prospective pilot partners.
           <span className="hidden sm:inline">
             {" "}

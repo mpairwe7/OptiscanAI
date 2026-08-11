@@ -131,17 +131,17 @@ export function Hero() {
 
               <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl bg-white/80 backdrop-blur border border-slate-200/70 p-3">
                 <div className="text-center">
-                  <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Diseases</div>
+                  <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">Diseases</div>
                   <div className="mt-0.5 font-mono text-lg font-bold text-slate-900">45</div>
                 </div>
                 <div className="text-center border-x border-slate-200/70">
-                  <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Inference</div>
+                  <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">Inference</div>
                   <div className="mt-0.5 font-mono text-lg font-bold text-slate-900">
-                    85<span className="text-xs text-slate-400 ml-0.5">ms</span>
+                    85<span className="text-xs text-slate-500 ml-0.5">ms</span>
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">AUC</div>
+                  <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">AUC</div>
                   <div className="mt-0.5 font-mono text-lg font-bold text-slate-900">0.888</div>
                 </div>
               </div>
