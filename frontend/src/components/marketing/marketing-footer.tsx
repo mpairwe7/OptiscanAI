@@ -7,7 +7,8 @@ export function MarketingFooter() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 grid gap-10 md:grid-cols-12 text-sm">
         <div className="md:col-span-5">
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="OptiscanAI" width={28} height={28} className="w-7 h-7 rounded-lg" />
+            {/* Decorative: brand name follows as text; empty alt avoids a repeat. */}
+            <Image src="/logo.png" alt="" width={28} height={28} className="w-7 h-7 rounded-lg" />
             <span className="font-bold text-white tracking-tight text-base">OptiscanAI</span>
           </Link>
           <p className="mt-4 text-slate-400 leading-relaxed max-w-sm">

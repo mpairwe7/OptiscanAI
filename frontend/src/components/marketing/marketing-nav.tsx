@@ -28,7 +28,9 @@ export function MarketingNav() {
         <Link href="/" className="flex items-center gap-2 shrink-0">
           <Image
             src="/logo.png"
-            alt="OptiscanAI"
+            // Decorative: the brand name follows as text, so announcing the
+            // logo too would repeat it. Empty alt hides it from assistive tech.
+            alt=""
             width={32}
             height={32}
             className="w-8 h-8 rounded-lg"
