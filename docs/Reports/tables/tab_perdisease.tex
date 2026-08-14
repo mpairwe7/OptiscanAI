@@ -1,0 +1,47 @@
+\begin{table*}[!t]
+\centering
+\caption{Per-disease performance on the held-out official RFMiD test split ($n{=}640$ images,
+24 retained classes). AUC and AUPRC are threshold-free; the operating-point columns use the
+per-class thresholds $\tau_c$ fitted on the validation split under the deployed precision-floor
+policy. Brackets give 95\% percentile bootstrap confidence intervals over 1{,}000 image
+resamples. FNR is the false-negative rate and the false-positive rate is its complement on the
+negative side, $\mathrm{FPR} = 1 - \mathrm{Spec.}$; a dash marks a quantity that is undefined
+because the class never fires.}
+\label{tab:perdisease}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrcccrcccc}
+\toprule
+Class & $n_+$ & Prev.\ (\%) & AUC & 95\% CI & AUPRC & $\tau_c$ & Sens. & Spec. & PPV & FNR \\
+\midrule
+DR & 124 & 19.4 & 0.967 & [0.95, 0.98] & 0.873 & 0.05 & 1.000 & 0.000 & 0.194 & 0.000 \\
+ARMD & 31 & 4.8 & 0.972 & [0.95, 0.99] & 0.695 & 0.17 & 1.000 & 0.575 & 0.107 & 0.000 \\
+MH & 104 & 16.2 & 0.974 & [0.96, 0.98] & 0.875 & 0.05 & 1.000 & 0.000 & 0.163 & 0.000 \\
+DN & 46 & 7.2 & 0.792 & [0.73, 0.85] & 0.203 & 0.27 & 0.957 & 0.316 & 0.098 & 0.043 \\
+MYA & 32 & 5.0 & 0.996 & [0.99, 1.00] & 0.931 & 0.13 & 1.000 & 0.528 & 0.100 & 0.000 \\
+BRVO & 23 & 3.6 & 0.919 & [0.85, 0.97] & 0.649 & 0.29 & 0.826 & 0.793 & 0.129 & 0.174 \\
+TSLN & 53 & 8.3 & 0.940 & [0.91, 0.97] & 0.638 & 0.05 & 1.000 & 0.000 & 0.083 & 0.000 \\
+ERM & 5 & 0.8 & 0.787 & [0.59, 0.95] & 0.049 & 0.37 & 0.200 & 0.986 & 0.100 & 0.800 \\
+LS & 15 & 2.3 & 0.868 & [0.74, 0.96] & 0.189 & 0.31 & 0.800 & 0.811 & 0.092 & 0.200 \\
+MS & 7 & 1.1 & 0.903 & [0.75, 0.98] & 0.147 & 0.37 & 0.714 & 0.942 & 0.119 & 0.286 \\
+CSR & 13 & 2.0 & 0.907 & [0.81, 0.97] & 0.314 & 0.37 & 0.615 & 0.931 & 0.157 & 0.385 \\
+ODC & 91 & 14.2 & 0.783 & [0.73, 0.84] & 0.530 & 0.05 & 1.000 & 0.000 & 0.142 & 0.000 \\
+CRVO & 9 & 1.4 & 0.961 & [0.92, 1.00] & 0.578 & 0.27 & 0.778 & 0.919 & 0.121 & 0.222 \\
+AH & 5 & 0.8 & 0.687 & [0.48, 0.90] & 0.029 & 0.95 & 0.000 & 1.000 & -- & 1.000 \\
+ODP & 24 & 3.8 & 0.663 & [0.59, 0.74] & 0.054 & 0.95 & 0.000 & 1.000 & -- & 1.000 \\
+ODE & 17 & 2.7 & 0.922 & [0.82, 1.00] & 0.662 & 0.23 & 0.824 & 0.761 & 0.086 & 0.176 \\
+AION & 4 & 0.6 & 0.702 & [0.38, 0.95] & 0.093 & 0.35 & 0.250 & 0.951 & 0.031 & 0.750 \\
+PT & 4 & 0.6 & 0.930 & [0.86, 0.98] & 0.067 & 0.95 & 0.000 & 1.000 & -- & 1.000 \\
+RT & 5 & 0.8 & 0.831 & [0.71, 0.96] & 0.039 & 0.35 & 0.200 & 0.964 & 0.042 & 0.800 \\
+RS & 14 & 2.2 & 0.981 & [0.96, 1.00] & 0.619 & 0.19 & 1.000 & 0.859 & 0.137 & 0.000 \\
+CRS & 11 & 1.7 & 0.907 & [0.77, 0.98] & 0.182 & 0.57 & 0.273 & 0.976 & 0.167 & 0.727 \\
+EDN & 4 & 0.6 & 0.914 & [0.85, 0.97] & 0.050 & 0.95 & 0.000 & 1.000 & -- & 1.000 \\
+RPEC & 4 & 0.6 & 0.941 & [0.86, 0.98] & 0.081 & 0.41 & 0.750 & 0.959 & 0.103 & 0.250 \\
+MHL & 3 & 0.5 & 0.674 & [0.33, 0.95] & 0.016 & 0.95 & 0.000 & 1.000 & -- & 1.000 \\
+\midrule Macro & 648 & -- & 0.872 & [0.85, 0.90] & 0.357 & -- & 0.591 & 0.720 & 0.114 & 0.409 \\
+\bottomrule
+\end{tabular}
+
+\vspace{2pt}
+\parbox{\textwidth}{\scriptsize RFMiD label abbreviations: DR, diabetic retinopathy; ARMD, age-related macular degeneration; MH, media haze; DN, drusen; MYA, myopia; BRVO, branch retinal vein occlusion; TSLN, tessellation; ERM, epiretinal membrane; LS, laser scar; MS, macular scar; CSR, central serous retinopathy; ODC, optic disc cupping; CRVO, central retinal vein occlusion; AH, asteroid hyalosis; ODP, optic disc pallor; ODE, optic disc edema; AION, anterior ischaemic optic neuropathy; PT, parafoveal telangiectasia; RT, retinal traction; RS, retinitis; CRS, chorioretinitis; EDN, exudation; RPEC, retinal pigment epithelium changes; MHL, macular hole.}
+\end{table*}
