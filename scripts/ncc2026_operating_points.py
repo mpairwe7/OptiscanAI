@@ -140,8 +140,10 @@ def main() -> None:
         json.dumps(report, indent=2, default=float)
     )
 
-    print(f"{'policy':10s} {'sens':>6s} {'spec':>6s} {'PPV':>6s} {'FN':>5s} {'FP':>6s} "
-          f"{'alerts/img':>10s}  silent")
+    print(
+        f"{'policy':10s} {'sens':>6s} {'spec':>6s} {'PPV':>6s} {'FN':>5s} {'FP':>6s} "
+        f"{'alerts/img':>10s}  silent"
+    )
     for name in policies:
         r = report["policies"][name]
         m, t = r["macro"], r["totals"]

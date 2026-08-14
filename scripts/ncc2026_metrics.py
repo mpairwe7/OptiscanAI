@@ -219,7 +219,9 @@ def main() -> None:
     out.write_text(json.dumps(rep, indent=2))
 
     print(f"\n{npz.name}: {rep['n_images']} images, {rep['n_evaluable_classes']} evaluable classes")
-    print(f"macro AUC   {rep['macro_auc']:.3f}  CI {tuple(round(v, 3) for v in rep['macro_auc_ci'])}")
+    print(
+        f"macro AUC   {rep['macro_auc']:.3f}  CI {tuple(round(v, 3) for v in rep['macro_auc_ci'])}"
+    )
     print(
         f"macro AUPRC {rep['macro_auprc']:.3f}  "
         f"CI {tuple(round(v, 3) for v in rep['macro_auprc_ci'])}"

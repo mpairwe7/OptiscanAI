@@ -80,7 +80,9 @@ def figure_architecture() -> None:
             facecolor=colour,
         )
         ax.add_patch(box)
-        ax.text(x + w / 2, y + h / 2 - 0.6, label, ha="center", va="center", fontsize=6.3, color=INK)
+        ax.text(
+            x + w / 2, y + h / 2 - 0.6, label, ha="center", va="center", fontsize=6.3, color=INK
+        )
         if num:
             ax.text(
                 x + 1.1,

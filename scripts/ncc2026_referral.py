@@ -119,9 +119,11 @@ def main() -> None:
 
     # What the knowledge graph adds: a three-level referral priority. Scored
     # under both threshold policies, because the policy decides what it sees.
-    sens90_taus = np.load(OUT_DIR / "sens90_thresholds.npy") if (
-        OUT_DIR / "sens90_thresholds.npy"
-    ).exists() else taus
+    sens90_taus = (
+        np.load(OUT_DIR / "sens90_thresholds.npy")
+        if (OUT_DIR / "sens90_thresholds.npy").exists()
+        else taus
+    )
     report["kg_referral_priority"] = {}
     for pol, tt in (("deployed", taus), ("sens90", sens90_taus)):
         prio = kg_priority(test["probs"], tt, classes)

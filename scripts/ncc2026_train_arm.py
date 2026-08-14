@@ -154,9 +154,7 @@ def macro_ap(y: np.ndarray, p: np.ndarray) -> float:
 
 def macro_auc(y: np.ndarray, p: np.ndarray) -> float:
     vals = [
-        roc_auc_score(y[:, c], p[:, c])
-        for c in range(y.shape[1])
-        if 0 < y[:, c].sum() < len(y)
+        roc_auc_score(y[:, c], p[:, c]) for c in range(y.shape[1]) if 0 < y[:, c].sum() < len(y)
     ]
     return float(np.mean(vals)) if vals else 0.0
 

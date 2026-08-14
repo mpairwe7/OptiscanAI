@@ -28,9 +28,7 @@ OUT = REPO / "outputs/ncc2026"
 
 
 def macro(y: np.ndarray, p: np.ndarray) -> tuple[float, float]:
-    auc = [
-        roc_auc_score(y[:, c], p[:, c]) for c in range(y.shape[1]) if 0 < y[:, c].sum() < len(y)
-    ]
+    auc = [roc_auc_score(y[:, c], p[:, c]) for c in range(y.shape[1]) if 0 < y[:, c].sum() < len(y)]
     ap = [average_precision_score(y[:, c], p[:, c]) for c in range(y.shape[1]) if y[:, c].sum() > 0]
     return float(np.mean(auc)), float(np.mean(ap))
 

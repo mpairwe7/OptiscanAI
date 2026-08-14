@@ -165,9 +165,7 @@ def run(model, loader, device, tta: bool = False):
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--split", default="test", choices=list(SPLITS))
-    ap.add_argument(
-        "--variant", default="fp32", choices=["fp32", "fp32_tta", "int8", "fp32_cpu"]
-    )
+    ap.add_argument("--variant", default="fp32", choices=["fp32", "fp32_tta", "int8", "fp32_cpu"])
     ap.add_argument("--device", default="cuda:7")
     ap.add_argument("--batch-size", type=int, default=16)
     ap.add_argument("--threads", type=int, default=32)

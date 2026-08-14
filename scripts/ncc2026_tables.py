@@ -289,7 +289,9 @@ Precision & MB & AUC & AUPRC & Sens. & PPV & ms/img \\
 
 def explainability_table() -> str:
     e = json.loads((OUT / "explainability_faithfulness.json").read_text())
-    audit = json.loads((REPO / "outputs/reasoner_comparison_real/faithfulness_audit.json").read_text())
+    audit = json.loads(
+        (REPO / "outputs/reasoner_comparison_real/faithfulness_audit.json").read_text()
+    )
     m = e["methods"]
     rows = []
     for key, name in (

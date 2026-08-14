@@ -120,7 +120,11 @@ def curve(model, x: torch.Tensor, target: int, order: np.ndarray, mode: str) -> 
     steps = np.linspace(0, n, N_STEPS + 1).astype(int)
     batch = []
     for k in steps:
-        mask = torch.ones(n, device=x.device) if mode == "deletion" else torch.zeros(n, device=x.device)
+        mask = (
+            torch.ones(n, device=x.device)
+            if mode == "deletion"
+            else torch.zeros(n, device=x.device)
+        )
         sel = torch.from_numpy(order[:k].copy()).to(x.device).long()
         mask[sel] = 0.0 if mode == "deletion" else 1.0
         m = mask.reshape(1, 1, GRID, GRID).repeat_interleave(PATCH, 2).repeat_interleave(PATCH, 3)
