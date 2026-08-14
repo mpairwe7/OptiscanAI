@@ -31,11 +31,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Create venv + install CUDA PyTorch (separate layer — changes rarely)
+#
+# --extra-index-url, not --index-url: torch 2.6.0+cu124 pins
+# nvidia-cudnn-cu12==9.1.0.70 exactly, and PyTorch has since pruned that wheel
+# from their cu124 index (it now starts at 9.21). The version only exists on
+# PyPI, so replacing PyPI with --index-url makes the resolve unsatisfiable:
+#   Because there is no version of nvidia-cudnn-cu12==9.1.0.70 and
+#   torch==2.6.0+cu124 depends on it, torch==2.6.0+cu124 cannot be used.
+# unsafe-best-match is required alongside it: uv's default first-index strategy
+# would stop at PyPI's plain torch and never see the +cu124 build.
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv venv --python python3.11 /opt/venv && \
     uv pip install --python /opt/venv/bin/python \
         "torch==2.6.0+cu124" "torchvision==0.21.0+cu124" \
-        --index-url https://download.pytorch.org/whl/cu124
+        --extra-index-url https://download.pytorch.org/whl/cu124 \
+        --index-strategy unsafe-best-match
 
 # Install project deps (torch already satisfied, skips re-download)
 COPY pyproject.toml /app/pyproject.toml
