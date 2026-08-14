@@ -1,0 +1,22 @@
+\begin{table}[!t]
+\centering
+\caption{Effect of 8-bit dynamic quantisation on the reference model, on the same 640 test images
+with identical CPU threading, so accuracy, size and latency are directly comparable. The deployed
+on-device student compresses further, from 20.8\,MB to
+5.4\,MB ONNX ($-$73.8\%), agreeing
+with its FP32 export on 99.6\% of binary decisions at
+$\tau{=}0.5$ and running at 102\,ms median per image.}
+\label{tab:quant}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lrccccr}
+\toprule
+Precision & MB & AUC & AUPRC & Sens. & PPV & ms/img \\
+\midrule
+FP32 & 1224 & 0.872 & 0.357 & 0.591 & 0.114 & 434 \\
+INT8 dynamic & 310 & 0.873 & 0.346 & 0.610 & 0.106 & 418 \\
+\midrule
+Change & $-$74.7\% & +0.002 & -0.011 & +0.018 & -0.008 & $-$4\% \\
+\bottomrule
+\end{tabular}
+\end{table}

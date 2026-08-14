@@ -304,3 +304,84 @@ class TestClassFiltering:
         assert "MH" in kept
         assert "ARMD" not in kept
         assert "RARE" not in kept
+
+
+# ---------------------------------------------------------------------------
+# Probability calibration
+# ---------------------------------------------------------------------------
+
+
+def test_calibration_defaults_to_identity(model_v2, dummy_input):
+    """An uncalibrated checkpoint must behave exactly as it did before."""
+    assert not model_v2.is_calibrated
+    logits = model_v2(dummy_input)
+    assert torch.allclose(
+        model_v2.calibrated_probabilities(logits), torch.sigmoid(logits), atol=1e-6
+    )
+
+
+def test_set_calibration_applies_platt_scaling(model_v2, dummy_input):
+    scale = torch.linspace(1.0, 2.0, model_v2.num_classes)
+    shift = torch.linspace(-2.0, -1.0, model_v2.num_classes)
+    model_v2.set_calibration(scale, shift)
+
+    assert model_v2.is_calibrated
+    logits = model_v2(dummy_input)
+    expected = torch.sigmoid(logits * scale + shift)
+    assert torch.allclose(model_v2.calibrated_probabilities(logits), expected, atol=1e-6)
+
+    # calibration must lower the probabilities of an over-confident model
+    assert model_v2.calibrated_probabilities(logits).mean() < torch.sigmoid(logits).mean()
+
+
+def test_set_calibration_rejects_wrong_shape(model_v2):
+    with pytest.raises(ValueError, match="shape mismatch"):
+        model_v2.set_calibration(torch.ones(3), torch.zeros(3))
+
+
+def test_predict_uses_calibrated_probabilities(model_v2, dummy_input):
+    model_v2.eval()
+    before = model_v2.predict(dummy_input)["probabilities"]
+    model_v2.set_calibration(
+        torch.full((model_v2.num_classes,), 1.5),
+        torch.full((model_v2.num_classes,), -3.0),
+    )
+    after = model_v2.predict(dummy_input)["probabilities"]
+    assert not torch.allclose(before, after)
+    assert (after < before).all()
+
+
+def test_load_calibration_round_trips(model_v2, dummy_input):
+    """The artefact written by scripts/ncc2026_calibration.py must load intact."""
+    n = model_v2.num_classes
+    payload = {
+        "policy": "test",
+        "calibration": {
+            "scale": [1.0 + 0.1 * i for i in range(n)],
+            "shift": [-1.0 - 0.1 * i for i in range(n)],
+        },
+        "thresholds": [0.2] * n,
+    }
+    tmp = tempfile.mkdtemp()
+    try:
+        path = os.path.join(tmp, "calibration_artifact.json")
+        with open(path, "w") as fh:
+            json.dump(payload, fh)
+        model_v2.load_calibration(path)
+
+        assert np.allclose(model_v2.calib_scale.numpy(), payload["calibration"]["scale"])
+        assert np.allclose(model_v2.calib_shift.numpy(), payload["calibration"]["shift"])
+        # thresholds move with the calibration they were fitted against
+        assert np.allclose(model_v2.thresholds.numpy(), payload["thresholds"])
+    finally:
+        shutil.rmtree(tmp)
+
+
+def test_tta_path_is_calibrated(model_v2, dummy_input):
+    model_v2.eval()
+    before = model_v2.predict_with_tta(dummy_input, n_augments=3)["probabilities"]
+    model_v2.set_calibration(
+        torch.ones(model_v2.num_classes), torch.full((model_v2.num_classes,), -2.5)
+    )
+    after = model_v2.predict_with_tta(dummy_input, n_augments=3)["probabilities"]
+    assert (after < before).all()

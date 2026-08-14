@@ -1,0 +1,33 @@
+\begin{table}[!t]
+\centering
+\caption{Component ablation on the RFMiD test split. The adaptation arms share the data, the
+asymmetric loss, a 15-epoch schedule, selection on validation mAP and the same threshold
+optimisation, so differences are attributable to the component named. Post-hoc rows are applied
+to the deployed checkpoint, so they are exact rather than re-trained. The graph alters 12.7\% of images and only one class (ODE), because the partner conditions its co-occurrence rules encode are mostly among the 21 classes dropped for having too few training positives.
+\textsuperscript{$\dagger$}The deployed checkpoint additionally uses 25 epochs, staged backbone
+unfreezing and six-view test-time augmentation.}
+\label{tab:ablation}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lrrrcc}
+\toprule
+Arm or component & Params & Train. & \% & AUC & AUPRC \\
+ & (M) & (M) & train. & & \\
+\midrule
+\multicolumn{6}{l}{\emph{Backbone and adaptation (shared 15-epoch recipe)}} \\
+\quad ResNet-50 (ImageNet, full FT) & 23.6 & 23.56 & 100.0 & 0.867 & 0.336 \\
+\quad EfficientNet-B3 (ImageNet, FT) & 10.7 & 10.73 & 100.0 & 0.819 & 0.377 \\
+\quad ViT-B/16 (ImageNet, full FT) & 85.8 & 85.82 & 100.0 & 0.871 & 0.472 \\
+\quad RETFound ViT-L, head only & 305.7 & 2.44 & 0.8 & 0.877 & 0.360 \\
+\quad RETFound ViT-L + LoRA $r{=}16$ & 307.3 & 4.01 & 1.3 & 0.882 & 0.392 \\
+\multicolumn{6}{l}{\emph{Input preprocessing (RETFound + LoRA arm)}} \\
+\quad RFMiD-specific normalisation & -- & -- & -- & 0.827 & 0.285 \\
+\quad ImageNet norm.\ + CLAHE & -- & -- & -- & 0.866 & 0.341 \\
+\multicolumn{6}{l}{\emph{Post-hoc components (deployed checkpoint)}} \\
+\quad + knowledge-graph reasoning & -- & -- & -- & 0.871 & 0.357 \\
+\quad + INT8 dynamic quantisation & -- & -- & -- & 0.873 & 0.346 \\
+\midrule
+Deployed checkpoint\textsuperscript{$\dagger$} & 305.7 & 2.44 & 0.8 & 0.872 & 0.357 \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,19 @@
+\begin{table}[!t]
+\centering
+\caption{Faithfulness of the explainability layer on 60 confidently detected true
+positives. Deletion AUC is better when lower, insertion AUC when higher; $p$-values are one-sided
+Wilcoxon signed-rank tests against the random-saliency control on the identical images.
+Narrative layer ($n{=}24$ reports from the distilled narrator that always generates and never omits a detected finding): probability infidelity 0\% (95\% CI 0\%--14\%), finding omission 0\%, unsupported severity escalation 21\% (95\% CI 9\%--40\%).}
+\label{tab:explain}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lcccc}
+\toprule
+Attribution & Del.\ AUC & vs.\ rand. & Ins.\ AUC & vs.\ rand. \\
+\midrule
+Grad-CAM & 0.913 & $p=0.029$ & 0.926 & $p=0.996$ \\
+Integrated Grad. & 0.861 & $p=0.008$ & 0.943 & $p=0.590$ \\
+Random (control) & 0.946 & -- & 0.943 & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
