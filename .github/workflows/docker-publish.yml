@@ -167,6 +167,11 @@ jobs:
           # are derived from it inside crane_deploy.py so they need not be
           # stored (or committed) separately.
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Agentic-AI provider. Absent/empty -> the backend's LLM layer reports
+          # provider "none" and the agent graph runs deterministic clinical
+          # rules, so a missing secret degrades rather than breaks the deploy.
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           DEPLOY_ONLY: ${{ inputs.deploy_only }}
           REDEPLOY_SHA: ${{ inputs.redeploy_sha }}
         run: |

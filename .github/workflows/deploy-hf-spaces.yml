@@ -184,6 +184,43 @@ jobs:
             git push origin HEAD:main
           }
 
+      # Space secrets live in the Space's own settings, not in the pushed tree,
+      # so the agentic-AI key has to be set through the Hub API. Without it the
+      # backend's LLM layer reports provider "none" and the agent graph serves
+      # deterministic clinical rules — degraded, not broken — so a missing
+      # repo secret is a warning rather than a failure.
+      - name: Sync Gemini secret to the Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ env.HF_SPACE }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+        run: |
+          python3 - <<'PY'
+          import os, sys
+          from huggingface_hub import HfApi
+
+          key = (os.environ.get("GEMINI_API_KEY") or "").strip()
+          if not key:
+              print("::warning::GEMINI_API_KEY repo secret is empty — the Space will "
+                    "run the deterministic clinical-rules fallback instead of Gemini")
+              sys.exit(0)
+
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          space = os.environ["HF_SPACE"]
+          model = (os.environ.get("GEMINI_MODEL") or "").strip() or "gemini-3.7-flash"
+
+          # add_space_secret overwrites an existing value, so this also rotates
+          # the key. The value is never echoed — only the variable name.
+          api.add_space_secret(repo_id=space, key="GEMINI_API_KEY", value=key)
+          print("  set Space secret: GEMINI_API_KEY (***)")
+
+          # The model pin is not a secret; a Space *variable* keeps it visible
+          # and editable in the Space UI.
+          api.add_space_variable(repo_id=space, key="GEMINI_MODEL", value=model)
+          print(f"  set Space variable: GEMINI_MODEL={model}")
+          PY
+
       # A successful push only means git accepted the commit. The Space can still
       # land in CONFIG_ERROR (bad README front-matter) or NO_APP_FILE (missing
       # Dockerfile) and serve nothing, so the deploy is not considered done until

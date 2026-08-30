@@ -3,7 +3,7 @@
 
 The CNN and the DistilledQwen both need a *teacher signal*: for each screening
 case, the priority/flags/reasoning and a clinical narrative the teacher (the
-production LLM — Claude/Groq, or a self-hosted Qwen endpoint) would produce.
+production LLM — Gemini, or a self-hosted Qwen endpoint) would produce.
 This script writes that as JSONL, one object per line:
 
     {"scan_id","detected","priority","should_explain","should_review",

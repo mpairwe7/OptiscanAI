@@ -5,7 +5,7 @@
   always available; this is the honest "no LLM at all" baseline.
 * :class:`CNNTriageReasoner` — wraps a trained :class:`TriageCNN`. Emits the
   structured triage from the image; reuses the template for narrative text.
-* :class:`LLMReasoner` — wraps ``src.agents.llm.invoke`` (Claude/Groq, or a
+* :class:`LLMReasoner` — wraps ``src.agents.llm.invoke`` (Gemini, or a
   self-hosted Qwen endpoint if wired). Used as the teacher / upper bound in real
   mode; needs network, so the smoke path skips it.
 * :class:`DistilledLLMReasoner` — wraps a local HuggingFace causal LM (the
@@ -246,7 +246,7 @@ class LLMReasoner(Reasoner):
 
     offline = False
     generates_narrative = True
-    extra_deps = ("anthropic|groq (provider SDK)",)
+    extra_deps = ("google-genai (provider SDK)",)
 
     def __init__(self, name: str = "llm_teacher"):
         self.name = name
@@ -254,7 +254,7 @@ class LLMReasoner(Reasoner):
 
         self._llm = llm
         if not llm.is_available():
-            raise RuntimeError("no LLM provider available (set ANTHROPIC_API_KEY/GROQ_API_KEY)")
+            raise RuntimeError("no LLM provider available (set GEMINI_API_KEY)")
 
     def _reason(self, case: Case) -> ReasonerOutput:
         priority, should_explain, should_review, reasoning = _rule_triage(case)  # fallback seed

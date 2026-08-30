@@ -96,8 +96,7 @@ graph TB
 
     subgraph "LLM Layer"
         CB_LLM[Circuit Breaker]
-        CLAUDE[Claude API]
-        GROQ[Groq API]
+        GEMINI[Gemini API]
         DETERM[Deterministic<br/>Fallback]
     end
 
@@ -147,8 +146,7 @@ graph TB
     DRIFT --> EB
 
     SA --> CB_LLM
-    CB_LLM --> CLAUDE
-    CB_LLM --> GROQ
+    CB_LLM --> GEMINI
     CB_LLM --> DETERM
 
     OTEL_MW --> OTEL_C
@@ -178,7 +176,7 @@ Phase 1 (Observability + MLOps)
 
 **OpenTelemetry (`backend/app/core/telemetry.py`)**
 - Auto-instrumentation for all FastAPI HTTP requests via `FastAPIInstrumentor`
-- Custom spans: `retinalai.model.inference`, `retinalai.kg.clinical_reasoning`, `retinalai.llm.claude`, `retinalai.llm.groq`
+- Custom spans: `retinalai.model.inference`, `retinalai.kg.clinical_reasoning`, `retinalai.llm.gemini`
 - 8 metric instruments: prediction count, inference duration, model confidence, diseases detected, AL queue size, drift checks, review count, LLM call duration
 - `@traced` decorator for wrapping any sync/async function in a span
 - No-op fallbacks when OTEL SDK is not installed (zero overhead)
@@ -303,7 +301,7 @@ Phase 1 (Observability + MLOps)
 - [ ] Output parity validation (±1e-4 vs PyTorch)
 
 ### Resilience
-- [ ] Circuit breakers: Claude, Groq, Ray Serve, Kafka, MLflow
+- [ ] Circuit breakers: Gemini, Ray Serve, Kafka, MLflow
 - [ ] Graceful degradation: FULL → AGENT_DEGRADED → RULES_ONLY → MODEL_ONLY
 - [ ] Chaos engineering experiments (LitmusChaos)
 - [ ] Health-aware routing with automatic fallback

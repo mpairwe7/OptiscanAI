@@ -2,9 +2,8 @@ import { create } from "zustand";
 import type { PredictionResponse, GradCAMResponse, LIMEResponse, SHAPResponse, IGResponse, ELI5Response } from "@/lib/api";
 
 interface AppState {
-  // Sidebar (desktop collapse + mobile drawer)
-  sidebarCollapsed: boolean;
-  toggleSidebar: () => void;
+  // Sidebar mobile drawer (the desktop rail lives in lib/sidebar-mode.ts,
+  // outside React, so a pinned rail renders correctly before hydration)
   mobileMenuOpen: boolean;
   setMobileMenuOpen: (open: boolean) => void;
 
@@ -46,8 +45,6 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  sidebarCollapsed: false,
-  toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   mobileMenuOpen: false,
   setMobileMenuOpen: (open) => set({ mobileMenuOpen: open }),
 

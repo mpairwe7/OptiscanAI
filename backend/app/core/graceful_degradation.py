@@ -78,7 +78,7 @@ class ServiceHealth:
     Attributes
     ----------
     name : str
-        Service identifier (e.g. ``"claude_agent"``, ``"ray_serve"``).
+        Service identifier (e.g. ``"gemini_agent"``, ``"ray_serve"``).
     healthy : bool
         ``True`` if the most recent health check passed.
     last_check : float
@@ -107,7 +107,7 @@ class GracefulDegradationManager:
     Usage::
 
         manager = GracefulDegradationManager()
-        manager.register_service("claude_agent", check_claude_health)
+        manager.register_service("gemini_agent", check_gemini_health)
         manager.register_service("ray_serve", check_ray_health)
 
         # Periodic health sweep (call from a background task)
@@ -120,7 +120,7 @@ class GracefulDegradationManager:
     # Services whose failure triggers each degradation level.  The
     # manager infers the level from which categories of services are
     # currently unhealthy.
-    _AGENT_SERVICES = {"claude_agent", "groq_agent"}
+    _AGENT_SERVICES = {"gemini_agent"}
     _INFRA_SERVICES = {"ray_serve", "kafka", "mlflow"}
 
     def __init__(self) -> None:
@@ -154,7 +154,7 @@ class GracefulDegradationManager:
         Parameters
         ----------
         name : str
-            Unique service identifier (e.g. ``"claude_agent"``).
+            Unique service identifier (e.g. ``"gemini_agent"``).
         health_check_fn : Callable[..., Awaitable[bool]]
             Async callable that returns ``True`` when the service is
             healthy, ``False`` or raises on failure.
@@ -510,8 +510,8 @@ class HealthAwareRouter:
             from src.serving.circuit_breaker import get_circuit_breaker_registry
 
             registry = get_circuit_breaker_registry()
-            claude_cb = registry.get_or_create(
-                "claude_agent",
+            gemini_cb = registry.get_or_create(
+                "gemini_agent",
                 failure_threshold=settings.circuit_breaker.failure_threshold,
                 recovery_timeout_s=settings.circuit_breaker.recovery_timeout_s,
             )
@@ -539,7 +539,7 @@ class HealthAwareRouter:
                         "agent_available": False,
                     }
 
-            agent_result = await claude_cb.call(_agent_enhance)
+            agent_result = await gemini_cb.call(_agent_enhance)
             base_result["agent"] = agent_result
 
         except Exception as exc:
@@ -667,35 +667,21 @@ def init_graceful_degradation() -> None:
         except Exception:
             return False
 
-    async def _check_claude_agent() -> bool:
-        """Check Claude agent availability via circuit breaker state."""
+    async def _check_gemini_agent() -> bool:
+        """Check Gemini agent availability via circuit breaker state."""
         try:
             from src.serving.circuit_breaker import get_circuit_breaker_registry
 
             registry = get_circuit_breaker_registry()
-            cb = registry.get("claude_agent")
+            cb = registry.get("gemini_agent")
             if cb is None:
                 return True  # no breaker registered means not yet tested
             return cb.state.value != "open"
         except Exception:
             return False
 
-    async def _check_groq_agent() -> bool:
-        """Check Groq fallback agent availability."""
-        try:
-            from src.serving.circuit_breaker import get_circuit_breaker_registry
-
-            registry = get_circuit_breaker_registry()
-            cb = registry.get("groq_agent")
-            if cb is None:
-                return True
-            return cb.state.value != "open"
-        except Exception:
-            return False
-
     _manager.register_service("model_service", _check_model_service)
-    _manager.register_service("claude_agent", _check_claude_agent)
-    _manager.register_service("groq_agent", _check_groq_agent)
+    _manager.register_service("gemini_agent", _check_gemini_agent)
 
     _router = HealthAwareRouter(degradation_manager=_manager)
 

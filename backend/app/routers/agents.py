@@ -112,15 +112,15 @@ async def agentic_screen(
     file: UploadFile = File(...),
     threshold: Optional[float] = Query(None, ge=0.0, le=1.0),
 ):
-    """Run the full LangGraph + Claude agentic screening pipeline.
+    """Run the full LangGraph + Gemini agentic screening pipeline.
 
     This is the agentic alternative to /api/v1/predict. Instead of just
     running inference, it orchestrates a multi-step workflow:
-    classify → triage (Claude) → reason (KG) → explain (conditional) → review (conditional) → report (Claude)
+    classify → triage (Gemini) → reason (KG) → explain (conditional) → review (conditional) → report (Gemini)
 
     Returns a complete clinical screening report with:
     - Disease predictions + clinical reasoning
-    - Claude-generated clinical narrative (when API available)
+    - Gemini-generated clinical narrative (when API available)
     - Triage decisions with reasoning
     - Explainability artifacts (if triggered)
     - Human review status (if flagged)
@@ -180,7 +180,7 @@ async def graph_info():
     from src.agents import llm
 
     return {
-        "framework": "LangGraph + Multi-LLM",
+        "framework": "LangGraph + Gemini",
         "graph_nodes": ["classify", "triage", "reason", "explain", "review", "report"],
         "conditional_edges": {
             "reason → explain|review|report": "3-way branch based on triage decisions",
@@ -191,5 +191,5 @@ async def graph_info():
         "llm_available": llm.is_available(),
         "active_provider": llm.get_provider(),
         "active_model": llm.get_model(),
-        "fallback_chain": ["claude", "groq", "deterministic_rules"],
+        "fallback_chain": ["gemini", "deterministic_rules"],
     }

@@ -357,7 +357,7 @@ would not currently suffice.
 ### 3.10 Nothing is integrated, and the fallback is silent in production
 
 `grep` over `src/agents/` and `src/api/` finds **no reference** to the distilled
-narrator or to `feat_logreg`. The live path is still Claude → Groq →
+narrator or to `feat_logreg`. The live path is still Gemini →
 deterministic rules; `vllm_enabled` remains a config flag with no wiring. §0.7's
 "final server stack" describes an evaluation result, not a deployed system —
 there is no serving entry point, no config switch, and no integration test.

@@ -140,11 +140,11 @@ spec:
                 secretKeyRef:
                   name: retinalai-secrets
                   key: jwt-secret
-            - name: ANTHROPIC_API_KEY
+            - name: GEMINI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: retinalai-secrets
-                  key: anthropic-api-key
+                  key: gemini-api-key
           resources:
             requests:
               cpu: "500m"

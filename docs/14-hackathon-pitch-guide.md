@@ -151,7 +151,7 @@ open http://localhost:16686
 
 #### WHY US, WHY NOW (2:00 - 2:35) — Q4
 
-> "Under the hood: a RETFound foundation model pretrained on 1.6 million retinal images, fine-tuned with LoRA adapters. A LangGraph agentic pipeline where Claude AI reasons like a clinician — with automatic fallback to deterministic rules when there's no internet. This runs offline on a laptop with ONNX edge deployment."
+> "Under the hood: a RETFound foundation model pretrained on 1.6 million retinal images, fine-tuned with LoRA adapters. A LangGraph agentic pipeline where Gemini reasons like a clinician — with automatic fallback to deterministic rules when there's no internet. This runs offline on a laptop with ONNX edge deployment."
 
 > "This is not a notebook. It's a production system — 188 automated tests, MLflow model registry, active learning that fine-tunes when clinicians correct predictions, drift detection, immutable audit logs. Uganda just launched its National Digital Health Strategic Plan and doubled the health budget to $1.5 billion. The WHO mandated universal eye screening in 2025. The infrastructure moment is now."
 
@@ -199,7 +199,7 @@ open http://localhost:16686
 
 > "When our model detects Diabetic Retinopathy with high confidence, the knowledge graph automatically adjusts related condition probabilities — just like a specialist would reason through a differential diagnosis. This isn't a model weight that any team with GPUs can reproduce — it's structured clinical knowledge."
 
-> "On top of that: a LangGraph agentic pipeline where Claude AI acts as a clinical reasoning co-pilot. An active learning loop that automatically fine-tunes the model when clinicians correct predictions. MLflow model registry with staging, shadow deployment, and promotion gates. Ray Serve with dynamic batching and canary releases. Five explainability methods. 188 automated tests. This is production infrastructure, not a demo."
+> "On top of that: a LangGraph agentic pipeline where Gemini acts as a clinical reasoning co-pilot. An active learning loop that automatically fine-tunes the model when clinicians correct predictions. MLflow model registry with staging, shadow deployment, and promotion gates. Ray Serve with dynamic batching and canary releases. Five explainability methods. 188 automated tests. This is production infrastructure, not a demo."
 
 #### Q2: WHO — MARKET & BUSINESS MODEL (2:30 - 3:30)
 
@@ -263,7 +263,7 @@ open http://localhost:16686
 
 > "Four custom graph neural network architectures evaluated in rigorous cross-validation. A RETFound ViT-Large backbone pretrained on 1.6 million retinal images with LoRA adapters — only 2.4 million trainable parameters on a 304 million parameter foundation."
 
-> "A LangGraph agentic pipeline: six processing nodes — classify, triage, reason, explain, review, report — where Claude AI acts as a clinical reasoning co-pilot with automatic fallback to Groq, then deterministic rules. The system never fails silently — it degrades gracefully through four levels."
+> "A LangGraph agentic pipeline: six processing nodes — classify, triage, reason, explain, review, report — where Gemini acts as a clinical reasoning co-pilot with automatic fallback to deterministic rules. The system never fails silently — it degrades gracefully through four levels."
 
 **2026 Production Stack** (Q4 — the moat that isn't just the model):
 
@@ -292,10 +292,10 @@ open http://localhost:16686
 > "Yes. We have dedicated edge inference endpoints — ONNX Runtime, Core ML for Apple devices, and INT8 quantized models. The model runs locally in Docker, results sync when connectivity is available. The full system runs on CPU for resource-constrained settings."
 
 **Q: How is this different from just fine-tuning a Vision Transformer?**
-> "A fine-tuned ViT gives you probabilities. Our system gives you clinical reasoning. The Knowledge Graph encodes that Diabetic Retinopathy co-occurs with Macular Edema, that Glaucoma has severity stages, that Central RVO is an emergency. On top of that, Claude AI acts as a clinical reasoning agent with a structured six-node pipeline. A ViT doesn't know any of this."
+> "A fine-tuned ViT gives you probabilities. Our system gives you clinical reasoning. The Knowledge Graph encodes that Diabetic Retinopathy co-occurs with Macular Edema, that Glaucoma has severity stages, that Central RVO is an emergency. On top of that, Gemini acts as a clinical reasoning agent with a structured six-node pipeline. A ViT doesn't know any of this."
 
-**Q: What happens when your AI agent (Claude) is down?**
-> "The system has four degradation levels. Full mode uses the Claude agentic pipeline. If Claude is unavailable, circuit breakers detect the failure and the system falls to rule-based clinical reasoning with knowledge graph inference — still clinically valid. If even that fails, raw model predictions with referral priority are still served. The patient is never left without an answer. This is all automated — no human intervention needed."
+**Q: What happens when your AI agent (Gemini) is down?**
+> "The system has four degradation levels. Full mode uses the Gemini agentic pipeline. If Gemini is unavailable, circuit breakers detect the failure and the system falls to rule-based clinical reasoning with knowledge graph inference — still clinically valid. If even that fails, raw model predictions with referral priority are still served. The patient is never left without an answer. This is all automated — no human intervention needed."
 
 **Q: How do you monitor the model in production?**
 > "Three layers. First, OpenTelemetry distributed tracing — every prediction generates spans for inference, knowledge graph reasoning, and explainability, visible in Jaeger in real time. Second, drift detection running PSI and KS-test on every 100th prediction, with optional NannyML and Evidently for multivariate analysis. Third, an active learning loop — when drift is detected or clinicians disagree with predictions, the system automatically queues corrected samples for LoRA fine-tuning."
@@ -384,7 +384,7 @@ open http://localhost:16686
 
 | Criteria | How RetinalAI Scores | What to Emphasize |
 |---|---|---|
-| **Innovation** | 45-disease multi-label with clinical knowledge graph + agentic AI (Claude + LangGraph) | "No existing system does this — knowledge graph + agentic reasoning is our innovation" |
+| **Innovation** | 45-disease multi-label with clinical knowledge graph + agentic AI (Gemini + LangGraph) | "No existing system does this — knowledge graph + agentic reasoning is our innovation" |
 | **Technical Complexity** | RETFound ViT-L + LoRA, 4 GNN architectures, LangGraph 6-node pipeline, OpenTelemetry, MLflow, Ray Serve, 188 tests | Show the architecture briefly, mention the production stack |
 | **Impact / Usefulness** | 2.2B visually impaired, LMIC specialist shortage, WHO screening mandate | Lead with the problem. Make it personal with Grace's story |
 | **Completeness** | Full-stack: training, evaluation, backend (10 routers, 47 endpoints), frontend, observability, governance, edge deployment | "This is not a notebook — it's a production system with 188 tests" |
@@ -534,7 +534,7 @@ Use this as a mental checklist before stepping on stage. If you've answered all 
 
 ### Q4. WHY YOU / WHY NOW
 
-> **Why us**: We built the only system combining a clinical knowledge graph calibrated for Uganda's disease epidemiology (144 disease relationships), an agentic AI pipeline (Claude + LangGraph), and a production MLOps stack — OpenTelemetry, MLflow, active learning, drift detection, edge deployment, immutable audit logs. 188 tests passing. No competitor has this.
+> **Why us**: We built the only system combining a clinical knowledge graph calibrated for Uganda's disease epidemiology (144 disease relationships), an agentic AI pipeline (Gemini + LangGraph), and a production MLOps stack — OpenTelemetry, MLflow, active learning, drift detection, edge deployment, immutable audit logs. 188 tests passing. No competitor has this.
 
 > **Why now**: Uganda launched its National Digital Health Strategic Plan in 2023 and doubled the health budget to $1.5B in FY 2025/26. WHO mandated universal eye screening in 2025. EU AI Act enforcement starts 2026. The Uganda National Digital Health Conference 2025 called for AI-powered healthcare innovation. The infrastructure moment is now — and there are zero AI eye screening competitors in East Africa.
 

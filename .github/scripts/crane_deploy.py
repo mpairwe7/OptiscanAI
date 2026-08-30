@@ -10,8 +10,10 @@ secrets) so no credential is ever written to argv or committed to the repo:
   CRANE_CPU_APP_ID  CPU app id on RENU            (optional)
   CRANE_GPU_APP_ID  GPU app id                    (optional)
   CPU_TAG / GPU_TAG SHA-pinned image refs to roll out
-  DATABASE_URL      full asyncpg DSN for the managed Postgres — the only secret
-                    that carries the DB password
+  DATABASE_URL      full asyncpg DSN for the managed Postgres — carries the
+                    DB password
+  GEMINI_API_KEY    Google AI Studio key for the agentic-AI layer  (optional)
+  GEMINI_MODEL      Gemini model pin, default gemini-3.7-flash     (optional)
 
 For each app it PATCHes {"image": <tag>, "env_vars": {...}}. Crane Cloud MERGES
 env_vars on PATCH, so this adds the DB config without disturbing MODEL_PATH,
@@ -52,12 +54,12 @@ def _request(method, path, payload, token=None):
 
 
 def _error_detail(exc):
-    """Return Crane's HTTP error body, with the DB DSN/password redacted.
+    """Return Crane's HTTP error body, with every secret in it redacted.
 
     The bare status line ("HTTP 500 Internal Server Error") is useless for
     debugging — the real cause lives in the response body. We redact the DSN
-    and its password first, in case a server-side stack trace echoes the
-    request payload back to us (these must never reach CI logs).
+    its password, and the Gemini API key first, in case a server-side stack
+    trace echoes the request payload back to us (none may reach CI logs).
     """
     try:
         body = exc.read().decode("utf-8", "replace").strip()
@@ -71,6 +73,9 @@ def _error_detail(exc):
         pwd = urllib.parse.urlparse(dsn).password
         if pwd:
             body = body.replace(pwd, "***").replace(urllib.parse.unquote(pwd), "***")
+    gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if gemini_key:
+        body = body.replace(gemini_key, "***")
     return body[:1500]
 
 
@@ -90,6 +95,26 @@ def db_env_vars():
         "POSTGRES_HOST": parsed.hostname or "",
         "POSTGRES_PORT": str(parsed.port or ""),
         "POSTGRES_USER": urllib.parse.unquote(parsed.username or ""),
+    }
+
+
+def llm_env_vars():
+    """Build the agentic-AI env block from GEMINI_API_KEY (empty if unset).
+
+    Inert until the GEMINI_API_KEY repo secret exists: with no key the backend's
+    LLM layer reports provider "none" and the agent graph runs its deterministic
+    clinical rules, which is a valid (if degraded) production state.
+
+    Note Crane Cloud's PATCH /apps/{id} env_vars is *add-only* — it adds keys
+    but will not overwrite one that already exists. Changing an already-set
+    GEMINI_API_KEY has to be done in the Crane console.
+    """
+    key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if not key:
+        return {}
+    return {
+        "GEMINI_API_KEY": key,
+        "GEMINI_MODEL": os.environ.get("GEMINI_MODEL", "").strip() or "gemini-3.7-flash",
     }
 
 
@@ -124,6 +149,13 @@ def main():
         print(f"Asserting managed-DB env: {shown} + DATABASE__URL(***)")
     else:
         print("::notice::DATABASE_URL not set — deploying image only, DB env unchanged")
+
+    llm_vars = llm_env_vars()
+    if llm_vars:
+        print(f"Asserting agentic-AI env: GEMINI_MODEL={llm_vars['GEMINI_MODEL']} + GEMINI_API_KEY(***)")
+        env_vars.update(llm_vars)
+    else:
+        print("::notice::GEMINI_API_KEY not set — agents will run deterministic rules")
 
     targets = [
         ("CPU", os.environ.get("CRANE_CPU_APP_ID", ""), os.environ.get("CPU_TAG", "")),

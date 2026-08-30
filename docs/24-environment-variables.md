@@ -52,12 +52,15 @@ pydantic-settings classes in `backend/app/core/config.py`.
 | `JWT_ACCESS_TTL_SECONDS` | `900` | Access token TTL |
 | `JWT_REFRESH_TTL_SECONDS` | `2592000` | Refresh token TTL (30 d) |
 
-## Agentic AI (LLM fallback chain: Claude → Groq → deterministic)
+## Agentic AI (LLM fallback chain: Gemini → deterministic)
 
 | Variable | Notes |
 | --- | --- |
-| `ANTHROPIC_API_KEY`, `ANTHROPIC_ORG_ID` | Primary (Claude). Default `AGENT_MODEL=claude-sonnet-4-20250514` |
-| `GROQ_API_KEY`, `GROQ_MODEL`, `GROQ_MAX_TOKENS`, `GROQ_TEMPERATURE` | Fallback |
+| `GEMINI_API_KEY` | Google AI Studio key. Unset ⇒ deterministic rules only |
+| `GEMINI_MODEL` | Model pin. Default `gemini-3.7-flash` |
+| `GEMINI_TEMPERATURE` | Sampling temperature. Default `0.3` |
+| `GEMINI_RPM` | Client-side requests/minute throttle for the free tier. Default `10`; `0` disables |
+| `GEMINI_THINKING_HEADROOM`, `GEMINI_MIN_OUTPUT_TOKENS` | Reasoning-token headroom added to each caller's answer budget (`1536` / `2048`). Gemini 3.x bills thinking against `max_output_tokens` and ignores `thinking_budget=0`, so too little headroom truncates replies mid-sentence |
 | `AGENT_MONITOR_INTERVAL`, `AGENT_GOVERNANCE_INTERVAL` | Scheduling (seconds) |
 
 > Keep provider keys as secrets/env only — never log them or place them in URLs.
@@ -89,6 +92,7 @@ pydantic-settings classes in `backend/app/core/config.py`.
 | `OFFLINE_RAG__*` | `ENABLED`, `INDEX_DIR`, `SOURCE_DIR`, `BUNDLES_DIR`, `EMBEDDER_PATH`, `TOP_K`, `SIMILARITY_THRESHOLD`, `SYNC_INTERVAL_S`, `COMPRESSION`, `TARGET_BUNDLE_SIZE_MB` |
 | `QUANTIZATION__*` | `ENABLED`, `ACTIVE_FORMAT` (`gguf_q4_k_m`\|`awq_4bit`\|`onnx_int8`), `TORCH_COMPILE_*`, `VLLM_ENABLED`, `MAX_FAITHFULNESS_DROP`, `MAX_P95_LATENCY_MS`, … |
 | `VOICE_FIRST__*` | `ENABLED`, `DEFAULT_LANGUAGE` (`en-ug`), `ASR_MODEL(_PATH)`, `TTS_ENGINE`/`TTS_MODEL_PATH`, `VAD_SENSITIVITY`, `BARGE_IN_ENABLED`, `SPEECH_RATE` |
+| `SUNBIRD__*` | `ENABLED`, `API_URL`, `API_TOKEN`, `FALLBACK_API_TOKEN`, `TIMEOUT_S`, `RETRIES` — Sunbird AI cloud ASR/TTS for Ugandan languages, tried only when the local whisper/piper models return nothing. Two tokens: failover needs both, and on one account a quota `429` silently drops Ugandan narration to an English voice |
 | `MOBILE_BUNDLE__*` | `ENABLED`, `MAX_BUNDLE_SIZE_MB`, `TARGET_MODEL`, `INCLUDE_VOICE_MODELS`, `MIN_ANDROID_SDK`, `MIN_RAM_MB` |
 
 ## Phase 6 — Subscription billing (SaaS layer)

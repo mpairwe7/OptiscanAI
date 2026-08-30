@@ -4,7 +4,7 @@ All Phase 1-4 features are opt-in via nested settings with env_nested_delimiter=
 Example: TELEMETRY__ENABLED=true, MLFLOW__TRACKING_URI=http://mlflow:5000
 """
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, SecretStr, model_validator
 from pydantic_settings import BaseSettings
 
 # Placeholder JWT secret shipped in defaults; production must override it.
@@ -229,6 +229,33 @@ class VoiceFirstSettings(BaseModel):
     speech_rate: float = 1.0
     max_recording_seconds: float = 30.0
     accent_adaptation_enabled: bool = False
+
+
+class SunbirdSettings(BaseModel):
+    """Sunbird AI cloud speech/translation for Ugandan languages (Phase 5).
+
+    A cloud tier *behind* the local whisper/piper models, not a replacement:
+    local runs first and Sunbird is tried only when it is unavailable or
+    returns nothing, so a clinic with no connectivity keeps working.
+
+    Two accounts are supported. Failover only helps with both configured — a
+    single account degrades silently the moment its daily quota returns 429,
+    which is why :func:`sunbird_client.account_summary` reports the roles by
+    name rather than a bare "configured".
+
+    Env: ``SUNBIRD__ENABLED``, ``SUNBIRD__API_TOKEN``, … (``__`` nesting).
+    """
+
+    enabled: bool = False
+    api_url: str = "https://api.sunbird.ai"
+    # SecretStr so print(settings) / structured-log dumps yield '**********'.
+    api_token: SecretStr = SecretStr("")
+    fallback_api_token: SecretStr = SecretStr("")
+    timeout_s: float = 30.0
+    # Attempts per account before failing over (1 = no retry).
+    retries: int = 2
+    # Tried before the cloud for these locales; English stays fully local.
+    cloud_locales: tuple[str, ...] = ("lg", "nyn", "ach", "sw", "teo", "lgg")
 
 
 class MobileBundleSettings(BaseModel):
@@ -483,23 +510,29 @@ class Settings(BaseSettings):
     # Regulatory
     regulatory_mode: str = "research"  # research | ce_marked | fda_cleared
 
-    # Agentic AI — Claude (primary)
-    anthropic_api_key: str = ""
-    anthropic_org_id: str = ""
-    agent_model: str = "claude-sonnet-4-20250514"
-
-    # Agentic AI — Groq (fallback)
-    groq_api_key: str = ""
-    groq_model: str = "llama-3.3-70b-versatile"
-    groq_max_tokens: int = 4096
-    groq_temperature: float = 0.3
+    # Agentic AI — Google Gemini (sole hosted provider; the agent graph falls
+    # back to deterministic rules whenever the key is unset or the API errors).
+    # SecretStr so an accidental print(settings) or structured-log dump of the
+    # settings object yields '**********' rather than the key.
+    gemini_api_key: SecretStr = SecretStr("")
+    gemini_model: str = "gemini-3.7-flash"
+    gemini_temperature: float = 0.3
+    # Free-tier requests-per-minute cap. Throttled client-side in
+    # src/agents/llm.py; 0 disables throttling.
+    gemini_rpm: int = 10
+    # Gemini 3.x always reasons before answering, charges those thinking tokens
+    # against max_output_tokens, and ignores thinking_budget=0. Callers pass the
+    # size of the answer they want, so reasoning headroom is added on top — a
+    # bare 200-token budget comes back as a truncated fragment.
+    gemini_thinking_headroom: int = 1536
+    gemini_min_output_tokens: int = 2048
 
     # Agent scheduling
     agent_monitor_interval: float = 60.0
     agent_governance_interval: float = 300.0
 
-    # LLM request timeout (seconds) — caps how long a single Claude/Groq call
-    # may hang before the fallback chain (Claude → Groq → deterministic) kicks in.
+    # LLM request timeout (seconds) — caps how long a single Gemini call may
+    # hang before the fallback chain (Gemini → deterministic) kicks in.
     # Env: LLM_TIMEOUT_SECONDS
     llm_timeout_seconds: float = 30.0
 
@@ -517,6 +550,7 @@ class Settings(BaseSettings):
     edge: EdgeSettings = EdgeSettings()
     fairness: FairnessSettings = FairnessSettings()
     model_card: ModelCardSettings = ModelCardSettings()
+    sunbird: SunbirdSettings = SunbirdSettings()
     fundus_gate: FundusGateSettings = FundusGateSettings()
     offline_rag: OfflineRAGSettings = OfflineRAGSettings()
     quantization: QuantizationSettings = QuantizationSettings()
