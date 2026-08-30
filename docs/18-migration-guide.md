@@ -340,6 +340,6 @@ See [`configs/backend_2026.yaml`](../configs/backend_2026.yaml) for the complete
 | Event bus dual transport (in-process + Kafka) | Kafka adds durability without changing in-process coordination |
 | JSONL audit fallback | Ensures compliance logging continues if Kafka is down |
 | Lazy imports for heavy deps | OTEL, MLflow, Ray, Kafka add ~500ms startup each; only pay when enabled |
-| Circuit breaker per external service | Prevents cascading failures; separate thresholds for Claude vs Groq vs Ray |
+| Circuit breaker per external service | Prevents cascading failures; separate thresholds for Gemini vs Ray |
 | CRC-32 consistent hashing for canary | Lightweight, deterministic per request_id for sticky sessions |
 | LoRA for active learning fine-tuning | <5M trainable params on a 25M model; fast fine-tune, minimal catastrophic forgetting |

@@ -298,7 +298,7 @@ def build_docx():
     doc.add_paragraph(
         "The screening pipeline uses a LangGraph directed graph with seven nodes: classify, "
         "extract_history, triage, reason, explain, review, and report. The extract_history "
-        "node parses voice transcripts for structured clinical data using Claude with a "
+        "node parses voice transcripts for structured clinical data using Gemini with a "
         "regex-based fallback for offline operation. A multimodal fusion module combines "
         "image predictions (weight 0.60), clinical history (0.25), and patient demographics "
         "(0.15) to produce adjusted disease probabilities and a Ministry of Health urgency "

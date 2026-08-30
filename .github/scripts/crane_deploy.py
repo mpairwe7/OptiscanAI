@@ -10,8 +10,15 @@ secrets) so no credential is ever written to argv or committed to the repo:
   CRANE_CPU_APP_ID  CPU app id on RENU            (optional)
   CRANE_GPU_APP_ID  GPU app id                    (optional)
   CPU_TAG / GPU_TAG SHA-pinned image refs to roll out
-  DATABASE_URL      full asyncpg DSN for the managed Postgres — the only secret
-                    that carries the DB password
+  DATABASE_URL      full asyncpg DSN for the managed Postgres — carries the
+                    DB password
+  GEMINI_API_KEY    Google AI Studio key for the agentic-AI layer  (optional)
+  GEMINI_MODEL      Gemini model pin, default gemini-3.7-flash     (optional)
+  SUNBIRD__API_TOKEN           Sunbird AI cloud voice token        (optional)
+  SUNBIRD__FALLBACK_API_TOKEN  second Sunbird account for failover (optional)
+  SUNBIRD__ENABLED             "true"/"false" override             (optional)
+  SUNBIRD__USERNAME            account handle, informational only  (optional)
+  SUNBIRD__FALLBACK_USERNAME   second account handle               (optional)
 
 For each app it PATCHes {"image": <tag>, "env_vars": {...}}. Crane Cloud MERGES
 env_vars on PATCH, so this adds the DB config without disturbing MODEL_PATH,
@@ -52,12 +59,12 @@ def _request(method, path, payload, token=None):
 
 
 def _error_detail(exc):
-    """Return Crane's HTTP error body, with the DB DSN/password redacted.
+    """Return Crane's HTTP error body, with every secret in it redacted.
 
     The bare status line ("HTTP 500 Internal Server Error") is useless for
     debugging — the real cause lives in the response body. We redact the DSN
-    and its password first, in case a server-side stack trace echoes the
-    request payload back to us (these must never reach CI logs).
+    its password, and the Gemini API key first, in case a server-side stack
+    trace echoes the request payload back to us (none may reach CI logs).
     """
     try:
         body = exc.read().decode("utf-8", "replace").strip()
@@ -71,6 +78,10 @@ def _error_detail(exc):
         pwd = urllib.parse.urlparse(dsn).password
         if pwd:
             body = body.replace(pwd, "***").replace(urllib.parse.unquote(pwd), "***")
+    for var in ("GEMINI_API_KEY", "SUNBIRD__API_TOKEN", "SUNBIRD__FALLBACK_API_TOKEN"):
+        secret = os.environ.get(var, "").strip()
+        if secret:
+            body = body.replace(secret, "***")
     return body[:1500]
 
 
@@ -91,6 +102,65 @@ def db_env_vars():
         "POSTGRES_PORT": str(parsed.port or ""),
         "POSTGRES_USER": urllib.parse.unquote(parsed.username or ""),
     }
+
+
+def llm_env_vars():
+    """Build the agentic-AI env block from GEMINI_API_KEY (empty if unset).
+
+    Inert until the GEMINI_API_KEY repo secret exists: with no key the backend's
+    LLM layer reports provider "none" and the agent graph runs its deterministic
+    clinical rules, which is a valid (if degraded) production state.
+
+    Note Crane Cloud's PATCH /apps/{id} env_vars is *add-only* — it adds keys
+    but will not overwrite one that already exists. Changing an already-set
+    GEMINI_API_KEY has to be done in the Crane console.
+    """
+    key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if not key:
+        return {}
+    return {
+        "GEMINI_API_KEY": key,
+        "GEMINI_MODEL": os.environ.get("GEMINI_MODEL", "").strip() or "gemini-3.7-flash",
+    }
+
+
+def voice_env_vars():
+    """Build the Sunbird cloud-voice env block (empty when no token is set).
+
+    Inert until the SUNBIRD__API_TOKEN repo secret exists: with no token the
+    voice stack is exactly what it was before — local whisper/piper only, with
+    the cloud tier reporting itself unavailable.
+
+    SUNBIRD__ENABLED defaults to "true" whenever a token is present, because a
+    configured token that stays disabled is a dead state nobody intends; set the
+    SUNBIRD__ENABLED repo *variable* to "false" to stage the rollout instead.
+
+    Note Crane Cloud's PATCH /apps/{id} env_vars is *add-only*. That bites
+    harder here than for a key: once SUNBIRD__ENABLED lands as "false" it cannot
+    be flipped to "true" from CI, only in the Crane console. The double
+    underscore is pydantic-settings' nested delimiter — these populate
+    settings.sunbird.*, so the names must keep it.
+    """
+    token = os.environ.get("SUNBIRD__API_TOKEN", "").strip()
+    if not token:
+        return {}
+    env = {
+        "SUNBIRD__ENABLED": os.environ.get("SUNBIRD__ENABLED", "").strip() or "true",
+        "SUNBIRD__API_TOKEN": token,
+    }
+    fallback = os.environ.get("SUNBIRD__FALLBACK_API_TOKEN", "").strip()
+    if fallback:
+        env["SUNBIRD__FALLBACK_API_TOKEN"] = fallback
+
+    # Account handles are informational — Sunbird authenticates by bearer token.
+    # They exist so a log line can say *which* account served or ran out of
+    # quota, which "primary"/"fallback" alone cannot. Omitted when unset rather
+    # than sent empty, since Crane's add-only PATCH would pin the empty value.
+    for var in ("SUNBIRD__USERNAME", "SUNBIRD__FALLBACK_USERNAME"):
+        handle = os.environ.get(var, "").strip()
+        if handle:
+            env[var] = handle
+    return env
 
 
 def main():
@@ -124,6 +194,33 @@ def main():
         print(f"Asserting managed-DB env: {shown} + DATABASE__URL(***)")
     else:
         print("::notice::DATABASE_URL not set — deploying image only, DB env unchanged")
+
+    llm_vars = llm_env_vars()
+    if llm_vars:
+        print(f"Asserting agentic-AI env: GEMINI_MODEL={llm_vars['GEMINI_MODEL']} + GEMINI_API_KEY(***)")
+        env_vars.update(llm_vars)
+    else:
+        print("::notice::GEMINI_API_KEY not set — agents will run deterministic rules")
+
+    voice_vars = voice_env_vars()
+    if voice_vars:
+        accounts = "primary+fallback" if "SUNBIRD__FALLBACK_API_TOKEN" in voice_vars else "primary"
+        print(
+            f"Asserting Sunbird voice env: SUNBIRD__ENABLED={voice_vars['SUNBIRD__ENABLED']}, "
+            f"accounts={accounts} + token(***)"
+        )
+        if accounts == "primary":
+            # Failover needs two accounts. On one, a daily-quota 429 silently
+            # drops Ugandan narration to an English voice with nothing to fall
+            # back to — and is_available() stays true throughout, so it looks
+            # healthy from outside.
+            print(
+                "::warning::only one Sunbird account configured — set "
+                "SUNBIRD__FALLBACK_API_TOKEN so a quota 429 can fail over"
+            )
+        env_vars.update(voice_vars)
+    else:
+        print("::notice::SUNBIRD__API_TOKEN not set — voice stays local-only (whisper/piper)")
 
     targets = [
         ("CPU", os.environ.get("CRANE_CPU_APP_ID", ""), os.environ.get("CPU_TAG", "")),

@@ -1,7 +1,7 @@
 """
 Circuit breaker pattern for external service calls.
 
-Protects against cascading failures when calling LLMs (Claude/Groq),
+Protects against cascading failures when calling LLMs (Gemini),
 Ray Serve, Kafka, or MLflow. Three states:
     CLOSED -> calls pass through normally
     OPEN   -> calls are immediately rejected (fallback used)
@@ -59,7 +59,7 @@ class CircuitBreaker:
     Parameters
     ----------
     name : str
-        Identifier for this breaker (e.g., "claude", "groq", "ray_serve").
+        Identifier for this breaker (e.g., "gemini_agent", "ray_serve").
     failure_threshold : int
         Number of consecutive failures before opening the circuit.
     recovery_timeout_s : float
@@ -259,8 +259,8 @@ class CircuitBreakerRegistry:
     Usage::
 
         registry = CircuitBreakerRegistry()
-        claude_cb = registry.get_or_create("claude", failure_threshold=3)
-        result = await claude_cb.call(invoke_claude, prompt, fallback=invoke_groq)
+        gemini_cb = registry.get_or_create("gemini_agent", failure_threshold=3)
+        result = await gemini_cb.call(invoke_gemini, prompt, fallback=rules_triage)
     """
 
     def __init__(self):

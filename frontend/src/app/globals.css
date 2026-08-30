@@ -274,3 +274,47 @@ body.menu-open {
   body { background: white; }
   * { box-shadow: none !important; }
 }
+
+/* ── Navigation rail ──────────────────────────────────────────────────────
+   Width and label visibility are driven by CSS, not React state, so a rail a
+   returning user pinned open is already full width in the first painted frame.
+   `data-rail-mode` is stamped on <html> by a pre-paint inline script (see
+   lib/sidebar-mode.ts); React reads the same value for the toggle's own label
+   but never owns the width — that is what stops the rail animating open on
+   every page load for pinned users.
+
+   Desktop only: below lg the sidebar is a full-width drawer, where a hover
+   affordance means nothing and labels must always be readable. */
+@media (min-width: 1024px) {
+  .nav-rail {
+    width: 4rem;
+  }
+  /* focus-within, not just hover: tabbing into the rail has to expand it, or
+     keyboard users navigate a column of unlabelled icons. */
+  .nav-rail:hover,
+  .nav-rail:focus-within,
+  [data-rail-mode="always-open"] .nav-rail {
+    width: 14rem;
+  }
+
+  /* visibility (not opacity alone) keeps hidden labels out of the tab order
+     and out of the accessibility tree while the rail is collapsed. */
+  .nav-rail-label {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 150ms ease;
+  }
+  .nav-rail:hover .nav-rail-label,
+  .nav-rail:focus-within .nav-rail-label,
+  [data-rail-mode="always-open"] .nav-rail-label {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-rail,
+  .nav-rail-label {
+    transition: none;
+  }
+}

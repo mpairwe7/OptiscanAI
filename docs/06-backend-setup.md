@@ -64,7 +64,7 @@
 │  └────────────────────────────────────────────────────────────────┘ │
 │                                                                      │
 │  ┌──────────────────── External Integrations ─────────────────────┐ │
-│  │  Claude API (primary LLM) → Groq API (fallback) → rules       │ │
+│  │  Gemini API (LLM) → deterministic clinical rules              │ │
 │  │  AgentOrchestrator (LangGraph-based multi-step screening)      │ │
 │  │  Event Bus (SCAN_ANALYZED → agent reactions)                   │ │
 │  └────────────────────────────────────────────────────────────────┘ │
@@ -102,7 +102,7 @@ Client Request
 | Logging | Structured JSON | Machine-parseable logs for aggregation (ELK, CloudWatch) |
 | Compression | GZIP | Automatic response compression for base64 payloads |
 | Explainability | GradCAM, LIME, SHAP, Captum, ELI5 | 5 XAI methods with lazy initialization |
-| Agentic AI | Claude API + Groq (fallback) | LLM-powered clinical triage and reporting |
+| Agentic AI | Google Gemini API | LLM-powered clinical triage and reporting |
 | Graph Workflow | LangGraph | Multi-step agentic screening orchestration |
 
 ---
@@ -740,7 +740,7 @@ List all tools available across all agents.
 
 Orchestrates a 6-node LangGraph workflow:
 ```
-classify → triage (Claude) → reason (KG) → explain (conditional) → review (conditional) → report (Claude)
+classify → triage (Gemini) → reason (KG) → explain (conditional) → review (conditional) → report (Gemini)
 ```
 
 ```bash
@@ -757,7 +757,7 @@ curl -X POST http://localhost:8080/api/v1/agents/screen \
   "report": {
     "predictions": [...],
     "triage": {"decision": "refer", "reasoning": "..."},
-    "clinical_narrative": "Claude-generated clinical summary...",
+    "clinical_narrative": "Gemini-generated clinical summary...",
     "explainability": {...},
     "review_status": "pending",
     "referral_priority": "URGENT"
@@ -765,7 +765,7 @@ curl -X POST http://localhost:8080/api/v1/agents/screen \
 }
 ```
 
-**LLM Fallback Chain:** Claude → Groq → deterministic rules (never fails).
+**LLM Fallback Chain:** Gemini → deterministic rules (never fails).
 
 #### `GET /api/v1/agents/graph/info`
 Describe the LangGraph workflow topology.
@@ -780,9 +780,9 @@ Describe the LangGraph workflow topology.
   "llm_nodes": ["triage", "report"],
   "deterministic_nodes": ["classify", "reason", "explain", "review"],
   "llm_available": true,
-  "active_provider": "claude",
-  "active_model": "claude-sonnet-4-20250514",
-  "fallback_chain": ["claude", "groq", "deterministic_rules"]
+  "active_provider": "gemini",
+  "active_model": "gemini-3.7-flash",
+  "fallback_chain": ["gemini", "deterministic_rules"]
 }
 ```
 
@@ -957,7 +957,7 @@ When `AUTH_ENABLED=true`:
 
 ### Secrets Management
 - JWT secret via environment variable (`JWT_SECRET`)
-- API keys via environment variables (`ANTHROPIC_API_KEY`, `GROQ_API_KEY`)
+- API keys via environment variables (`GEMINI_API_KEY`)
 - Never hardcoded — defaults are development-only placeholders
 
 ---
@@ -1042,13 +1042,12 @@ All settings are managed via environment variables or `.env` file, loaded by Pyd
 
 | Variable | Default | Description |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | `""` | Claude API key (primary LLM) |
-| `ANTHROPIC_ORG_ID` | `""` | Anthropic organization ID |
-| `AGENT_MODEL` | `claude-sonnet-4-20250514` | Claude model for agentic tasks |
-| `GROQ_API_KEY` | `""` | Groq API key (fallback LLM) |
-| `GROQ_MODEL` | `llama-3.3-70b-versatile` | Groq model for fallback |
-| `GROQ_MAX_TOKENS` | `4096` | Groq max output tokens |
-| `GROQ_TEMPERATURE` | `0.3` | Groq sampling temperature |
+| `GEMINI_API_KEY` | `""` | Google Gemini API key (sole hosted LLM) |
+| `GEMINI_MODEL` | `gemini-3.7-flash` | Gemini model pin for agentic tasks |
+| `GEMINI_TEMPERATURE` | `0.3` | Gemini sampling temperature |
+| `GEMINI_RPM` | `10` | Client-side requests/minute throttle (`0` disables) |
+| `GEMINI_THINKING_HEADROOM` | `1536` | Reasoning tokens added to each answer budget |
+| `GEMINI_MIN_OUTPUT_TOKENS` | `2048` | Floor for `max_output_tokens` |
 | `AGENT_MONITOR_INTERVAL` | `60.0` | Monitor agent cycle (seconds) |
 | `AGENT_GOVERNANCE_INTERVAL` | `300.0` | Governance agent cycle (seconds) |
 
@@ -1302,7 +1301,7 @@ CUDA_VISIBLE_DEVICES=2 PYTHONPATH=. uv run uvicorn backend.app.main:app \
 | `ENVIRONMENT` | Set to `production` |
 | `DEBUG` | Set to `false` |
 | `CORS_ORIGINS` | Restrict to actual frontend domains |
-| `ANTHROPIC_API_KEY` | Set for agentic screening |
+| `GEMINI_API_KEY` | Set for agentic screening |
 | `LOG_FORMAT` | Keep `json` for log aggregation |
 | `RATE_LIMIT_PER_MINUTE` | Tune based on expected traffic |
 | SSL/TLS | Terminate at reverse proxy (nginx, Caddy, ALB) |
@@ -1330,7 +1329,7 @@ CUDA_VISIBLE_DEVICES=2 PYTHONPATH=. uv run uvicorn backend.app.main:app \
 
 8. **Auth toggle** — Authentication is disabled by default for development, avoiding friction during local development while enforcing security in production.
 
-9. **LLM fallback chain** — Agentic screening falls back from Claude → Groq → deterministic rules, ensuring the system always produces results regardless of API availability.
+9. **LLM fallback chain** — Agentic screening falls back from Gemini → deterministic rules, ensuring the system always produces results regardless of API availability.
 
 10. **Event-driven agents** — Predictions emit `SCAN_ANALYZED` events to the agent bus, enabling autonomous monitoring, governance, and alerting without coupling to the prediction pipeline.
 

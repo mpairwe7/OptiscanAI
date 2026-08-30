@@ -98,7 +98,7 @@ The screening pipeline uses a LangGraph directed graph with seven nodes:
 
 classify -> extract_history -> triage -> reason -> explain -> review -> report
 
-The extract_history node parses voice transcripts for structured clinical data (symptoms, conditions, medications, risk factors) using Claude for structured extraction with a regex-based fallback for offline operation. The multimodal fusion module combines image predictions (weight 0.60) with clinical history (0.25) and patient demographics (0.15) to produce adjusted disease probabilities and a Ministry of Health urgency score on a 1-5 scale.
+The extract_history node parses voice transcripts for structured clinical data (symptoms, conditions, medications, risk factors) using Gemini for structured extraction with a regex-based fallback for offline operation. The multimodal fusion module combines image predictions (weight 0.60) with clinical history (0.25) and patient demographics (0.15) to produce adjusted disease probabilities and a Ministry of Health urgency score on a 1-5 scale.
 
 ### G. Voice-First Interface
 

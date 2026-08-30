@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { ServiceWorkerRegistrar } from "@/components/sw-registrar";
+import { SIDEBAR_INIT_SCRIPT } from "@/lib/sidebar-mode";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -121,6 +122,17 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        {/*
+          Stamps data-rail-mode on <html> before first paint, so a nav rail the
+          viewer pinned open is already full width in the first frame instead of
+          animating open after hydration. Inline and synchronous on purpose —
+          deferring it is exactly what produces the flash. The string is a
+          constant we author (no user input), so dangerouslySetInnerHTML carries
+          no injection surface here.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: SIDEBAR_INIT_SCRIPT }} />
+      </head>
       <body className="h-full">
         <a href="#main-content" className="skip-to-main">
           Skip to main content

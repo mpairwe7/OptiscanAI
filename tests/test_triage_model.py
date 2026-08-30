@@ -203,7 +203,7 @@ async def test_triage_node_uses_the_head_without_an_llm(monkeypatch):
         }
     )
     assert out["triage"]["source"].startswith("triage_model")
-    assert out["claude_used"] is False
+    assert out["llm_used"] is False
     assert "triage_model" in out["steps_completed"]
 
 

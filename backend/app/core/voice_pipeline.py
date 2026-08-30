@@ -47,6 +47,16 @@ class VoiceEvent:
         return d
 
 
+def normalize_locale(language: str) -> str:
+    """Session language -> Sunbird locale.
+
+    The session's ``language`` is a UI tag ("en-ug"), while the cloud tier keys
+    off a bare locale ("en"). Passing "en-ug" straight through would miss every
+    lookup and silently disable the cloud for Ugandan English.
+    """
+    return (language or "en").split("-")[0].lower()
+
+
 class VoicePipeline:
     """Orchestrates VAD -> ASR -> processing -> TTS for a single session.
 
@@ -99,7 +109,7 @@ class VoicePipeline:
             elif ve.event_type == "speech_end":
                 events.append(VoiceEvent("vad_speech_end"))
                 # Trigger final transcription
-                result = self.asr.transcribe_final()
+                result = self.asr.transcribe_final(locale=normalize_locale(self.session.language))
                 if result.text.strip():
                     events.append(
                         VoiceEvent(
@@ -130,7 +140,7 @@ class VoicePipeline:
         """Handle end of audio input — run final transcription."""
         events: list[VoiceEvent] = []
 
-        result = self.asr.transcribe_final()
+        result = self.asr.transcribe_final(locale=normalize_locale(self.session.language))
         if result.text.strip():
             events.append(
                 VoiceEvent(
@@ -154,6 +164,7 @@ class VoicePipeline:
         tts_config = TTSConfig(
             language=self.session.language,
             speech_rate=self.session.speech_rate,
+            locale=normalize_locale(self.session.language),
         )
 
         # Stream TTS audio
