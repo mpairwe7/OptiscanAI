@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { fetchHealth } from "@/lib/api";
 import { useAppStore } from "@/stores/app-store";
+import { useSidebarMode } from "@/hooks/use-sidebar-mode";
 import { useAuthStore } from "@/stores/auth-store";
 import { UsageChip } from "@/components/billing/usage-chip";
 
@@ -109,7 +110,9 @@ export function MobileBottomNav() {
 
 export function NavSidebar() {
   const pathname = usePathname();
-  const { sidebarCollapsed, toggleSidebar, mobileMenuOpen, setMobileMenuOpen } = useAppStore();
+  const { mobileMenuOpen, setMobileMenuOpen } = useAppStore();
+  const [railMode, setRailMode] = useSidebarMode();
+  const pinned = railMode === "always-open";
   const isSuperuser = useAuthStore((s) => s.user?.is_superuser ?? false);
   const health = useQuery({ queryKey: ["health"], queryFn: fetchHealth, refetchInterval: 10_000 });
 
@@ -142,14 +145,14 @@ export function NavSidebar() {
           bg-slate-900 h-full flex flex-col shrink-0 transition-all duration-200
           fixed lg:relative z-50
           ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-          w-64 ${sidebarCollapsed ? "lg:w-16" : "lg:w-56"}
+          w-64 nav-rail
         `}
         role="navigation"
         aria-label="Main navigation"
       >
         <div className="px-4 py-5 flex items-center gap-3 border-b border-slate-700/50">
           <Image src="/logo.png" alt="OptiscanAI" width={32} height={32} className="w-8 h-8 rounded-lg shrink-0" priority />
-          <div className={`${sidebarCollapsed ? "hidden lg:hidden" : ""} animate-fade-in`}>
+          <div className="nav-rail-label">
             <div className="text-white font-bold text-sm tracking-tight">OptiscanAI</div>
             <div className="text-slate-400 text-[10px] font-medium">Clinical Platform v3.0</div>
           </div>
@@ -166,24 +169,24 @@ export function NavSidebar() {
 
         <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
           {NAV_ITEMS.map((item) => (
-            <SidebarLink key={item.href} item={item} active={isActive(pathname, item.href)} collapsed={sidebarCollapsed} onNav={() => setMobileMenuOpen(false)} />
+            <SidebarLink key={item.href} item={item} active={isActive(pathname, item.href)} onNav={() => setMobileMenuOpen(false)} />
           ))}
 
-          <div className={`px-3 pt-4 pb-1 text-[10px] uppercase tracking-wider text-slate-500 font-bold ${sidebarCollapsed ? "hidden lg:hidden" : ""}`}>
+          <div className="nav-rail-label px-3 pt-4 pb-1 text-[10px] uppercase tracking-wider text-slate-500 font-bold">
             Account
           </div>
 
           {ACCOUNT_ITEMS.map((item) => (
-            <SidebarLink key={item.href} item={item} active={isActive(pathname, item.href)} collapsed={sidebarCollapsed} onNav={() => setMobileMenuOpen(false)} />
+            <SidebarLink key={item.href} item={item} active={isActive(pathname, item.href)} onNav={() => setMobileMenuOpen(false)} />
           ))}
 
           {isSuperuser && (
             <>
-              <div className={`px-3 pt-4 pb-1 text-[10px] uppercase tracking-wider text-slate-500 font-bold ${sidebarCollapsed ? "hidden lg:hidden" : ""}`}>
+              <div className="nav-rail-label px-3 pt-4 pb-1 text-[10px] uppercase tracking-wider text-slate-500 font-bold">
                 Admin
               </div>
               {ADMIN_ITEMS.map((item) => (
-                <SidebarLink key={item.href} item={item} active={isActive(pathname, item.href)} collapsed={sidebarCollapsed} onNav={() => setMobileMenuOpen(false)} />
+                <SidebarLink key={item.href} item={item} active={isActive(pathname, item.href)} onNav={() => setMobileMenuOpen(false)} />
               ))}
             </>
           )}
@@ -206,7 +209,7 @@ export function NavSidebar() {
                       : "bg-slate-500"
               }`}
             />
-            <span className={`text-xs text-slate-300 ${sidebarCollapsed ? "hidden lg:hidden" : ""} animate-fade-in`}>
+            <span className="nav-rail-label text-xs text-slate-300">
               {health.isLoading
                 ? "Connecting..."
                 : health.isError
@@ -217,38 +220,44 @@ export function NavSidebar() {
             </span>
           </div>
           {health.data && (
-            <div className={`text-[10px] text-slate-400 mt-1 ${sidebarCollapsed ? "hidden lg:hidden" : ""} animate-fade-in`}>
+            <div className="nav-rail-label text-[10px] text-slate-400 mt-1">
               {health.data.device} | {health.data.diseases_count} diseases
             </div>
           )}
         </div>
 
         <button
-          onClick={toggleSidebar}
-          className="hidden lg:block px-3 py-3 border-t border-slate-700/50 text-slate-500 hover:text-slate-300 transition-colors"
-          aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          onClick={() => setRailMode(pinned ? "hover" : "always-open")}
+          className="hidden lg:flex items-center gap-3 px-4 py-3 border-t border-slate-700/50 text-slate-500 hover:text-slate-300 transition-colors"
+          aria-label={pinned ? "Unpin navigation (expand on hover)" : "Keep navigation open"}
+          aria-pressed={pinned}
+          title={pinned ? "Unpin navigation" : "Keep navigation open"}
         >
           <svg
-            className={`w-4 h-4 mx-auto transition-transform ${sidebarCollapsed ? "rotate-180" : ""}`}
+            className={`w-4 h-4 shrink-0 transition-transform ${pinned ? "" : "rotate-180"}`}
             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
           </svg>
+          <span className="nav-rail-label text-xs">{pinned ? "Unpin" : "Keep open"}</span>
         </button>
       </aside>
     </>
   );
 }
 
+/**
+ * One nav row. Always carries a `title`: whether its label is visible is now a
+ * pure CSS state (see .nav-rail in globals.css) that this component cannot
+ * read, and a tooltip is harmless on the occasions the label is showing.
+ */
 function SidebarLink({
   item,
   active,
-  collapsed,
   onNav,
 }: {
   item: NavItem;
   active: boolean;
-  collapsed: boolean;
   onNav: () => void;
 }) {
   return (
@@ -258,14 +267,14 @@ function SidebarLink({
       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
         active ? "bg-teal-500/15 text-teal-400" : "text-slate-300 hover:bg-slate-800 hover:text-white"
       }`}
-      title={collapsed ? item.label : undefined}
+      title={item.label}
       aria-label={item.label}
       aria-current={active ? "page" : undefined}
     >
       <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
       </svg>
-      <span className={`${collapsed ? "hidden lg:hidden" : ""} animate-fade-in`}>{item.label}</span>
+      <span className="nav-rail-label">{item.label}</span>
     </Link>
   );
 }

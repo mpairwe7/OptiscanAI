@@ -121,7 +121,7 @@ const SECTIONS: LegalSection[] = [
           <li><strong>MTN MoMo, Airtel Money, Flutterwave</strong> — mobile-money billing</li>
           <li><strong>Africa&apos;s Talking</strong> — SMS referral delivery (Health System tier)</li>
           <li><strong>Crane Cloud</strong> — primary cloud hosting (Uganda)</li>
-          <li><strong>Anthropic, Groq</strong> — agentic-AI reasoning (Practice tier and above, opt-in)</li>
+          <li><strong>Google (Gemini API)</strong> — agentic-AI reasoning (Practice tier and above, opt-in)</li>
         </ul>
         <p>
           We will give 30 days&apos; notice on this page before adding any new sub-processor that

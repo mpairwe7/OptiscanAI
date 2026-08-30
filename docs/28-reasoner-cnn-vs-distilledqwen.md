@@ -37,7 +37,7 @@
 ## TL;DR
 
 The screening pipeline delegates two jobs to an external LLM (the aspirational
-self-hosted `Qwen/Qwen3-8B-AWQ`, today stood in for by Claude → Groq →
+self-hosted `Qwen/Qwen3-8B-AWQ`, today stood in for by Gemini →
 deterministic rules): **(1) structured triage** and **(2) a free-text clinical
 narrative**. "Replace Qwen with a CNN" and "distill Qwen" are *not* the same swap
 because a CNN can do (1) but **cannot** do (2). This doc defines a head-to-head
@@ -393,7 +393,7 @@ Two findings that shape everything:
 
 1. **The vLLM `Qwen3-8B-AWQ` endpoint is not wired into any live Python path.**
    It exists only in runbooks + a config flag `quantization.vllm_enabled`
-   (default `False`). The live LLM is Claude → Groq → deterministic rules, and
+   (default `False`). The live LLM is Gemini → deterministic rules, and
    the `reason_node` is *already* deterministic (knowledge-graph). So "replacing
    Qwen" means **replacing the external-LLM reasoner *role*** with a
    self-contained component — not deleting a wired dependency. The production
@@ -412,7 +412,7 @@ Two findings that shape everything:
 | `rule_baseline` | Existing deterministic rules + template (`graph.py`) | ✅ | template | ✅ | none |
 | `cnn_triage` | **The "CNN"**: MobileNetV3-Small → triage heads (image → decision) | ✅ | template | ✅ | none (timm already in repo) |
 | `distilled_qwen` | **The "DistilledQwen"**: a small local causal LLM (e.g. Qwen2.5-0.5B/1.5B-Instruct) fine-tuned/distilled on teacher traces | ✅ | ✅ generative | ✅ | `transformers`, `accelerate` |
-| `llm_teacher` | Production LLM (Claude/Groq, or a self-hosted Qwen) — the **oracle / upper bound** and the source of training labels | ✅ | ✅ generative | ❌ | provider SDK |
+| `llm_teacher` | Production LLM (Gemini, or a self-hosted Qwen) — the **oracle / upper bound** and the source of training labels | ✅ | ✅ generative | ❌ | provider SDK |
 
 MobileNetV3-Small is deliberate: it shares the operator set of the existing
 fundus gate / mobile student, so the ONNX/INT8 export path is already solved

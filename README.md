@@ -481,7 +481,7 @@ See [`configs/backend_2026.yaml`](configs/backend_2026.yaml) for the complete co
 **Security**: mTLS, JWT, SBOM (Syft + Grype), rate limiting, security headers
 **Audit**: Kafka + Apache Iceberg (immutable) with JSONL fallback, SHA-256 hash chain
 **Governance**: Model cards, fairness dashboard, Uganda bias audit, EU AI Act, ISO 14971
-**Agents**: LangGraph 7-node pipeline (with history extraction), Claude + Groq + deterministic
+**Agents**: LangGraph 7-node pipeline (with history extraction), Gemini + deterministic
 **Federated**: Flower LoRA-only exchange, Opacus DP-SGD, secure aggregation
 **Resilience**: Circuit breakers, graceful degradation (4 levels), LitmusChaos
 **Infrastructure**: Docker Compose (4 configs), Kubernetes (HPA + PDB + chaos), DVC

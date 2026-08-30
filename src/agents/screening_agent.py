@@ -1,10 +1,10 @@
-"""ScreeningAgent: LangGraph + Claude powered clinical screening orchestrator.
+"""ScreeningAgent: LangGraph + Gemini powered clinical screening orchestrator.
 
 Wraps the LangGraph screening pipeline (graph.py) as an agent with:
 - Event bus integration (reacts to SCAN_RECEIVED, emits SCAN_ANALYZED)
 - Lifecycle management (start/stop)
 - State tracking for the dashboard
-- Fallback to deterministic mode when Claude API is unavailable
+- Fallback to deterministic mode when the Gemini API is unavailable
 
 The actual workflow is in graph.py — this agent manages when and how it runs.
 """

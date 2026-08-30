@@ -1,51 +1,119 @@
-"""Multi-provider LLM layer for RetinalAI agents.
+"""Google Gemini LLM layer for RetinalAI agents.
 
-Fallback chain: Claude → Groq → Deterministic rules.
+Fallback chain: Gemini → Deterministic rules.
 
-Claude is preferred for medical reasoning (best tool-use, structured output).
-Groq provides fast inference with Llama 3.3 70B when Claude credits are exhausted.
-Deterministic rules guarantee the system always works without any LLM.
+Gemini (Google AI Studio) is the sole hosted provider for clinical reasoning.
+Deterministic rules guarantee the system always works without any LLM, and are
+what runs whenever ``GEMINI_API_KEY`` is unset or the API errors out.
+
+Configuration is read through :mod:`backend.app.core.config` settings rather
+than ``os.environ``. pydantic-settings loads ``.env`` into the ``Settings``
+object but does *not* export it into the process environment, so the previous
+``os.environ`` reads silently missed every key that was set only in ``.env`` —
+the agent graph fell through to deterministic rules even when a key was
+configured.
 """
 
+import asyncio
 import logging
-import os
+import time
+from collections import deque
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # ── Provider state (lazy-initialized) ──
 
-_claude_client = None
-_groq_client = None
-_claude_ok: bool | None = None
-_groq_ok: bool | None = None
-_active_provider: str = "none"  # claude | groq | none
+_gemini_client = None
+_gemini_ok: bool | None = None
+_active_provider: str = "none"  # gemini | none
+_limiter: "_RateLimiter | None" = None
 
 
-def _get_env(key: str, default: str = "") -> str:
-    """Read env lazily — .env loaded by pydantic-settings after module import."""
-    return os.environ.get(key, default)
+def _cfg():
+    """Fetch settings lazily.
+
+    Imported inside the call rather than at module scope: this module is
+    imported during package import, and the settings object reads ``.env`` at
+    its own construction time.
+    """
+    from backend.app.core.config import settings
+
+    return settings
 
 
-def _llm_timeout() -> float:
-    """Per-request timeout (seconds) for LLM calls. Env: LLM_TIMEOUT_SECONDS.
+def _api_key() -> str:
+    """Return the Gemini API key, unwrapped from ``SecretStr``.
+
+    Kept in one place so the raw value never spreads through the module; it is
+    passed straight to the SDK client and never logged.
+    """
+    raw = _cfg().gemini_api_key
+    return (raw.get_secret_value() if hasattr(raw, "get_secret_value") else str(raw)).strip()
+
+
+def _llm_timeout_ms() -> int:
+    """Per-request timeout in milliseconds (google-genai takes ms, not seconds).
 
     Without a timeout a hung provider would block the agent indefinitely; on
-    timeout the SDK raises and the Claude → Groq → deterministic fallback chain
-    degrades cleanly.
+    timeout the SDK raises and the Gemini → deterministic fallback kicks in.
     """
-    try:
-        return float(_get_env("LLM_TIMEOUT_SECONDS", "30"))
-    except ValueError:
-        return 30.0
+    return int(_cfg().llm_timeout_seconds * 1000)
+
+
+# ── Rate limiting ──
+
+
+class _RateLimiter:
+    """Async sliding-window throttle for the provider's requests-per-minute cap.
+
+    The Gemini free tier rejects anything above ``GEMINI_RPM`` requests per
+    rolling minute with a 429. A screening run issues two LLM calls (triage and
+    report), so even a modest burst of concurrent scans trips the cap without
+    this. Waiters hold the lock while sleeping so the window is enforced
+    strictly in arrival order rather than thundering-herd retried.
+    """
+
+    def __init__(self, rpm: int) -> None:
+        self._rpm = rpm
+        self._calls: deque[float] = deque()
+        self._lock = asyncio.Lock()
+
+    async def acquire(self) -> None:
+        if self._rpm <= 0:  # 0 or negative disables throttling
+            return
+        async with self._lock:
+            while True:
+                now = time.monotonic()
+                while self._calls and now - self._calls[0] >= 60.0:
+                    self._calls.popleft()
+                if len(self._calls) < self._rpm:
+                    self._calls.append(now)
+                    return
+                wait = 60.0 - (now - self._calls[0])
+                logger.debug("Gemini RPM cap reached — waiting %.1fs", wait)
+                await asyncio.sleep(wait)
+
+
+def _output_budget(max_tokens: int) -> int:
+    """Total ``max_output_tokens`` to request, including thinking tokens.
+
+    Gemini 3.x always reasons before answering and charges those thinking
+    tokens against ``max_output_tokens``; ``thinking_budget=0`` is ignored by
+    gemini-3.7-flash. Callers pass the size of the *answer* they want (e.g. 200
+    for a triage JSON), so reasoning headroom has to be added on top. Without
+    it the model spends the entire budget thinking and returns a truncated
+    fragment — measured: a 200-token budget yielded 192 thinking tokens and the
+    partial string ``'-level pathologies detected'``.
+    """
+    s = _cfg()
+    return max(max_tokens + s.gemini_thinking_headroom, s.gemini_min_output_tokens)
 
 
 def get_model() -> str:
     """Return the active model name."""
-    if _active_provider == "claude":
-        return _get_env("AGENT_MODEL", "claude-sonnet-4-20250514")
-    if _active_provider == "groq":
-        return _get_env("GROQ_MODEL", "llama-3.3-70b-versatile")
+    if _active_provider == "gemini":
+        return _cfg().gemini_model
     return "deterministic_fallback"
 
 
@@ -56,55 +124,53 @@ def get_provider() -> str:
 
 
 def _init_providers():
-    """Lazy-initialize LLM clients. Try Claude first, then Groq."""
-    global _claude_client, _groq_client, _claude_ok, _groq_ok, _active_provider
+    """Lazy-initialize the Gemini client."""
+    global _gemini_client, _gemini_ok, _active_provider, _limiter
 
-    if _claude_ok is not None or _groq_ok is not None:
+    if _gemini_ok is not None:
         return  # already tried
 
-    # 1. Try Claude
-    claude_key = _get_env("ANTHROPIC_API_KEY")
-    if claude_key:
-        try:
-            import anthropic
+    key = _api_key()
+    if not key:
+        _gemini_ok = False
+        logger.info("No GEMINI_API_KEY — agents use deterministic fallback")
+        return
 
-            _claude_client = anthropic.AsyncAnthropic(api_key=claude_key, timeout=_llm_timeout())
-            _claude_ok = True
-            _active_provider = "claude"
-            logger.info(
-                f"Claude async client ready (model={_get_env('AGENT_MODEL', 'claude-sonnet-4-20250514')})"
-            )
-        except Exception as e:
-            logger.warning(f"Claude init failed: {e}")
-            _claude_ok = False
-    else:
-        _claude_ok = False
+    try:
+        from google import genai
+        from google.genai import types
 
-    # 2. Try Groq as fallback
-    groq_key = _get_env("GROQ_API_KEY")
-    if groq_key:
-        try:
-            from groq import AsyncGroq
+        s = _cfg()
+        _gemini_client = genai.Client(
+            api_key=key,
+            # The SDK sends the key as the x-goog-api-key header, never in the
+            # URL query string — an exception carrying the URL would otherwise
+            # leak it into logs and traces.
+            http_options=types.HttpOptions(timeout=_llm_timeout_ms()),
+        )
+        _limiter = _RateLimiter(s.gemini_rpm)
+        _gemini_ok = True
+        _active_provider = "gemini"
+        logger.info("Gemini async client ready (model=%s, rpm=%s)", s.gemini_model, s.gemini_rpm)
+    except Exception as e:
+        logger.warning(f"Gemini init failed: {e}")
+        _gemini_ok = False
 
-            _groq_client = AsyncGroq(api_key=groq_key, timeout=_llm_timeout())
-            _groq_ok = True
-            if _active_provider == "none":
-                _active_provider = "groq"
-            logger.info(
-                f"Groq async client ready (model={_get_env('GROQ_MODEL', 'llama-3.3-70b-versatile')})"
-            )
-        except Exception as e:
-            logger.warning(f"Groq init failed: {e}")
-            _groq_ok = False
-    else:
-        _groq_ok = False
 
-    if _active_provider == "none":
-        logger.info("No LLM provider available — agents use deterministic fallback")
+def reset_providers() -> None:
+    """Drop cached client state so the next call re-reads configuration.
+
+    Used by tests, which flip ``GEMINI_API_KEY`` between cases.
+    """
+    global _gemini_client, _gemini_ok, _active_provider, _limiter
+    _gemini_client = None
+    _gemini_ok = None
+    _active_provider = "none"
+    _limiter = None
 
 
 def is_available() -> bool:
-    """Check if any LLM provider is available."""
+    """Check if a hosted LLM provider is available."""
     _init_providers()
     return _active_provider != "none"
 
@@ -139,28 +205,23 @@ async def invoke(
     max_tokens: int = 1024,
     tools: list[dict] | None = None,
 ) -> dict[str, Any]:
-    """Invoke LLM with automatic fallback: Claude → Groq → deterministic.
+    """Invoke the LLM with automatic fallback: Gemini → deterministic.
+
+    Args:
+        max_tokens: size of the *answer* wanted. Reasoning headroom is added on
+            top internally — see :func:`_output_budget`.
 
     Returns:
         {"text": str, "tool_calls": list, "model": str, "provider": str, "fallback": bool}
     """
     _init_providers()
 
-    # 1. Try Claude
-    if _claude_ok and _claude_client is not None:
-        result = await _invoke_claude(prompt, system, max_tokens, tools)
+    if _gemini_ok and _gemini_client is not None:
+        result = await _invoke_gemini(prompt, system, max_tokens, tools)
         if not result["fallback"]:
             return result
-        logger.info("Claude call failed, falling back to Groq")
+        logger.info("Gemini call failed, falling back to deterministic")
 
-    # 2. Try Groq
-    if _groq_ok and _groq_client is not None:
-        result = await _invoke_groq(prompt, system, max_tokens)
-        if not result["fallback"]:
-            return result
-        logger.info("Groq call failed, falling back to deterministic")
-
-    # 3. Deterministic fallback
     return {
         "text": "",
         "tool_calls": [],
@@ -179,105 +240,117 @@ async def call_llm(
 
     Callers that only need the response text (e.g. the voice history extractor)
     use this instead of unpacking the full result dict. Returns an empty string
-    when every provider falls through to the deterministic fallback, so callers
+    when the provider falls through to the deterministic fallback, so callers
     should treat ``""`` as "no LLM output, use your own fallback".
     """
     result = await invoke(prompt, system=system, max_tokens=max_tokens)
     return result.get("text", "")
 
 
-async def _invoke_claude(
+def _to_gemini_tools(tools: list[dict]) -> list:
+    """Translate the agents' tool dicts into Gemini function declarations.
+
+    Callers describe tools as ``{"name", "description", "input_schema"}``; Gemini
+    expects the JSON Schema under ``parameters``. Tools already in Gemini shape
+    (``parameters`` present) pass through unchanged.
+    """
+    from google.genai import types
+
+    declarations = []
+    for tool in tools:
+        schema = tool.get("parameters") or tool.get("input_schema") or {}
+        declarations.append(
+            types.FunctionDeclaration(
+                name=tool["name"],
+                description=tool.get("description", ""),
+                parameters=schema,
+            )
+        )
+    return [types.Tool(function_declarations=declarations)]
+
+
+async def _invoke_gemini(
     prompt: str, system: str, max_tokens: int, tools: list[dict] | None
 ) -> dict[str, Any]:
-    """Call Claude via Anthropic async SDK."""
+    """Call Gemini via the google-genai async API."""
+    from google.genai import types
+
+    s = _cfg()
+    model = s.gemini_model
     try:
-        kwargs: dict[str, Any] = {
-            "model": _get_env("AGENT_MODEL", "claude-sonnet-4-20250514"),
-            "max_tokens": max_tokens,
-            "system": system,
-            "messages": [{"role": "user", "content": prompt}],
+        config: dict[str, Any] = {
+            "system_instruction": system,
+            "max_output_tokens": _output_budget(max_tokens),
+            "temperature": s.gemini_temperature,
+            # Tool declarations are plain schemas, not Python callables, so the
+            # SDK has nothing to auto-invoke. Disabling AFC keeps function calls
+            # in the response for the caller to execute, and silences the
+            # warning google-genai logs on every generate_content() call.
+            "automatic_function_calling": types.AutomaticFunctionCallingConfig(disable=True),
         }
         if tools:
-            kwargs["tools"] = tools
+            config["tools"] = _to_gemini_tools(tools)
 
-        response = await _claude_client.messages.create(**kwargs)
+        if _limiter is not None:
+            await _limiter.acquire()
 
-        text_parts = []
-        tool_calls = []
-        for block in response.content:
-            if block.type == "text":
-                text_parts.append(block.text)
-            elif block.type == "tool_use":
-                tool_calls.append(
-                    {
-                        "id": block.id,
-                        "name": block.name,
-                        "input": block.input,
-                    }
-                )
-
-        return {
-            "text": "\n".join(text_parts),
-            "tool_calls": tool_calls,
-            "model": response.model,
-            "provider": "claude",
-            "fallback": False,
-            "usage": {
-                "input_tokens": response.usage.input_tokens,
-                "output_tokens": response.usage.output_tokens,
-            },
-        }
-    except Exception as e:
-        logger.warning(f"Claude API error: {e}")
-        return {
-            "text": "",
-            "tool_calls": [],
-            "model": "",
-            "provider": "claude",
-            "fallback": True,
-            "error": str(e),
-        }
-
-
-async def _invoke_groq(prompt: str, system: str, max_tokens: int) -> dict[str, Any]:
-    """Call Groq via async SDK (OpenAI-compatible chat completions)."""
-    try:
-        model = _get_env("GROQ_MODEL", "llama-3.3-70b-versatile")
-        temperature = float(_get_env("GROQ_TEMPERATURE", "0.3"))
-
-        response = await _groq_client.chat.completions.create(
+        response = await _gemini_client.aio.models.generate_content(
             model=model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": prompt},
-            ],
+            contents=prompt,
+            config=types.GenerateContentConfig(**config),
         )
 
-        text = response.choices[0].message.content or ""
+        text = (response.text or "").strip()
+        tool_calls = [
+            {"id": fc.id or fc.name, "name": fc.name, "input": dict(fc.args or {})}
+            for fc in (response.function_calls or [])
+        ]
+
+        # A budget exhausted by the reasoning pass returns a truncated fragment
+        # with finish_reason=MAX_TOKENS. Callers treat any non-fallback text as
+        # usable clinical output, so surface that as a fallback rather than
+        # letting a half-sentence become the report narrative.
+        candidates = response.candidates or []
+        finish = getattr(candidates[0], "finish_reason", None) if candidates else None
+        if finish is not None and str(finish).endswith("MAX_TOKENS") and not tool_calls:
+            logger.warning(
+                "Gemini response truncated (finish_reason=MAX_TOKENS, %d chars) — "
+                "raise gemini_thinking_headroom; discarding partial output",
+                len(text),
+            )
+            return {
+                "text": "",
+                "tool_calls": [],
+                "model": model,
+                "provider": "gemini",
+                "fallback": True,
+                "error": "max_tokens_truncation",
+            }
+
         usage = {}
-        if response.usage:
+        if response.usage_metadata:
+            um = response.usage_metadata
             usage = {
-                "input_tokens": response.usage.prompt_tokens,
-                "output_tokens": response.usage.completion_tokens,
+                "input_tokens": um.prompt_token_count,
+                "output_tokens": um.candidates_token_count,
+                "thinking_tokens": getattr(um, "thoughts_token_count", None),
             }
 
         return {
             "text": text,
-            "tool_calls": [],  # Groq tool_calls handled separately if needed
-            "model": response.model or model,
-            "provider": "groq",
+            "tool_calls": tool_calls,
+            "model": response.model_version or model,
+            "provider": "gemini",
             "fallback": False,
             "usage": usage,
         }
     except Exception as e:
-        logger.warning(f"Groq API error: {e}")
+        logger.warning(f"Gemini API error: {type(e).__name__}: {e}")
         return {
             "text": "",
             "tool_calls": [],
             "model": "",
-            "provider": "groq",
+            "provider": "gemini",
             "fallback": True,
             "error": str(e),
         }

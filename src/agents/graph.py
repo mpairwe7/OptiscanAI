@@ -1,14 +1,14 @@
-"""LangGraph + Claude integration for RetinalAI clinical screening.
+"""LangGraph + Gemini integration for RetinalAI clinical screening.
 
 Architecture:
     LangGraph StateGraph manages the workflow (state, branching, cycles)
-    Claude provides reasoning at decision nodes (triage, reporting)
+    Gemini provides reasoning at decision nodes (triage, reporting)
     Deterministic tools handle the compute (inference, GradCAM, drift detection)
 
 The graph has 6 nodes:
     classify  →  triage  →  reason  →  explain (conditional)  →  review (conditional)  →  report
 
-Claude decides at the 'triage' and 'report' nodes. Everything else is deterministic.
+The LLM decides at the 'triage' and 'report' nodes. Everything else is deterministic.
 """
 
 import logging
@@ -50,7 +50,7 @@ class ScreeningState(TypedDict, total=False):
     # History extraction output (Phase 4)
     history_extraction: dict  # Structured symptoms from voice
 
-    # Triage decision (Claude or deterministic)
+    # Triage decision (LLM or deterministic)
     triage: dict  # {priority, should_explain, should_review, reasoning}
 
     # Clinical reasoning output
@@ -62,7 +62,7 @@ class ScreeningState(TypedDict, total=False):
     # Review decision
     review: dict | None
 
-    # Final report (Claude-generated or template)
+    # Final report (LLM-generated or template)
     report: dict
 
     # Multimodal outputs (Phase 4)
@@ -72,7 +72,7 @@ class ScreeningState(TypedDict, total=False):
     # Metadata
     steps_completed: list[str]
     errors: list[str]
-    claude_used: bool
+    llm_used: bool
 
 
 # ── Node functions ──
@@ -101,7 +101,7 @@ async def extract_history_node(state: ScreeningState) -> dict:
 
     Parses voice history (if present) to extract symptoms, conditions,
     medications, and risk factors for multimodal fusion. Uses
-    VoiceHistoryExtractor with Claude or regex fallback.
+    VoiceHistoryExtractor with Gemini or regex fallback.
     """
     transcript = state.get("voice_transcript", "")
     demographics = state.get("patient_demographics", {})
@@ -175,13 +175,13 @@ async def triage_node(state: ScreeningState) -> dict:
             decision = triage_model.decide(predictions, referral)
             return {
                 "triage": decision.as_dict(),
-                "claude_used": False,
+                "llm_used": False,
                 "steps_completed": state.get("steps_completed", []) + ["triage_model"],
             }
         except Exception as e:  # never fail a screening on the triage head
             logger.warning(f"Triage head failed, falling back: {e}")
 
-    # 2. Try Claude for nuanced triage
+    # 2. Try the LLM for nuanced triage
     if llm.is_available() and len(predictions) > 0:
         disease_summary = "\n".join(
             f"- {p['name']} ({p['code']}): {p['probability']:.1%} confidence [{p.get('confidence', 'unknown')}]"
@@ -203,19 +203,19 @@ Respond with exactly this JSON format (no markdown):
             import json
 
             try:
-                # Parse Claude's structured response
+                # Parse the model's structured response
                 text = response["text"].strip()
                 if text.startswith("```"):
                     text = text.split("```")[1].replace("json", "").strip()
                 triage = json.loads(text)
-                triage["source"] = "claude"
+                triage["source"] = response.get("provider", "llm")
                 return {
                     "triage": triage,
-                    "claude_used": True,
-                    "steps_completed": state.get("steps_completed", []) + ["triage_claude"],
+                    "llm_used": True,
+                    "steps_completed": state.get("steps_completed", []) + ["triage_llm"],
                 }
             except (json.JSONDecodeError, KeyError) as e:
-                logger.warning(f"Claude triage parse failed, using rules: {e}")
+                logger.warning(f"LLM triage parse failed, using rules: {e}")
 
     # Deterministic fallback
     triage = {
@@ -228,7 +228,7 @@ Respond with exactly this JSON format (no markdown):
 
     return {
         "triage": triage,
-        "claude_used": False,
+        "llm_used": False,
         "steps_completed": state.get("steps_completed", []) + ["triage_rules"],
     }
 
@@ -342,7 +342,7 @@ async def review_node(state: ScreeningState) -> dict:
 async def report_node(state: ScreeningState) -> dict:
     """Node 6: Generate final clinical screening report.
 
-    Claude generates a natural-language clinical summary when available.
+    Gemini generates a natural-language clinical summary when available.
     Falls back to a structured template otherwise.
     """
     predictions = state.get("predictions", [])
@@ -357,7 +357,7 @@ async def report_node(state: ScreeningState) -> dict:
     #    appended by the service, not trusted to the model.
     clinical_narrative = narrate_locally(predictions, triage.get("priority", referral)) or ""
 
-    # 2. Try Claude for natural-language report
+    # 2. Try the LLM for a natural-language report
     if not clinical_narrative and llm.is_available() and len(predictions) > 0:
         disease_list = ", ".join(f"{p['name']} ({p['probability']:.0%})" for p in predictions[:8])
         adjustments = reasoning.get("adjustments", [])
@@ -399,7 +399,7 @@ Be specific about disease codes and probabilities. End with a clear recommendati
         "explainability_run": state.get("explainability") is not None,
         "flagged_for_review": state.get("review", {}).get("flagged", False),
         "steps_completed": state.get("steps_completed", []) + ["report"],
-        "claude_powered": state.get("claude_used", False),
+        "llm_powered": state.get("llm_used", False),
     }
 
     # Emit final event
@@ -411,7 +411,7 @@ Be specific about disease codes and probabilities. End with a clear recommendati
                 "scan_id": scan_id,
                 "diseases_detected": len(predictions),
                 "referral_priority": report["referral_priority"],
-                "claude_used": state.get("claude_used", False),
+                "llm_used": state.get("llm_used", False),
                 "steps": len(report["steps_completed"]),
             },
         )
@@ -547,7 +547,7 @@ async def run_screening(image, scan_id: str = "", threshold: float | None = None
         "threshold": threshold,
         "steps_completed": [],
         "errors": [],
-        "claude_used": False,
+        "llm_used": False,
     }
 
     result = await screening_graph.ainvoke(initial_state)

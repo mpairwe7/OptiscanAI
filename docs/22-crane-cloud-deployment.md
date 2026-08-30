@@ -295,6 +295,8 @@ COPY weights/fundus_gate.pth ./weights/fundus_gate.pth             # 6 MB   (Mob
 | `CUDA_VISIBLE_DEVICES` | `-1` | Disable GPU |
 | `DEVICE` | `cpu` | Force CPU inference |
 | `FUNDUS_GATE__ENABLED` | `true` | Enable image quality gate |
+| `GEMINI_API_KEY` | *(secret)* | Agentic-AI provider key. Omit and the agent graph serves deterministic clinical rules |
+| `GEMINI_MODEL` | `gemini-3.7-flash` | Gemini model pin |
 
 #### Option B: Crane Cloud API
 

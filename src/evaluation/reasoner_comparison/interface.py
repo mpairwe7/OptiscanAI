@@ -2,7 +2,7 @@
 
 The OptiscanAI screening pipeline currently delegates two jobs to an external
 LLM (the aspirational self-hosted ``Qwen/Qwen3-8B-AWQ`` runtime, today stood in
-for by Claude -> Groq -> deterministic rules — see ``src/agents/graph.py``):
+for by Gemini -> deterministic rules — see ``src/agents/graph.py``):
 
 1. **Triage** — given the classifier's disease predictions, decide a referral
    ``priority`` plus the ``should_explain`` / ``should_review`` routing flags and

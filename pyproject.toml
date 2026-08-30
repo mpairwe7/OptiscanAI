@@ -58,6 +58,15 @@ dependencies = [
     "click>=8.1.0",
     "psutil>=5.9.0",
 
+    # Agentic AI (LLM provider SDK — sends the key as an x-goog-api-key
+    # header, never in the URL query string)
+    "google-genai>=1.0.0",
+    # Agent graph runtime. src/agents/graph.py imports this at module scope, and
+    # main.py catches the failure as "Agent startup failed (non-fatal)" — so
+    # while it was undeclared the orchestrator silently never started in any
+    # built image, and /api/v1/agents/screen was unreachable in production.
+    "langgraph>=1.0.0",
+
     # Explainability
     "grad-cam>=1.5.2",
     "captum>=0.6.0",

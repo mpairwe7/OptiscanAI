@@ -2,6 +2,10 @@
 
 Streams audio chunks back through WebSocket. Supports barge-in
 (stop mid-utterance when VAD detects speech).
+
+Local-first with an optional Sunbird AI cloud fallback for the Ugandan
+languages piper has no voice for. Piper is tried first; Sunbird is consulted
+only when it produces nothing, so an offline clinic keeps its English voice.
 """
 
 from __future__ import annotations
@@ -9,11 +13,14 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
+import wave
 from dataclasses import dataclass
 from pathlib import Path
 from typing import AsyncIterator, Optional
 
 import numpy as np
+
+from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +42,11 @@ class TTSConfig:
     sample_rate: int = 22050
     audio_format: str = "pcm16"  # pcm16 | wav
     chunk_size_samples: int = 4096
+    # Locale for the cloud tier (lg | nyn | ach | sw | teo). Distinct from
+    # `language`, which is piper's own voice tag.
+    locale: str = "en"
+    # Sunbird catalog tag; ignored when it does not belong to `locale`.
+    voice: Optional[str] = None
 
 
 class TTSEngine:
@@ -96,16 +108,21 @@ class TTSEngine:
 
         try:
             if self._voice is None:
-                # Stub: yield silence chunks
-                for chunk in self._generate_stub_audio(text, cfg):
-                    if self._cancelled:
-                        break
-                    yield chunk
-                    await asyncio.sleep(0.01)
-                return
-
-            # Synthesize full audio then stream in chunks
-            audio_data = self._synthesize_full(text, cfg)
+                # No local voice. The cloud tier may still have a native
+                # speaker; only if it does not do we emit silence.
+                audio_data = await asyncio.to_thread(self._synthesize_cloud, text, cfg)
+                if not audio_data:
+                    for chunk in self._generate_stub_audio(text, cfg):
+                        if self._cancelled:
+                            break
+                        yield chunk
+                        await asyncio.sleep(0.01)
+                    return
+            else:
+                # Synthesize full audio then stream in chunks
+                audio_data = self._synthesize_full(text, cfg)
+                if not audio_data:
+                    audio_data = await asyncio.to_thread(self._synthesize_cloud, text, cfg)
 
             chunk_size = cfg.chunk_size_samples * 2  # 2 bytes per int16 sample
             offset = 0
@@ -121,6 +138,61 @@ class TTSEngine:
 
         finally:
             self._is_speaking = False
+
+    def _synthesize_cloud(self, text: str, cfg: TTSConfig) -> bytes:
+        """Synthesize via Sunbird and return PCM16 frames, or ``b""``.
+
+        Blocking (httpx sync + a download), so callers run it in a worker
+        thread — the streaming path is an async generator and must not stall
+        the event loop while the cloud round-trip is in flight.
+
+        Only WAV payloads are decoded. The endpoint can also hand back MP3, and
+        decoding that would mean a new audio dependency in the serving image;
+        rather than ship a half-working path, an MP3 response is logged and
+        treated as no audio, so the caller degrades exactly as it would if the
+        cloud were unreachable.
+        """
+        try:
+            from backend.app.core import sunbird_client
+        except ImportError:  # pragma: no cover — optional tier
+            return b""
+        if not sunbird_client.is_available():
+            return b""
+        if cfg.locale not in settings.sunbird.cloud_locales:
+            return b""
+
+        result = sunbird_client.synthesize(text, locale=cfg.locale, voice=cfg.voice)
+        if not result or not result.get("audio_url"):
+            return b""
+        raw = sunbird_client.fetch_audio(result["audio_url"])
+        if not raw:
+            return b""
+
+        try:
+            with wave.open(io.BytesIO(raw), "rb") as w:
+                frames = w.readframes(w.getnframes())
+                rate = w.getframerate()
+        except wave.Error:
+            logger.warning(
+                "Sunbird TTS returned non-WAV audio (%d bytes) for locale %s — "
+                "no decoder in this image; falling back to local audio",
+                len(raw),
+                cfg.locale,
+            )
+            return b""
+
+        if rate != self._sample_rate:
+            # Mismatched rates would play back at the wrong pitch and speed.
+            # Nearest-neighbour resampling is crude but keeps the utterance
+            # intelligible without pulling in scipy for one code path.
+            samples = np.frombuffer(frames, dtype=np.int16)
+            idx = (
+                np.arange(int(len(samples) * self._sample_rate / rate)) * rate / self._sample_rate
+            ).astype(np.int64)
+            frames = samples[np.clip(idx, 0, len(samples) - 1)].tobytes()
+
+        logger.info("TTS served by Sunbird cloud (locale=%s, voice=%s)", cfg.locale, cfg.voice)
+        return frames
 
     def _synthesize_full(self, text: str, cfg: TTSConfig) -> bytes:
         """Synthesize text to complete PCM16 audio buffer."""

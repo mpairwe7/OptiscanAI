@@ -4,7 +4,7 @@ OpenTelemetry instrumentation for RetinalAI Clinical Screening Platform.
 Provides distributed tracing, custom metrics, and log correlation for:
 - FastAPI HTTP request auto-instrumentation
 - Model inference spans with clinical attributes
-- LLM call spans (Claude/Groq) with latency tracking
+- LLM call spans (Gemini) with latency tracking
 - Explainability method spans
 - Custom metric instruments for prediction counts, drift scores, etc.
 
@@ -344,8 +344,8 @@ def traced(
         def predict(self, image):
             ...
 
-        @traced("llm.claude")
-        async def invoke_claude(prompt):
+        @traced("llm.gemini")
+        async def invoke_gemini(prompt):
             ...
     """
 
