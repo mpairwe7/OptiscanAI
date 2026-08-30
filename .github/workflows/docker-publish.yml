@@ -150,7 +150,6 @@ jobs:
     needs: build-and-push
     if: always() && (needs.build-and-push.result == 'success' || inputs.deploy_only)
     runs-on: ubuntu-latest
-    environment: production
     steps:
       # The deploy job runs on its own runner, so it must check out the repo to
       # get .github/scripts/crane_deploy.py. lfs:false skips the big model blobs.
@@ -198,13 +197,14 @@ jobs:
         env:
           CRANE_CPU_URL: ${{ secrets.CRANE_CLOUD_CPU_URL }}
         run: |
-          echo "Waiting for deployment..."
+          URL="${CRANE_CPU_URL:-https://optiscan-ai-d3a3669f.renu-01.cranecloud.io}"
+          echo "Waiting for deployment at $URL..."
           for i in $(seq 1 20); do
-            HTTP=$(curl -sf -o /dev/null -w "%{http_code}" "$CRANE_CPU_URL/health" 2>/dev/null || echo "000")
+            HTTP=$(curl -sf -o /dev/null -w "%{http_code}" "$URL/health" 2>/dev/null || echo "000")
             echo "  [$i] health=$HTTP"
             if [ "$HTTP" = "200" ]; then
               echo "Deployment healthy!"
-              curl -sf "$CRANE_CPU_URL/health" | python3 -m json.tool
+              curl -sf "$URL/health" | python3 -m json.tool
               exit 0
             fi
             sleep 15
