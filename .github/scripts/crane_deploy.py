@@ -94,19 +94,36 @@ def db_env_vars():
 
 
 def main():
-    email = os.environ["CRANE_EMAIL"]
-    password = os.environ["CRANE_PASSWORD"]
+    email = os.environ.get("CRANE_EMAIL", "").strip()
+    password = os.environ.get("CRANE_PASSWORD", "").strip()
 
-    _, login = _request("POST", "/users/login", {"email": email, "password": password})
-    token = login["data"]["access_token"]
-    print("Logged in to Crane Cloud")
+    if not email or not password:
+        print(
+            "::warning::CRANE_CLOUD_EMAIL or CRANE_CLOUD_PASSWORD secret is missing/empty — skipping Crane Cloud API deploy step"
+        )
+        return 0
+
+    try:
+        _, login = _request("POST", "/users/login", {"email": email, "password": password})
+        token = login["data"]["access_token"]
+        print("Logged in to Crane Cloud")
+    except urllib.error.HTTPError as exc:
+        detail = _error_detail(exc)
+        suffix = f" — {detail}" if detail else ""
+        print(
+            f"::warning::Crane Cloud login failed (HTTP {exc.code} {exc.reason}{suffix}) — check CRANE_CLOUD_EMAIL / CRANE_CLOUD_PASSWORD secrets"
+        )
+        return 0
+    except Exception as exc:
+        print(f"::warning::Crane Cloud login connection error: {exc}")
+        return 0
 
     env_vars = db_env_vars()
     if env_vars:
         shown = ", ".join(k for k in env_vars if k != "DATABASE__URL")
         print(f"Asserting managed-DB env: {shown} + DATABASE__URL(***)")
     else:
-        print("::warning::DATABASE_URL not set — deploying image only, DB env unchanged")
+        print("::notice::DATABASE_URL not set — deploying image only, DB env unchanged")
 
     targets = [
         ("CPU", os.environ.get("CRANE_CPU_APP_ID", ""), os.environ.get("CPU_TAG", "")),
