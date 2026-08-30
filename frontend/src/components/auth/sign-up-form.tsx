@@ -40,37 +40,40 @@ export function SignUpForm() {
   return (
     <form onSubmit={handleSubmit} className="mt-8 space-y-4 rounded-xl border border-slate-200 bg-white p-6">
       <div>
-        <label className="block text-sm font-medium text-slate-700">Full name</label>
+        <label htmlFor="signup-name" className="block text-sm font-medium text-slate-700">Full name</label>
         <input
+          id="signup-name"
           type="text"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
           autoComplete="name"
           placeholder="Dr Jane Doe"
-          className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+          className="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 text-sm"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700">Work email</label>
+        <label htmlFor="signup-email" className="block text-sm font-medium text-slate-700">Work email</label>
         <input
+          id="signup-email"
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
-          className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+          className="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 text-sm"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700">Password</label>
+        <label htmlFor="signup-password" className="block text-sm font-medium text-slate-700">Password</label>
         <input
+          id="signup-password"
           type="password"
           required
           minLength={8}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
-          className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+          className="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 text-sm"
         />
         <p className="mt-1 text-xs text-slate-500">8+ characters.</p>
       </div>
@@ -82,20 +85,20 @@ export function SignUpForm() {
       <button
         type="submit"
         disabled={submitting}
-        className="w-full inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold rounded-lg bg-teal-600 hover:bg-teal-700 text-white disabled:opacity-50"
+        className="w-full inline-flex items-center justify-center min-h-[44px] px-4 py-2.5 text-sm font-semibold rounded-lg bg-teal-700 hover:bg-teal-800 text-white disabled:opacity-50 transition-colors shadow-sm"
       >
         {submitting ? "Creating account…" : "Create account"}
       </button>
 
       <p className="text-center text-xs text-slate-500">
         By signing up you agree to our{" "}
-        <Link href="/legal/terms" className="underline">terms</Link> and{" "}
-        <Link href="/legal/privacy" className="underline">privacy policy</Link>.
+        <Link href="/legal/terms" className="underline hover:text-slate-700">terms</Link> and{" "}
+        <Link href="/legal/privacy" className="underline hover:text-slate-700">privacy policy</Link>.
       </p>
 
-      <div className="text-center text-sm text-slate-600">
+      <div className="text-center text-sm text-slate-600 pt-2 border-t border-slate-100">
         Already have an account?{" "}
-        <Link href="/sign-in" className="font-semibold text-teal-600 hover:text-teal-700">
+        <Link href="/sign-in" className="font-semibold text-teal-700 hover:text-teal-800 py-1">
           Sign in
         </Link>
       </div>

@@ -128,7 +128,7 @@ export default function BillingPage() {
                     <td className="py-2 pr-4 capitalize text-slate-700">{inv.provider}</td>
                     <td className="py-2 pr-4">
                       {inv.pdf_url && (
-                        <a href={inv.pdf_url} className="text-teal-600 hover:text-teal-700" target="_blank" rel="noreferrer">
+                        <a href={inv.pdf_url} className="text-teal-700 hover:text-teal-800 font-semibold" target="_blank" rel="noreferrer">
                           PDF
                         </a>
                       )}

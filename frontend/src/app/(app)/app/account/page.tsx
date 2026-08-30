@@ -38,11 +38,11 @@ export default function AccountPage() {
             <dd className="mt-0.5 text-slate-900 flex items-center gap-2">
               {me.data.email}
               {me.data.email_verified ? (
-                <span className="text-[10px] uppercase tracking-wider font-bold text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-teal-800 bg-teal-100 px-1.5 py-0.5 rounded">
                   verified
                 </span>
               ) : (
-                <span className="text-[10px] uppercase tracking-wider font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
                   unverified
                 </span>
               )}

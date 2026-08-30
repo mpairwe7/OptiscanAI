@@ -1,78 +1,241 @@
 # ============================================================================
-# Hugging Face Spaces Docker Deployment
-# CPU-optimized, port 7860, combined frontend + backend via supervisord
-# Base: python:3.11-slim-bookworm (CPU-only PyTorch from whl/cpu)
-# Process manager: supervisord → nginx(:7860) + uvicorn(:8080) + node(:3000)
+# OptiscanAI — Full-Stack CPU Production Image (Hugging Face Spaces)
+# 3-stage build | uv (10x faster) | OCI-compliant | Port 7860 | Embedded Postgres
+# Process manager: supervisord → nginx(:7860) + uvicorn(:8081) + node(:3000)
 # ============================================================================
-FROM python:3.11-slim-bookworm
+# syntax=docker/dockerfile:1
 
-LABEL maintainer="retinal-screening-team"
-LABEL description="RetinalAI Clinical Screening Platform — HF Spaces"
+# --------------- Stage 1: Python builder ---------------
+FROM python:3.11-slim-bookworm AS builder
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 ENV DEBIAN_FRONTEND=noninteractive \
-    PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PATH="/opt/venv/bin:${PATH}" \
-    HF_HOME=/tmp/hf_cache \
-    CUDA_VISIBLE_DEVICES=-1 \
-    DEVICE=cpu
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_COMPILE_BYTECODE=0 \
+    PATH="/opt/venv/bin:${PATH}"
 
-# System dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential git curl ca-certificates \
-    libgl1-mesa-glx libglib2.0-0 \
-    nginx supervisor \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
-    && npm install -g bun \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# ── Python backend ──
-# Install PyTorch FIRST (torch-geometric and other deps need it at install time)
-RUN python3 -m venv /opt/venv \
-    && /opt/venv/bin/pip install --upgrade pip \
-    && /opt/venv/bin/pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+# Create venv + install CPU PyTorch (separate layer — changes rarely)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv venv /opt/venv && \
+    uv pip install --python /opt/venv/bin/python \
+        torch torchvision \
+        --index-url https://download.pytorch.org/whl/cpu
 
+# Install project deps (torch already satisfied, skips re-download)
 COPY pyproject.toml /app/pyproject.toml
-RUN /opt/venv/bin/pip install --no-cache-dir ".[deploy]"
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --python /opt/venv/bin/python . && \
+    find /opt/venv -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null; \
+    find /opt/venv -name "*.pyc" -delete 2>/dev/null; \
+    find /opt/venv -type d -name "tests" -exec rm -rf {} + 2>/dev/null; \
+    true
 
-COPY src/ ./src/
-COPY backend/ ./backend/
-COPY configs/ ./configs/
+# --------------- Stage 2: Frontend builder ---------------
+FROM oven/bun:1 AS frontend-builder
 
-# ── Frontend build ──
-COPY frontend/package.json frontend/bun.lock* ./frontend/
-RUN cd frontend && bun install --frozen-lockfile 2>/dev/null || cd frontend && bun install
+WORKDIR /app/frontend
 
-COPY frontend/ ./frontend/
+COPY frontend/package.json frontend/bun.lock* ./
+RUN bun install --frozen-lockfile 2>/dev/null || bun install
 
-# Build frontend and prepare static assets for nginx
-RUN cd frontend && NEXT_PUBLIC_API_URL="" bun run build \
+COPY frontend/ ./
+RUN NEXT_PUBLIC_API_URL="" bun run build \
     && mkdir -p /srv/nextjs/_next/static \
     && cp -r .next/static/* /srv/nextjs/_next/static/ \
     && cp -r public/* /srv/nextjs/ \
     && mkdir -p .next/standalone/.next \
     && cp -r .next/static .next/standalone/.next/static \
-    && cp -r public .next/standalone/public \
-    && echo "=== nginx static dir ===" && ls /srv/nextjs/_next/static/ | head -5 \
-    && echo "=== public files ===" && ls /srv/nextjs/ | head -10
+    && cp -r public .next/standalone/public
 
-# ── Model weights ──
-RUN mkdir -p models/checkpoints logs uploads && chmod -R 755 /app
+# --------------- Stage 3: Production runtime ---------------
+FROM python:3.11-slim-bookworm
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+LABEL org.opencontainers.image.title="OptiscanAI" \
+      org.opencontainers.image.description="CPU Retinal Disease Screening Platform — HF Spaces" \
+      org.opencontainers.image.version="3.0.0" \
+      org.opencontainers.image.vendor="OptiscanAI" \
+      org.opencontainers.image.source="https://github.com/mpairwe7/OptiscanAI" \
+      org.opencontainers.image.licenses="CC-BY-4.0"
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    CUDA_VISIBLE_DEVICES=-1 \
+    DEVICE=cpu \
+    MPLBACKEND=Agg \
+    PATH="/opt/venv/bin:${PATH}" \
+    DATABASE__ENABLED=true \
+    DATABASE__URL="postgresql+asyncpg://optiscan:optiscan@127.0.0.1:5432/optiscan" \
+    EMBEDDED_POSTGRES__ENABLED=true \
+    POSTGRES_HOST="127.0.0.1" \
+    POSTGRES_PORT="5432" \
+    POSTGRES_USER="optiscan" \
+    POSTGRES_WAIT_MAX="240" \
+    HOME="/tmp"
+
+# Runtime deps + embedded Postgres 15
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates \
+    libglib2.0-0 libgomp1 \
+    nginx supervisor \
+    postgresql-15 postgresql-client-15 \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /var/lib/postgresql/15/main
+
+# Node.js binary from official image
+COPY --from=node:20-slim /usr/local/bin/node /usr/local/bin/node
+
+# Python venv from builder
+COPY --from=builder /opt/venv /opt/venv
+
+# Frontend build artifacts
+COPY --from=frontend-builder /srv/nextjs /srv/nextjs
+COPY --from=frontend-builder /app/frontend/.next/standalone /app/frontend/.next/standalone
+
+WORKDIR /app
+
+# Application code
+COPY src/ ./src/
+COPY backend/ ./backend/
+COPY configs/ ./configs/
+
+# Container entrypoint scripts (Postgres bootstrap + backend wrapper)
+COPY scripts/container/postgres-bootstrap.sh /usr/local/bin/postgres-bootstrap.sh
+COPY scripts/container/backend-start.sh /usr/local/bin/backend-start.sh
+RUN chmod +x /usr/local/bin/postgres-bootstrap.sh /usr/local/bin/backend-start.sh
+
+# Bake model weights into image
 COPY models/model_vignn_rank1.pth ./models/model_vignn_rank1.pth
-# Learned triage head: 3 KB of JSON weights (no pickle, no sklearn at serve
-# time). Replaces the external-LLM triage call; see docs/28 §0.5/§0.8.
+COPY weights/fundus_gate.pth ./weights/fundus_gate.pth
 COPY models/triage/triage_model.json ./models/triage/triage_model.json
 
-# ── Nginx + Supervisor configs ──
-COPY deploy/nginx.conf /etc/nginx/sites-available/default
-COPY deploy/supervisord.conf /etc/supervisor/conf.d/retinalai.conf
+# Non-root user + directories in single layer
+RUN groupadd -r optiscan && useradd -r -g optiscan -d /app -s /sbin/nologin optiscan \
+    && mkdir -p models/checkpoints logs uploads /var/lib/postgresql/data \
+    && chown -R optiscan:optiscan /app /srv/nextjs \
+    && chown -R optiscan:optiscan /var/log/nginx /var/lib/nginx /run \
+    && chown -R optiscan:optiscan /var/lib/postgresql \
+    && ln -sf /dev/stdout /var/log/nginx/access.log \
+    && ln -sf /dev/stderr /var/log/nginx/error.log
+
+# Nginx — port 7860 (Hugging Face Spaces standard)
+RUN cat > /etc/nginx/sites-available/default <<'NGINX'
+server {
+    listen 7860;
+    server_name _;
+    client_max_body_size 15M;
+
+    gzip on;
+    gzip_comp_level 6;
+    gzip_min_length 256;
+    gzip_proxied any;
+    gzip_vary on;
+    gzip_types text/plain text/css text/javascript text/xml application/javascript application/json application/manifest+json application/xml application/rss+xml application/wasm image/svg+xml font/ttf font/otf;
+
+    location /_next/static/ { root /srv/nextjs; expires 365d; access_log off; add_header Cache-Control "public, immutable"; }
+    location ~* \.(png|ico|svg|webmanifest|js)$ { root /srv/nextjs; try_files $uri @nextjs; expires 30d; access_log off; }
+    location /api/ { proxy_pass http://127.0.0.1:8081/api/; proxy_http_version 1.1; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; proxy_read_timeout 120s; }
+    location /v1/ { proxy_pass http://127.0.0.1:8081/v1/; proxy_http_version 1.1; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection 'upgrade'; proxy_read_timeout 120s; }
+    location /health { proxy_pass http://127.0.0.1:8081/health; proxy_http_version 1.1; }
+    location /docs { proxy_pass http://127.0.0.1:8081/docs; proxy_http_version 1.1; }
+    location /openapi.json { proxy_pass http://127.0.0.1:8081/openapi.json; proxy_http_version 1.1; }
+    location / { proxy_pass http://127.0.0.1:3000; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection 'upgrade'; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_cache_bypass $http_upgrade; }
+    location @nextjs { proxy_pass http://127.0.0.1:3000; proxy_http_version 1.1; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; }
+}
+NGINX
+
+# Supervisord — CPU mode
+RUN cat > /etc/supervisor/conf.d/optiscan.conf <<'SUPER'
+[supervisord]
+nodaemon=true
+logfile=/tmp/supervisord.log
+pidfile=/tmp/supervisord.pid
+user=root
+
+[program:postgres]
+command=/usr/local/bin/postgres-bootstrap.sh
+user=optiscan
+priority=10
+environment=PGDATA="/var/lib/postgresql/data",POSTGRES_USER="optiscan",POSTGRES_PASSWORD="optiscan",POSTGRES_DB="optiscan",PG_BIN="/usr/lib/postgresql/15/bin"
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+autorestart=true
+startretries=3
+startsecs=3
+stopwaitsecs=15
+stopsignal=INT
+
+[program:backend]
+command=/usr/local/bin/backend-start.sh
+directory=/app
+user=optiscan
+priority=20
+environment=HOME="/tmp",MODEL_PATH="models/model_vignn_rank1.pth",CUDA_VISIBLE_DEVICES="-1",DEVICE="cpu",API_PORT="8081",LOG_FORMAT="text",PYTHONPATH="/app",POSTGRES_HOST="127.0.0.1",POSTGRES_PORT="5432",POSTGRES_USER="optiscan",DATABASE__ENABLED="true",DATABASE__URL="postgresql+asyncpg://optiscan:optiscan@127.0.0.1:5432/optiscan",EMBEDDED_POSTGRES__ENABLED="true"
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+autorestart=true
+startretries=3
+startsecs=5
+stopwaitsecs=10
+stopsignal=TERM
+
+[program:frontend]
+command=node server.js
+directory=/app/frontend/.next/standalone
+user=optiscan
+priority=30
+environment=PORT="3000",HOSTNAME="127.0.0.1",HOME="/tmp"
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+autorestart=true
+startretries=3
+startsecs=3
+stopwaitsecs=5
+stopsignal=TERM
+
+[program:nginx]
+command=nginx -g "daemon off;"
+priority=40
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+autorestart=true
+startretries=3
+startsecs=1
+stopwaitsecs=5
+stopsignal=QUIT
+SUPER
+
+ENV MODEL_PATH=models/model_vignn_rank1.pth \
+    FUNDUS_GATE__ENABLED=true \
+    FUNDUS_GATE__MODEL_PATH=weights/fundus_gate.pth \
+    TRIAGE_MODEL_PATH=models/triage/triage_model.json \
+    TRIAGE_MODEL_ENABLED=true \
+    API_HOST=0.0.0.0 \
+    API_PORT=8081
 
 EXPOSE 7860
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:7860/health/ready || exit 1
+STOPSIGNAL SIGTERM
 
-CMD ["supervisord", "-c", "/etc/supervisor/conf.d/retinalai.conf"]
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -sf http://localhost:7860/health/ready || exit 1
+
+CMD ["supervisord", "-c", "/etc/supervisor/conf.d/optiscan.conf"]
