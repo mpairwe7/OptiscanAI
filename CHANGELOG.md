@@ -55,7 +55,9 @@ project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   workflow sets them as Space secrets via the Hub API. Each is inert when its
   repo secret is unset, and every provider token is redacted from Crane error
   bodies before they reach the CI log. A single-account Sunbird setup emits a
-  warning, since failover needs two.
+  warning, since failover needs two. The informational `SUNBIRD__USERNAME` /
+  `SUNBIRD__FALLBACK_USERNAME` handles are carried through as well, so logs can
+  name which account served or exhausted its quota rather than just its role.
 - `requirements.txt` — pip mirror of the core dependencies so plain-pip
   workflows (and the `pip-audit` security scan) work without uv.
 - Crane Cloud deploy diagnostics & resilience (`.github/scripts/crane_deploy.py`):

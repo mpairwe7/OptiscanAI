@@ -233,6 +233,8 @@ jobs:
           SUNBIRD__API_TOKEN: ${{ secrets.SUNBIRD__API_TOKEN }}
           SUNBIRD__FALLBACK_API_TOKEN: ${{ secrets.SUNBIRD__FALLBACK_API_TOKEN }}
           SUNBIRD__ENABLED: ${{ vars.SUNBIRD__ENABLED }}
+          SUNBIRD__USERNAME: ${{ secrets.SUNBIRD__USERNAME }}
+          SUNBIRD__FALLBACK_USERNAME: ${{ secrets.SUNBIRD__FALLBACK_USERNAME }}
         run: |
           python3 - <<'PY'
           import os, sys
@@ -272,6 +274,17 @@ jobs:
           enabled = (os.environ.get("SUNBIRD__ENABLED") or "").strip() or "true"
           api.add_space_variable(repo_id=space, key="SUNBIRD__ENABLED", value=enabled)
           print(f"  set Space variable: SUNBIRD__ENABLED={enabled}")
+
+          # Informational handles, so a log line can name which account served
+          # or ran out of quota. Written as Space *secrets* rather than
+          # variables: they are stored as repo secrets, and silently promoting
+          # something the owner classified as secret into a UI-visible variable
+          # is not this step's call to make.
+          for var in ("SUNBIRD__USERNAME", "SUNBIRD__FALLBACK_USERNAME"):
+              handle = (os.environ.get(var) or "").strip()
+              if handle:
+                  api.add_space_secret(repo_id=space, key=var, value=handle)
+                  print(f"  set Space secret: {var} (***)")
           PY
 
       # A successful push only means git accepted the commit. The Space can still
