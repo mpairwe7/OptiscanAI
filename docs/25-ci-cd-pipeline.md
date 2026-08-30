@@ -24,6 +24,7 @@ Set these as GitHub repo/org secrets (Settings → Secrets and variables → Act
 | `HF_TOKEN`, `HF_USER` | `deploy-hf-spaces` |
 | `GEMINI_API_KEY` | both — agentic AI. Unset ⇒ the agent graph serves deterministic clinical rules |
 | `SUNBIRD__API_TOKEN`, `SUNBIRD__FALLBACK_API_TOKEN` | both — Sunbird cloud voice. Unset ⇒ voice stays local-only (whisper/piper) |
+| `SUNBIRD__USERNAME`, `SUNBIRD__FALLBACK_USERNAME` | both — informational account handles so logs can name *which* account served or ran out of quota. Sunbird authenticates by bearer token, so these are optional |
 
 Optional repo **variables** (same screen, Variables tab):
 

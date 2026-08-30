@@ -17,6 +17,8 @@ secrets) so no credential is ever written to argv or committed to the repo:
   SUNBIRD__API_TOKEN           Sunbird AI cloud voice token        (optional)
   SUNBIRD__FALLBACK_API_TOKEN  second Sunbird account for failover (optional)
   SUNBIRD__ENABLED             "true"/"false" override             (optional)
+  SUNBIRD__USERNAME            account handle, informational only  (optional)
+  SUNBIRD__FALLBACK_USERNAME   second account handle               (optional)
 
 For each app it PATCHes {"image": <tag>, "env_vars": {...}}. Crane Cloud MERGES
 env_vars on PATCH, so this adds the DB config without disturbing MODEL_PATH,
@@ -149,6 +151,15 @@ def voice_env_vars():
     fallback = os.environ.get("SUNBIRD__FALLBACK_API_TOKEN", "").strip()
     if fallback:
         env["SUNBIRD__FALLBACK_API_TOKEN"] = fallback
+
+    # Account handles are informational — Sunbird authenticates by bearer token.
+    # They exist so a log line can say *which* account served or ran out of
+    # quota, which "primary"/"fallback" alone cannot. Omitted when unset rather
+    # than sent empty, since Crane's add-only PATCH would pin the empty value.
+    for var in ("SUNBIRD__USERNAME", "SUNBIRD__FALLBACK_USERNAME"):
+        handle = os.environ.get(var, "").strip()
+        if handle:
+            env[var] = handle
     return env
 
 

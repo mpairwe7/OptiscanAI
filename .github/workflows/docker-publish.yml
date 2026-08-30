@@ -179,6 +179,11 @@ jobs:
           SUNBIRD__API_TOKEN: ${{ secrets.SUNBIRD__API_TOKEN }}
           SUNBIRD__FALLBACK_API_TOKEN: ${{ secrets.SUNBIRD__FALLBACK_API_TOKEN }}
           SUNBIRD__ENABLED: ${{ vars.SUNBIRD__ENABLED }}
+          # Informational account handles, so logs can name which account served
+          # or exhausted its quota. Read from secrets because that is where they
+          # are stored; Actions masks them in logs either way.
+          SUNBIRD__USERNAME: ${{ secrets.SUNBIRD__USERNAME }}
+          SUNBIRD__FALLBACK_USERNAME: ${{ secrets.SUNBIRD__FALLBACK_USERNAME }}
           DEPLOY_ONLY: ${{ inputs.deploy_only }}
           REDEPLOY_SHA: ${{ inputs.redeploy_sha }}
         run: |
