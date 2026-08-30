@@ -14,6 +14,9 @@ secrets) so no credential is ever written to argv or committed to the repo:
                     DB password
   GEMINI_API_KEY    Google AI Studio key for the agentic-AI layer  (optional)
   GEMINI_MODEL      Gemini model pin, default gemini-3.7-flash     (optional)
+  SUNBIRD__API_TOKEN           Sunbird AI cloud voice token        (optional)
+  SUNBIRD__FALLBACK_API_TOKEN  second Sunbird account for failover (optional)
+  SUNBIRD__ENABLED             "true"/"false" override             (optional)
 
 For each app it PATCHes {"image": <tag>, "env_vars": {...}}. Crane Cloud MERGES
 env_vars on PATCH, so this adds the DB config without disturbing MODEL_PATH,
@@ -73,9 +76,10 @@ def _error_detail(exc):
         pwd = urllib.parse.urlparse(dsn).password
         if pwd:
             body = body.replace(pwd, "***").replace(urllib.parse.unquote(pwd), "***")
-    gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
-    if gemini_key:
-        body = body.replace(gemini_key, "***")
+    for var in ("GEMINI_API_KEY", "SUNBIRD__API_TOKEN", "SUNBIRD__FALLBACK_API_TOKEN"):
+        secret = os.environ.get(var, "").strip()
+        if secret:
+            body = body.replace(secret, "***")
     return body[:1500]
 
 
@@ -118,6 +122,36 @@ def llm_env_vars():
     }
 
 
+def voice_env_vars():
+    """Build the Sunbird cloud-voice env block (empty when no token is set).
+
+    Inert until the SUNBIRD__API_TOKEN repo secret exists: with no token the
+    voice stack is exactly what it was before — local whisper/piper only, with
+    the cloud tier reporting itself unavailable.
+
+    SUNBIRD__ENABLED defaults to "true" whenever a token is present, because a
+    configured token that stays disabled is a dead state nobody intends; set the
+    SUNBIRD__ENABLED repo *variable* to "false" to stage the rollout instead.
+
+    Note Crane Cloud's PATCH /apps/{id} env_vars is *add-only*. That bites
+    harder here than for a key: once SUNBIRD__ENABLED lands as "false" it cannot
+    be flipped to "true" from CI, only in the Crane console. The double
+    underscore is pydantic-settings' nested delimiter — these populate
+    settings.sunbird.*, so the names must keep it.
+    """
+    token = os.environ.get("SUNBIRD__API_TOKEN", "").strip()
+    if not token:
+        return {}
+    env = {
+        "SUNBIRD__ENABLED": os.environ.get("SUNBIRD__ENABLED", "").strip() or "true",
+        "SUNBIRD__API_TOKEN": token,
+    }
+    fallback = os.environ.get("SUNBIRD__FALLBACK_API_TOKEN", "").strip()
+    if fallback:
+        env["SUNBIRD__FALLBACK_API_TOKEN"] = fallback
+    return env
+
+
 def main():
     email = os.environ.get("CRANE_EMAIL", "").strip()
     password = os.environ.get("CRANE_PASSWORD", "").strip()
@@ -156,6 +190,26 @@ def main():
         env_vars.update(llm_vars)
     else:
         print("::notice::GEMINI_API_KEY not set — agents will run deterministic rules")
+
+    voice_vars = voice_env_vars()
+    if voice_vars:
+        accounts = "primary+fallback" if "SUNBIRD__FALLBACK_API_TOKEN" in voice_vars else "primary"
+        print(
+            f"Asserting Sunbird voice env: SUNBIRD__ENABLED={voice_vars['SUNBIRD__ENABLED']}, "
+            f"accounts={accounts} + token(***)"
+        )
+        if accounts == "primary":
+            # Failover needs two accounts. On one, a daily-quota 429 silently
+            # drops Ugandan narration to an English voice with nothing to fall
+            # back to — and is_available() stays true throughout, so it looks
+            # healthy from outside.
+            print(
+                "::warning::only one Sunbird account configured — set "
+                "SUNBIRD__FALLBACK_API_TOKEN so a quota 429 can fail over"
+            )
+        env_vars.update(voice_vars)
+    else:
+        print("::notice::SUNBIRD__API_TOKEN not set — voice stays local-only (whisper/piper)")
 
     targets = [
         ("CPU", os.environ.get("CRANE_CPU_APP_ID", ""), os.environ.get("CPU_TAG", "")),

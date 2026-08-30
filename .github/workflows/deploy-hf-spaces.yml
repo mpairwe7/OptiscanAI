@@ -195,6 +195,9 @@ jobs:
           HF_SPACE: ${{ env.HF_SPACE }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          SUNBIRD__API_TOKEN: ${{ secrets.SUNBIRD__API_TOKEN }}
+          SUNBIRD__FALLBACK_API_TOKEN: ${{ secrets.SUNBIRD__FALLBACK_API_TOKEN }}
+          SUNBIRD__ENABLED: ${{ vars.SUNBIRD__ENABLED }}
         run: |
           python3 - <<'PY'
           import os, sys
@@ -219,6 +222,56 @@ jobs:
           # and editable in the Space UI.
           api.add_space_variable(repo_id=space, key="GEMINI_MODEL", value=model)
           print(f"  set Space variable: GEMINI_MODEL={model}")
+          PY
+
+      # Sunbird cloud voice for Ugandan languages. Separate step from Gemini so
+      # one provider being unconfigured never blocks the other from landing.
+      - name: Sync Sunbird voice secrets to the Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ env.HF_SPACE }}
+          SUNBIRD__API_TOKEN: ${{ secrets.SUNBIRD__API_TOKEN }}
+          SUNBIRD__FALLBACK_API_TOKEN: ${{ secrets.SUNBIRD__FALLBACK_API_TOKEN }}
+          SUNBIRD__ENABLED: ${{ vars.SUNBIRD__ENABLED }}
+        run: |
+          python3 - <<'PY'
+          import os, sys
+          from huggingface_hub import HfApi
+
+          token = (os.environ.get("SUNBIRD__API_TOKEN") or "").strip()
+          if not token:
+              print("::notice::SUNBIRD__API_TOKEN not set — the Space keeps local-only "
+                    "voice (whisper/piper), which is the pre-existing behaviour")
+              sys.exit(0)
+
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          space = os.environ["HF_SPACE"]
+
+          # The double underscore is pydantic-settings' nested delimiter; these
+          # populate settings.sunbird.*, so the names must keep it.
+          api.add_space_secret(repo_id=space, key="SUNBIRD__API_TOKEN", value=token)
+          print("  set Space secret: SUNBIRD__API_TOKEN (***)")
+
+          fallback = (os.environ.get("SUNBIRD__FALLBACK_API_TOKEN") or "").strip()
+          if fallback:
+              api.add_space_secret(
+                  repo_id=space, key="SUNBIRD__FALLBACK_API_TOKEN", value=fallback
+              )
+              print("  set Space secret: SUNBIRD__FALLBACK_API_TOKEN (***)")
+          else:
+              # Failover needs two accounts. On one, a daily-quota 429 silently
+              # drops Ugandan narration to an English voice with nothing to fall
+              # back to, while is_available() stays true — so it reads as healthy.
+              print("::warning::only one Sunbird account configured — set "
+                    "SUNBIRD__FALLBACK_API_TOKEN so a quota 429 can fail over")
+
+          # Not a secret: a variable stays visible and editable in the Space UI.
+          # Defaults to "true" because a configured token that stays disabled is
+          # a dead state nobody intends; set the repo variable to "false" to
+          # stage the rollout.
+          enabled = (os.environ.get("SUNBIRD__ENABLED") or "").strip() or "true"
+          api.add_space_variable(repo_id=space, key="SUNBIRD__ENABLED", value=enabled)
+          print(f"  set Space variable: SUNBIRD__ENABLED={enabled}")
           PY
 
       # A successful push only means git accepted the commit. The Space can still

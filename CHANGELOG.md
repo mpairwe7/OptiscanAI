@@ -38,9 +38,12 @@ project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   `gemini-3.7-flash` via `GEMINI_MODEL`). The LLM layer gained a client-side
   requests-per-minute throttle (`GEMINI_RPM`, free-tier default 10) and a
   reasoning-token budget (`GEMINI_THINKING_HEADROOM` / `GEMINI_MIN_OUTPUT_TOKENS`).
-- CI now provisions the provider key: `crane_deploy.py` PATCHes `GEMINI_API_KEY`
-  onto the Crane apps, and the HF Spaces workflow sets it as a Space secret via
-  the Hub API. Both are inert when the `GEMINI_API_KEY` repo secret is unset.
+- CI now provisions both provider credentials: `crane_deploy.py` PATCHes
+  `GEMINI_API_KEY` and `SUNBIRD__*` onto the Crane apps, and the HF Spaces
+  workflow sets them as Space secrets via the Hub API. Each is inert when its
+  repo secret is unset, and every provider token is redacted from Crane error
+  bodies before they reach the CI log. A single-account Sunbird setup emits a
+  warning, since failover needs two.
 - `requirements.txt` — pip mirror of the core dependencies so plain-pip
   workflows (and the `pip-audit` security scan) work without uv.
 - Crane Cloud deploy diagnostics & resilience (`.github/scripts/crane_deploy.py`):

@@ -172,6 +172,13 @@ jobs:
           # rules, so a missing secret degrades rather than breaks the deploy.
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          # Sunbird cloud voice tier for Ugandan languages. Absent/empty -> the
+          # voice stack stays local-only (whisper/piper), which is the behaviour
+          # before the tier existed. The double underscore is pydantic-settings'
+          # nested delimiter and must survive into the container's env.
+          SUNBIRD__API_TOKEN: ${{ secrets.SUNBIRD__API_TOKEN }}
+          SUNBIRD__FALLBACK_API_TOKEN: ${{ secrets.SUNBIRD__FALLBACK_API_TOKEN }}
+          SUNBIRD__ENABLED: ${{ vars.SUNBIRD__ENABLED }}
           DEPLOY_ONLY: ${{ inputs.deploy_only }}
           REDEPLOY_SHA: ${{ inputs.redeploy_sha }}
         run: |

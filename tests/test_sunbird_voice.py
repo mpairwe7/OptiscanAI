@@ -26,16 +26,25 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from backend.app.core import sunbird_client as sb
 from backend.app.core.asr_engine import ASREngine, _to_wav_bytes
-from backend.app.core.config import settings
+from backend.app.core.config import SunbirdSettings, settings
 from backend.app.core.tts_engine import TTSConfig, TTSEngine
 from backend.app.core.voice_pipeline import normalize_locale
 
 
 @pytest.fixture
 def sunbird_off():
-    """Restore the real (disabled) configuration after a test mutates it."""
+    """Hand back a cleared Sunbird config, restoring the real one afterwards.
+
+    Cleared rather than merely saved: a developer with a real token in ``.env``
+    would otherwise run these against their own credentials, and the assertions
+    about the *unconfigured* state would fail on their machine and pass in CI.
+    """
     cfg = settings.sunbird
     saved = (cfg.enabled, cfg.api_token, cfg.fallback_api_token)
+    cfg.enabled = False
+    cfg.api_token = SecretStr("")
+    cfg.fallback_api_token = SecretStr("")
+    sb.reset_clients()
     yield cfg
     cfg.enabled, cfg.api_token, cfg.fallback_api_token = saved
     sb.reset_clients()
@@ -45,8 +54,20 @@ def sunbird_off():
 
 
 def test_tier_is_disabled_by_default():
-    """Shipping this must not change behaviour for anyone who has not opted in."""
-    assert settings.sunbird.enabled is False
+    """Shipping this must not change behaviour for anyone who has not opted in.
+
+    Asserted against a fresh ``SunbirdSettings()`` rather than the ambient
+    ``settings`` singleton, so this tests the shipped default instead of
+    whatever the developer happens to have in ``.env``.
+    """
+    fresh = SunbirdSettings()
+    assert fresh.enabled is False
+    assert fresh.api_token.get_secret_value() == ""
+    assert fresh.fallback_api_token.get_secret_value() == ""
+
+
+def test_unconfigured_tier_is_unavailable(sunbird_off):
+    """With nothing configured the tier must report itself unusable."""
     assert sb.is_available() is False
     assert sb.account_summary() == "unavailable"
 
@@ -136,7 +157,7 @@ def test_wav_framing_clips_instead_of_wrapping():
 # ── Engine gating ──
 
 
-def test_asr_skips_cloud_when_tier_disabled():
+def test_asr_skips_cloud_when_tier_disabled(sunbird_off):
     engine = ASREngine()
     engine._model = None
     audio = np.zeros(1600, dtype=np.float32)
@@ -200,7 +221,7 @@ def test_asr_treats_empty_cloud_transcript_as_no_answer(sunbird_off, monkeypatch
     assert engine._transcribe_cloud(np.zeros(1600, dtype=np.float32), False, "lg") is None
 
 
-def test_tts_skips_cloud_when_tier_disabled():
+def test_tts_skips_cloud_when_tier_disabled(sunbird_off):
     engine = TTSEngine()
     assert engine._synthesize_cloud("Oli otya", TTSConfig(locale="lg")) == b""
 
