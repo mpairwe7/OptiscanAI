@@ -28,7 +28,7 @@ function GradCAMView() {
         {gradcamResult.heatmaps.map((h) => (
           <div key={h.class_index}>
             <div className="text-[9px] sm:text-[10px] text-slate-500 mb-1 truncate font-medium">
-              {h.disease_name} <span className="font-mono text-teal-600">({(h.probability * 100).toFixed(1)}%)</span>
+              {h.disease_name} <span className="font-mono text-teal-700 font-semibold">({(h.probability * 100).toFixed(1)}%)</span>
             </div>
             {h.heatmap ? (
               <img src={h.heatmap} alt={`GradCAM heatmap for ${h.disease_name}`} className="w-full rounded-lg border border-slate-200" />

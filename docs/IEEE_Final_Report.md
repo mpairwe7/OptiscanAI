@@ -1,4 +1,4 @@
-# RetinalAI: An Offline-First Clinical Screening Platform for Retinal Disease Detection in Rural Uganda
+run e2# RetinalAI: An Offline-First Clinical Screening Platform for Retinal Disease Detection in Rural Uganda
 
 **Mpairwe Lauben, Nankya Shadia, Yapyeko Rebecca**
 

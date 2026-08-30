@@ -79,6 +79,11 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     strategy:
+      # The two images are independent, and fail-fast cancels the sibling the
+      # moment one dies — which reported the CPU build as "cancelled" and hid
+      # whether it was actually healthy while the GPU build was broken. Let both
+      # finish so each variant's status means what it says.
+      fail-fast: false
       matrix:
         include:
           - variant: gpu

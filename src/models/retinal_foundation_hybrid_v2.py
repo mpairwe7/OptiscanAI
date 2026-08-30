@@ -234,6 +234,14 @@ class RetinalFoundationHybridV2(nn.Module):
             torch.full((num_classes,), 0.5, dtype=torch.float32),
         )
 
+        # ---- Per-class probability calibration (Platt scaling on the logit) ----
+        # Training with an asymmetric loss leaves the sigmoid outputs badly
+        # over-confident, which makes any threshold policy fitted on them
+        # degenerate. These buffers apply sigmoid(a * z + b); they default to the
+        # identity, so behaviour is unchanged until a calibration is loaded.
+        self.register_buffer("calib_scale", torch.ones(num_classes, dtype=torch.float32))
+        self.register_buffer("calib_shift", torch.zeros(num_classes, dtype=torch.float32))
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass returning raw logits for loss computation."""
         # Encode
@@ -251,6 +259,57 @@ class RetinalFoundationHybridV2(nn.Module):
         # Classify
         logits = self.classifier(global_feat)  # [B, C]
         return logits
+
+    # ------------------------------------------------------------------
+    # Probability calibration
+    # ------------------------------------------------------------------
+
+    def calibrated_probabilities(self, logits: torch.Tensor) -> torch.Tensor:
+        """Sigmoid of the Platt-scaled logit, per class.
+
+        Identity by default, so an uncalibrated checkpoint behaves exactly as
+        before.
+        """
+        return torch.sigmoid(logits * self.calib_scale + self.calib_shift)
+
+    def set_calibration(self, scale, shift) -> None:
+        """Install per-class Platt parameters fitted on a held-out split."""
+        scale = torch.as_tensor(scale, dtype=torch.float32, device=self.calib_scale.device)
+        shift = torch.as_tensor(shift, dtype=torch.float32, device=self.calib_shift.device)
+        if scale.shape != self.calib_scale.shape or shift.shape != self.calib_shift.shape:
+            raise ValueError(
+                f"calibration shape mismatch: expected {tuple(self.calib_scale.shape)}, "
+                f"got scale {tuple(scale.shape)} shift {tuple(shift.shape)}"
+            )
+        self.calib_scale.copy_(scale)
+        self.calib_shift.copy_(shift)
+
+    def load_calibration(self, path: str | Path) -> Dict[str, Any]:
+        """Load a calibration artefact written by scripts/ncc2026_calibration.py.
+
+        The file also carries the decision thresholds fitted against the
+        calibrated probabilities; applying one without the other would put the
+        model at an operating point neither was chosen for, so both move
+        together.
+        """
+        payload = json.loads(Path(path).read_text())
+        self.set_calibration(payload["calibration"]["scale"], payload["calibration"]["shift"])
+        thresholds = payload.get("thresholds")
+        if thresholds is not None:
+            self.thresholds.copy_(
+                torch.as_tensor(thresholds, dtype=torch.float32, device=self.thresholds.device)
+            )
+        logger.info(
+            "Loaded calibration from %s (policy=%s)", path, payload.get("policy", "unspecified")
+        )
+        return payload
+
+    @property
+    def is_calibrated(self) -> bool:
+        return not (
+            torch.allclose(self.calib_scale, torch.ones_like(self.calib_scale))
+            and torch.allclose(self.calib_shift, torch.zeros_like(self.calib_shift))
+        )
 
     # ------------------------------------------------------------------
     # Threshold-aware inference
@@ -273,7 +332,7 @@ class RetinalFoundationHybridV2(nn.Module):
             if was_training:
                 self.train()
 
-        probs = torch.sigmoid(logits)
+        probs = self.calibrated_probabilities(logits)
         preds = (probs >= self.thresholds.unsqueeze(0)).float()
 
         return {
@@ -294,27 +353,27 @@ class RetinalFoundationHybridV2(nn.Module):
             all_probs = []
 
             # Original
-            all_probs.append(torch.sigmoid(self.forward(x)))
+            all_probs.append(self.calibrated_probabilities(self.forward(x)))
 
             # Horizontal flip
             if n_augments >= 2:
-                all_probs.append(torch.sigmoid(self.forward(x.flip(-1))))
+                all_probs.append(self.calibrated_probabilities(self.forward(x.flip(-1))))
 
             # Vertical flip
             if n_augments >= 3:
-                all_probs.append(torch.sigmoid(self.forward(x.flip(-2))))
+                all_probs.append(self.calibrated_probabilities(self.forward(x.flip(-2))))
 
             # Rotate 90
             if n_augments >= 4:
-                all_probs.append(torch.sigmoid(self.forward(x.rot90(1, [-2, -1]))))
+                all_probs.append(self.calibrated_probabilities(self.forward(x.rot90(1, [-2, -1]))))
 
             # Rotate 180
             if n_augments >= 5:
-                all_probs.append(torch.sigmoid(self.forward(x.rot90(2, [-2, -1]))))
+                all_probs.append(self.calibrated_probabilities(self.forward(x.rot90(2, [-2, -1]))))
 
             # Rotate 270
             if n_augments >= 6:
-                all_probs.append(torch.sigmoid(self.forward(x.rot90(3, [-2, -1]))))
+                all_probs.append(self.calibrated_probabilities(self.forward(x.rot90(3, [-2, -1]))))
 
             avg_probs = torch.stack(all_probs, dim=0).mean(dim=0)
             preds = (avg_probs >= self.thresholds.unsqueeze(0)).float()

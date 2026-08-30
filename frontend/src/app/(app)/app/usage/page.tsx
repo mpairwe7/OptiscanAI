@@ -54,7 +54,7 @@ export default function UsagePage() {
               {pct >= 80 && (
                 <>
                   {" · "}
-                  <Link href="/pricing" className="text-teal-600 hover:text-teal-700 font-medium">
+                  <Link href="/pricing" className="text-teal-700 hover:text-teal-800 font-semibold">
                     Upgrade for more
                   </Link>
                 </>

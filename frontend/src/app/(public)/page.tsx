@@ -67,7 +67,7 @@ export default function MarketingHome() {
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/sign-up"
-              className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold rounded-xl bg-teal-500 hover:bg-teal-400 text-white shadow-lg shadow-teal-500/20 transition-transform hover:-translate-y-px"
+              className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold rounded-xl bg-teal-700 hover:bg-teal-600 text-white shadow-lg shadow-teal-500/20 transition-transform hover:-translate-y-px"
             >
               Get started free
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

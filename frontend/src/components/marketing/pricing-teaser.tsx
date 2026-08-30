@@ -20,7 +20,7 @@ export function PricingTeaser() {
               }`}
             >
               {p.highlight && (
-                <div className="text-[10px] uppercase tracking-wider font-bold text-teal-600 mb-2">
+                <div className="text-[10px] uppercase tracking-wider font-bold text-teal-700 mb-2">
                   Most popular
                 </div>
               )}

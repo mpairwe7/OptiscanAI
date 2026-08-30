@@ -25,13 +25,13 @@ export default function PricingPage() {
       {/* Comparison matrix */}
       <div className="mt-16">
         <h2 className="text-2xl font-bold tracking-tight text-slate-900 mb-6">Compare features</h2>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
           <table className="w-full text-sm border-collapse">
             <thead>
-              <tr className="border-b border-slate-200">
-                <th className="text-left py-3 pr-4 font-semibold text-slate-700">Feature</th>
+              <tr className="border-b border-slate-200 bg-slate-50">
+                <th className="text-left py-3.5 px-4 font-semibold text-slate-900">Feature</th>
                 {PLANS.map((p) => (
-                  <th key={p.id} className="text-left py-3 px-4 font-semibold text-slate-700 whitespace-nowrap">
+                  <th key={p.id} className="text-left py-3.5 px-4 font-semibold text-slate-900 whitespace-nowrap">
                     {p.name}
                   </th>
                 ))}
@@ -39,10 +39,10 @@ export default function PricingPage() {
             </thead>
             <tbody>
               {FEATURE_MATRIX.map((row) => (
-                <tr key={row.key} className="border-b border-slate-100 hover:bg-slate-50/50">
-                  <td className="py-3 pr-4 text-slate-700">{row.label}</td>
+                <tr key={row.key} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70 transition-colors">
+                  <td className="py-3 px-4 text-slate-900 font-medium">{row.label}</td>
                   {row.byPlan.map((cell, idx) => (
-                    <td key={idx} className="py-3 px-4 text-slate-600 whitespace-nowrap">
+                    <td key={idx} className="py-3 px-4 text-slate-700 whitespace-nowrap">
                       {cell}
                     </td>
                   ))}
@@ -53,8 +53,8 @@ export default function PricingPage() {
         </div>
       </div>
 
-      <div className="mt-16 flex flex-col items-center gap-2 text-sm text-slate-500">
-        <span className="text-xs uppercase tracking-wider font-semibold text-slate-400">
+      <div className="mt-16 flex flex-col items-center gap-2 text-sm text-slate-600">
+        <span className="text-xs uppercase tracking-wider font-semibold text-slate-600">
           Pay with
         </span>
         {/*
@@ -89,7 +89,7 @@ export default function PricingPage() {
               MTN
             </text>
           </svg>
-          <span className="text-sm font-semibold text-slate-700">MoMo</span>
+          <span className="text-sm font-semibold text-slate-800">MoMo</span>
         </span>
       </div>
     </div>

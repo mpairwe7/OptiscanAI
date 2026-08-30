@@ -13,9 +13,18 @@ on:
       - 'pyproject.toml'
   workflow_dispatch:
 
+# A push to frontend/** and a manual dispatch both trigger this workflow, which
+# produced two concurrent runs on the same commit: both cloned the Space, one
+# pushed, the other was rejected non-fast-forward. Queue them instead of running
+# in parallel; do not cancel in-progress runs, since cancelling mid-push can
+# leave the Space with a partial tree.
+concurrency:
+  group: hf-space-deploy
+  cancel-in-progress: false
+
 env:
-  HF_SPACE: Mpairwe49/retinal-screening
-  HF_SPACE_URL: https://huggingface.co/spaces/Mpairwe49/retinal-screening
+  HF_SPACE: landwind22/Retinal_Screening
+  HF_SPACE_URL: https://huggingface.co/spaces/landwind22/Retinal_Screening
 
 jobs:
   test:
@@ -86,7 +95,10 @@ jobs:
           app_port: 7860
           pinned: true
           license: cc-by-4.0
-          short_description: AI-powered retinal disease screening — 45 diseases, <200ms, clinical reasoning
+          # The Hub rejects a short_description over 60 characters, and an
+          # unquoted value containing a colon is invalid YAML. Either mistake
+          # fails /api/validate-yaml and leaves the Space in CONFIG_ERROR.
+          short_description: "AI retinal screening: 45 diseases, clinical reasoning"
           ---
 
           # RetinalAI: AI-Powered Retinal Disease Screening
@@ -111,7 +123,22 @@ jobs:
           # whenever the LFS object isn't in the runner's local store
           # (LFS bandwidth caps, partial fetch) — and there's no point
           # double-paying bandwidth for a public checkpoint.
-          rsync -av --exclude='.git' --exclude='node_modules' --exclude='.next' \
+          # --delete removes files left in the Space from earlier deploys.
+          # Without it a stale frontend/src/app/page.tsx survived here and broke
+          # `next build` (it referenced a store field that no longer exists), so
+          # the Space failed to build even though the tree it was built from was
+          # fine. Excluded paths (.git etc.) are protected from deletion.
+          #
+          # README.md and Dockerfile are excluded because both are *synthesised*
+          # into the Space above and neither exists at the repo root — so
+          # --delete would remove them again, and the repo's own README.md would
+          # also overwrite the Space one. Losing the README front-matter gives
+          # CONFIG_ERROR (no `sdk: docker`/`app_port`); losing the Dockerfile
+          # gives NO_APP_FILE. In both cases the push still reports success, so
+          # the failure only shows up in the Space's runtime stage.
+          rsync -av --delete --exclude='.git' \
+                    --exclude='README.md' --exclude='Dockerfile' \
+                    --exclude='node_modules' --exclude='.next' \
                     --exclude='__pycache__' --exclude='.venv' --exclude='outputs' \
                     --exclude='data' --exclude='wandb' --exclude='mlruns' \
                     --exclude='.env' --exclude='*.onnx' --exclude='docs' \
@@ -139,29 +166,85 @@ jobs:
           # `hf auth login --add-to-git-credential` doesn't always wire the
           # HF Hub push path. Inject the token straight into the remote URL
           # (rewritten in-place — no other process sees it).
-          HF_USER="${HF_USER:-Mpairwe49}"
+          # Must match the owner of HF_SPACE. The repo secrets HF_TOKEN and
+          # HF_USER have to belong to that account too — a token for a different
+          # account gets 403 on push, however valid it is.
+          HF_USER="${HF_USER:-landwind22}"
           git remote set-url origin "https://${HF_USER}:${HF_TOKEN}@huggingface.co/spaces/${{ env.HF_SPACE }}"
-          git push origin HEAD:main
+          # The Space is a build artifact regenerated wholly from this repo on
+          # every run — it is never a source of truth — so if the remote moved
+          # (a queued run, or a manual recovery push), our freshly built tree is
+          # the state we want. Refetch and retry once before forcing, so a
+          # genuine concurrent deploy is preserved rather than silently lost.
+          git push origin HEAD:main || {
+            echo "push rejected — refetching and retrying"
+            git fetch origin main
+            git reset --soft origin/main
+            git commit -m "Deploy $(date +%Y%m%d-%H%M%S) from ${GITHUB_SHA::8} (retry)" || true
+            git push origin HEAD:main
+          }
 
-      - name: Wait for Space build
+      # A successful push only means git accepted the commit. The Space can still
+      # land in CONFIG_ERROR (bad README front-matter) or NO_APP_FILE (missing
+      # Dockerfile) and serve nothing, so the deploy is not considered done until
+      # the runtime reaches RUNNING and /health actually answers. Both have
+      # happened here; before this step the workflow reported success anyway.
+      - name: Verify the Space builds and serves
+        timeout-minutes: 30
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ env.HF_SPACE }}
         run: |
-          echo "Deployment triggered: ${{ env.HF_SPACE_URL }}"
-          echo "Monitor build at: ${{ env.HF_SPACE_URL }}/logs"
-          # Give HF a moment to start building
-          sleep 10
-          # Check Space status
-          python3 -c "
+          python3 - <<'PY'
+          import os, sys, time, urllib.request, json
           from huggingface_hub import HfApi
-          api = HfApi()
-          info = api.space_info('${{ env.HF_SPACE }}')
-          print(f'Space status: {info.runtime}')
-          print(f'URL: https://${{ env.HF_SPACE }}.hf.space')
-          " || echo "Space info check skipped"
 
-      - name: Post-deploy health check
-        run: |
-          echo "Space URL: https://mpairwe49-retinal-screening.hf.space"
-          echo "Health endpoint: https://mpairwe49-retinal-screening.hf.space/health"
-          echo "API docs: https://mpairwe49-retinal-screening.hf.space/docs"
-          # HF Spaces takes 5-15 min to build Docker images
-          # Health check will be verified in next workflow run
+          space = os.environ["HF_SPACE"]
+          token = os.environ.get("HF_TOKEN") or None
+          api = HfApi()
+
+          # owner/Name -> owner-name.hf.space
+          host = space.replace("/", "-").replace("_", "-").lower()
+          url = f"https://{host}.hf.space"
+
+          TERMINAL_BAD = {"BUILD_ERROR", "CONFIG_ERROR", "RUNTIME_ERROR", "NO_APP_FILE", "DELETING"}
+          deadline, last = time.time() + 25 * 60, None
+          stage = None
+          while time.time() < deadline:
+              try:
+                  stage = getattr(api.space_info(space, token=token).runtime, "stage", None)
+              except Exception as e:
+                  print(f"  space_info error (retrying): {type(e).__name__}")
+                  time.sleep(20); continue
+              if stage != last:
+                  print(f"  stage: {stage}", flush=True); last = stage
+              if stage == "RUNNING":
+                  break
+              if stage in TERMINAL_BAD:
+                  print(f"::error::Space is in {stage}. Build logs: https://huggingface.co/spaces/{space}/logs")
+                  sys.exit(1)
+              time.sleep(20)
+          else:
+              print(f"::error::Space did not reach RUNNING within 25 min (last stage: {stage})")
+              sys.exit(1)
+
+          # RUNNING only means the container started; confirm the app answers.
+          for attempt in range(12):
+              try:
+                  with urllib.request.urlopen(f"{url}/health", timeout=30) as r:
+                      body = r.read().decode()
+                      if r.status == 200:
+                          data = json.loads(body)
+                          print(f"  /health -> 200 {data}")
+                          if not data.get("model_loaded"):
+                              print("::error::Space is up but model_loaded is false")
+                              sys.exit(1)
+                          print(f"::notice::Space live and healthy: {url}")
+                          sys.exit(0)
+              except Exception as e:
+                  print(f"  attempt {attempt+1}/12: {type(e).__name__}")
+              time.sleep(15)
+
+          print(f"::error::Space reached RUNNING but {url}/health never answered")
+          sys.exit(1)
+          PY

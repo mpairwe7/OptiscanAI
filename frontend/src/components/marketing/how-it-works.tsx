@@ -28,7 +28,7 @@ export function HowItWorks() {
             <div key={p.label}>
               <div className="flex items-center justify-between text-xs">
                 <span className="font-medium">{p.label}</span>
-                <span className="font-mono opacity-70">{p.pct}%</span>
+                <span className="font-mono text-slate-600">{p.pct}%</span>
               </div>
               <div className="mt-0.5 h-1 bg-white/10 rounded-full overflow-hidden">
                 <div className={`h-full ${p.color}`} style={{ width: `${p.pct}%` }} />
@@ -47,7 +47,7 @@ export function HowItWorks() {
           <div className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Referral</div>
           <div className="rounded-lg bg-red-50 border border-red-200 p-2 text-xs">
             <div className="font-semibold text-red-700">HIGH priority</div>
-            <div className="text-red-600 mt-0.5">Refer to ophthalmology within 2 weeks</div>
+            <div className="text-red-700 mt-0.5">Refer to ophthalmology within 2 weeks</div>
           </div>
           <div className="flex items-center gap-2 text-xs text-slate-600">
             <span className="px-2 py-0.5 rounded bg-slate-100 font-mono">FHIR</span>
@@ -78,7 +78,7 @@ export function HowItWorks() {
         <div className="mt-14 grid gap-6 lg:grid-cols-3 lg:gap-8">
           {steps.map((s, i) => (
             <div key={s.n} className="relative">
-              <div className="text-xs font-mono font-bold text-teal-600 tracking-widest">{s.n}</div>
+              <div className="text-xs font-mono font-bold text-teal-700 tracking-widest">{s.n}</div>
               <h3 className="mt-2 text-xl font-semibold text-slate-900">{s.title}</h3>
               <p className="mt-1.5 text-sm text-slate-600">{s.body}</p>
               <div className="mt-4">{s.visual}</div>

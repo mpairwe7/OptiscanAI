@@ -118,7 +118,7 @@ export function FundusMockup({ className = "" }: { className?: string }) {
       <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 bg-white/95 backdrop-blur border border-slate-200 rounded-xl shadow-lg p-3 max-w-[220px]">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse-dot" />
-          <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">
+          <span className="text-[10px] uppercase tracking-wider font-bold text-slate-600">
             Detected · HIGH priority
           </span>
         </div>
@@ -126,7 +126,7 @@ export function FundusMockup({ className = "" }: { className?: string }) {
           Diabetic Retinopathy
         </div>
         <div className="mt-1.5 flex items-center justify-between text-xs">
-          <span className="text-slate-500">Confidence</span>
+          <span className="text-slate-600">Confidence</span>
           <span className="font-mono font-semibold text-slate-900">0.94</span>
         </div>
         <div className="mt-1 h-1 bg-slate-100 rounded-full overflow-hidden">

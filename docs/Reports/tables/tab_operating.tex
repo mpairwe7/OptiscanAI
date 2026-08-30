@@ -1,0 +1,23 @@
+\begin{table}[!t]
+\centering
+\caption{What the threshold policy costs on each side of the trade-off, on the RFMiD test split.
+Counts are summed over all 24 classes and 640 images. ``Silent'' counts classes whose threshold
+is so high that the class never fires, so its sensitivity is identically zero.}
+\label{tab:operating}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lccccrr}
+\toprule
+Policy & Sens. & Spec. & PPV & FN & FP & Silent \\
+\midrule
+\multicolumn{7}{l}{\emph{As trained}} \\
+\quad Uniform $\tau{=}0.5$ & 0.420 & 0.965 & 0.383 & 199 & 484 & 6 \\
+\quad Precision floor (deployed) & 0.591 & 0.720 & 0.114 & 81 & 3858 & 5 \\
+\quad Sensitivity target $\geq 0.90$ & 0.811 & 0.729 & 0.189 & 75 & 3986 & 0 \\
+\midrule \multicolumn{7}{l}{\emph{After per-class Platt recalibration}} \\
+\quad Uniform $\tau{=}0.5$ & 0.244 & 0.994 & 0.733 & 348 & 84 & 13 \\
+\quad Precision floor (deployed) & 0.347 & 0.943 & 0.439 & 194 & 764 & 11 \\
+\quad Sensitivity target $\geq 0.90$ & 0.657 & 0.835 & 0.216 & 92 & 2356 & 1 \\
+\bottomrule
+\end{tabular}
+\end{table}

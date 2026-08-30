@@ -89,12 +89,12 @@ export function MobileBottomNav() {
               key={item.href}
               href={item.href}
               className={`relative flex-1 flex flex-col items-center justify-center py-2 gap-0.5 min-h-[56px] transition-colors ${
-                active ? "text-teal-600" : "text-slate-400 active:text-slate-600"
+                active ? "text-teal-700 font-semibold" : "text-slate-600 active:text-slate-900"
               }`}
               aria-label={item.label}
               aria-current={active ? "page" : undefined}
             >
-              {active && <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-teal-500 rounded-full" />}
+              {active && <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-teal-600 rounded-full" />}
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 2 : 1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
               </svg>

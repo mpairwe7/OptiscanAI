@@ -6,7 +6,7 @@ export function Testimonials() {
       name: "Dr Sarah K.",
       role: "Ophthalmologist · Mulago Hospital",
       initials: "SK",
-      color: "bg-teal-500",
+      color: "bg-teal-700",
     },
     {
       quote:
@@ -14,7 +14,7 @@ export function Testimonials() {
       name: "James M.",
       role: "Practice manager · Mengo Eye Clinic",
       initials: "JM",
-      color: "bg-indigo-500",
+      color: "bg-indigo-700",
     },
     {
       quote:
@@ -22,7 +22,7 @@ export function Testimonials() {
       name: "Prof. R. Ndegwa",
       role: "Researcher · Makerere University",
       initials: "RN",
-      color: "bg-amber-500",
+      color: "bg-amber-700",
     },
   ];
 

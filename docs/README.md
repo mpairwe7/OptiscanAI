@@ -28,6 +28,8 @@ dive into the area you need. (Repo overview lives in the root
 | --- | --- |
 | [01 — Data Ingestion](01-data-ingestion.md) · [02 — Data Augmentation](02-data-augmentation.md) | Dataset, RFMiD, augmentation pipeline |
 | [04 — Evaluation](04-evaluation.md) · [precision-rescue-verification](precision-rescue-verification.md) | Metrics, calibration, precision-rescue |
+| [28 — Reasoner: CNN vs DistilledQwen](28-reasoner-cnn-vs-distilledqwen.md) | Self-contained replacement for the external LLM reasoner: design, harness, feasibility, Go/No-Go |
+| [29 — Narrator verification & gaps](29-narrator-verification-and-gaps.md) | Review of doc 28 §0.6–§0.9: what verified, what was wrong (truncation confound, non-comparative latency, grounding blind spots), and the gap roadmap |
 | [05 — Model Export](05-model-export.md) | ONNX / TorchScript / INT8 export to backend |
 | [12 — Advanced MLOps](12-advanced-mlops.md) | DVC pipeline, MLflow, HPO, retraining |
 
