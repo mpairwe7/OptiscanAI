@@ -20,14 +20,26 @@ project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   (Dependabot #17). Both lockfiles now resolve `@babel/core@7.29.7`.
 
 ### Added
-- **Sunbird AI cloud tier for Ugandan-language voice** (`SUNBIRD__*`, disabled
-  by default). `backend/app/core/sunbird_client.py` adds ASR, TTS and
-  translation for Luganda, Runyankole, Acholi, Swahili, Ateso and Lugbara, with
+- **Sunbird AI cloud tier for voice** (`SUNBIRD__*`, disabled by default).
+  `backend/app/core/sunbird_client.py` adds ASR, TTS and
+  translation for **English**, Luganda, Runyankole, Acholi, Swahili, Ateso and Lugbara, with
   dual-account failover and 429/5xx retry. Wired *behind* the local models:
   whisper/piper run first and the cloud is consulted only when they return
   nothing, so an offline clinic is unaffected. Partial transcriptions never
   leave the device — a round-trip per 500ms chunk would destroy the streaming
   latency the partial exists for.
+
+  English is included in `cloud_locales` deliberately: `faster-whisper` and
+  `piper` live in the optional `voice` extra and all three Dockerfiles run a
+  bare `uv pip install .`, so a deployed image has no local speech engine —
+  excluding English meant English ASR returned `"[ASR not available]"` and
+  English TTS emitted silence. Local-first ordering is unchanged, so a host that
+  does have whisper still never reaches the network for English.
+
+  `SUNBIRD__TIMEOUT_S` defaults to 60s rather than 30s: measured against the
+  live API, a cold `/tasks/audio/speech` timed out on *both* accounts at 30s and
+  then served in 8.9s once warm. Responses are 24 kHz WAV and are resampled to
+  the engine's 22.05 kHz.
 - **Navigation rail** — the desktop sidebar collapses to an icon rail and
   expands on hover, with a pin control (`Keep open`) persisted in
   `localStorage`. A pre-paint inline script stamps `data-rail-mode` on `<html>`

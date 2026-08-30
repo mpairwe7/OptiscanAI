@@ -285,7 +285,11 @@ class ASREngine:
         result = sunbird_client.transcribe(_to_wav_bytes(audio), locale=loc)
         if not result or not (result.get("text") or "").strip():
             return None
-        logger.info("ASR served by Sunbird cloud (locale=%s)", loc)
+        logger.info(
+            "ASR served by Sunbird cloud (locale=%s, accounts=%s)",
+            loc,
+            sunbird_client.account_summary(),
+        )
         return TranscriptionResult(
             text=result["text"].strip(),
             language=result.get("language", loc),

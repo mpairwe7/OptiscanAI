@@ -251,11 +251,31 @@ class SunbirdSettings(BaseModel):
     # SecretStr so print(settings) / structured-log dumps yield '**********'.
     api_token: SecretStr = SecretStr("")
     fallback_api_token: SecretStr = SecretStr("")
-    timeout_s: float = 30.0
+    # Informational only — Sunbird authenticates by bearer token. Declared so
+    # the account handles are recognised rather than silently dropped by
+    # `extra: "ignore"`, and so logs can say which account is live.
+    username: str = ""
+    fallback_username: str = ""
+    # 60s, not 30s: a cold Sunbird model blows a 30s budget. Measured
+    # 2026-08-31 — the first /tasks/audio/speech call after idle timed out on
+    # BOTH accounts at 30s, then served in 8.9s once warm. With failover but no
+    # same-account retry, too short a timeout means the first utterance after
+    # idle reliably returns nothing on every account. The call runs in a worker
+    # thread, so this costs the speaker a longer wait, not a blocked event loop.
+    timeout_s: float = 60.0
     # Attempts per account before failing over (1 = no retry).
     retries: int = 2
-    # Tried before the cloud for these locales; English stays fully local.
-    cloud_locales: tuple[str, ...] = ("lg", "nyn", "ach", "sw", "teo", "lgg")
+    # Locales the cloud tier may serve. Always *behind* the local models: the
+    # engines call out only when whisper/piper produce nothing.
+    #
+    # English is included, which is not merely a convenience. faster-whisper and
+    # piper live in the optional `voice` extra, and all three Dockerfiles run a
+    # bare `uv pip install .` — so a deployed image has no local speech at all,
+    # and excluding English here meant English ASR returned "[ASR not
+    # available]" and English TTS emitted silence. Sunbird serves English via
+    # salt_eng_0001. Installing the `voice` extra in the images would restore
+    # local-first for English automatically; nothing here needs to change.
+    cloud_locales: tuple[str, ...] = ("en", "lg", "nyn", "ach", "sw", "teo", "lgg")
 
 
 class MobileBundleSettings(BaseModel):

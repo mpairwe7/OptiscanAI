@@ -92,7 +92,7 @@ pydantic-settings classes in `backend/app/core/config.py`.
 | `OFFLINE_RAG__*` | `ENABLED`, `INDEX_DIR`, `SOURCE_DIR`, `BUNDLES_DIR`, `EMBEDDER_PATH`, `TOP_K`, `SIMILARITY_THRESHOLD`, `SYNC_INTERVAL_S`, `COMPRESSION`, `TARGET_BUNDLE_SIZE_MB` |
 | `QUANTIZATION__*` | `ENABLED`, `ACTIVE_FORMAT` (`gguf_q4_k_m`\|`awq_4bit`\|`onnx_int8`), `TORCH_COMPILE_*`, `VLLM_ENABLED`, `MAX_FAITHFULNESS_DROP`, `MAX_P95_LATENCY_MS`, … |
 | `VOICE_FIRST__*` | `ENABLED`, `DEFAULT_LANGUAGE` (`en-ug`), `ASR_MODEL(_PATH)`, `TTS_ENGINE`/`TTS_MODEL_PATH`, `VAD_SENSITIVITY`, `BARGE_IN_ENABLED`, `SPEECH_RATE` |
-| `SUNBIRD__*` | `ENABLED`, `API_URL`, `API_TOKEN`, `FALLBACK_API_TOKEN`, `TIMEOUT_S`, `RETRIES` — Sunbird AI cloud ASR/TTS for Ugandan languages, tried only when the local whisper/piper models return nothing. Two tokens: failover needs both, and on one account a quota `429` silently drops Ugandan narration to an English voice |
+| `SUNBIRD__*` | `ENABLED`, `API_URL`, `API_TOKEN`, `FALLBACK_API_TOKEN`, `USERNAME`, `FALLBACK_USERNAME`, `TIMEOUT_S` (60), `RETRIES` — Sunbird AI cloud ASR/TTS/translation, tried only when the local whisper/piper models return nothing. Covers **English plus** lg/nyn/ach/sw/teo/lgg: faster-whisper and piper are in the optional `voice` extra that the deploy images do not install, so without this tier a deployed image has no speech at all. Two tokens: failover needs both, and on one account a quota `429` silently drops narration with nothing to fall back to |
 | `MOBILE_BUNDLE__*` | `ENABLED`, `MAX_BUNDLE_SIZE_MB`, `TARGET_MODEL`, `INCLUDE_VOICE_MODELS`, `MIN_ANDROID_SDK`, `MIN_RAM_MB` |
 
 ## Phase 6 — Subscription billing (SaaS layer)

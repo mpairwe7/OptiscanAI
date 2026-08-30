@@ -136,6 +136,24 @@ def is_available() -> bool:
     return bool(_cfg().enabled) and bool(_account_tokens())
 
 
+def account_labels() -> str:
+    """Configured accounts named by handle, for server logs.
+
+    Kept out of :func:`account_summary` (and therefore out of health output):
+    the roles are what an operator needs there, and an account handle is not
+    something to publish on an endpoint just to make a log nicer.
+    """
+    cfg = _cfg()
+    parts = []
+    for role, tok, name in (
+        ("primary", cfg.api_token.get_secret_value(), cfg.username),
+        ("fallback", cfg.fallback_api_token.get_secret_value(), cfg.fallback_username),
+    ):
+        if tok and tok.strip():
+            parts.append(f"{role}={name}" if name else role)
+    return ", ".join(parts) or "none"
+
+
 def account_summary() -> str:
     """Which accounts are configured — never the tokens themselves.
 

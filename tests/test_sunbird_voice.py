@@ -179,8 +179,32 @@ def test_asr_never_sends_partials_to_the_cloud(sunbird_off, monkeypatch):
     assert called == []
 
 
-def test_asr_keeps_english_local(sunbird_off, monkeypatch):
-    """English is served locally; only cloud_locales may reach the network."""
+def test_english_is_a_cloud_locale():
+    """English must be servable by the cloud tier.
+
+    faster-whisper and piper live in the optional `voice` extra and the deploy
+    images install neither, so with English excluded there was no path to
+    English speech at all in production — ASR returned "[ASR not available]"
+    and TTS emitted silence.
+    """
+    assert "en" in SunbirdSettings().cloud_locales
+
+
+def test_asr_sends_english_to_cloud_when_local_is_absent(sunbird_off, monkeypatch):
+    """With no local model, English escalates rather than dead-ending."""
+    sunbird_off.enabled = True
+    sunbird_off.api_token = SecretStr("token")
+    monkeypatch.setattr(sb, "transcribe", lambda *a, **k: {"text": "left eye blurry"})
+
+    engine = ASREngine()
+    engine._model = None
+    result = engine._transcribe_cloud(np.zeros(1600, dtype=np.float32), False, "en")
+    assert result is not None
+    assert result.text == "left eye blurry"
+
+
+def test_asr_skips_locale_outside_the_allowlist(sunbird_off, monkeypatch):
+    """cloud_locales is still a guard: an unlisted locale never dials out."""
     sunbird_off.enabled = True
     sunbird_off.api_token = SecretStr("token")
 
@@ -190,7 +214,33 @@ def test_asr_keeps_english_local(sunbird_off, monkeypatch):
     engine = ASREngine()
     engine._model = None
     audio = np.zeros(1600, dtype=np.float32)
-    assert engine._transcribe_cloud(audio, is_partial=False, locale="en") is None
+    assert engine._transcribe_cloud(audio, is_partial=False, locale="fr") is None
+    assert called == []
+
+
+def test_local_transcript_is_preferred_over_the_cloud(sunbird_off, monkeypatch):
+    """Local-first: a usable local result must not trigger a network call.
+
+    This is what keeps adding English to cloud_locales from turning every
+    utterance into a Sunbird request on a host that *does* have whisper.
+    """
+    sunbird_off.enabled = True
+    sunbird_off.api_token = SecretStr("token")
+
+    called = []
+    monkeypatch.setattr(sb, "transcribe", lambda *a, **k: called.append(1))
+
+    class FakeSegment:
+        text, start, end, avg_logprob = "local result", 0.0, 1.0, -0.1
+
+    class FakeModel:
+        def transcribe(self, audio, **kw):
+            return [FakeSegment()], type("I", (), {"language": "en"})()
+
+    engine = ASREngine()
+    engine._model = FakeModel()
+    out = engine._transcribe(np.zeros(1600, dtype=np.float32), is_partial=False, locale="en")
+    assert out.text == "local result"
     assert called == []
 
 
@@ -235,6 +285,36 @@ def test_tts_non_wav_payload_degrades_instead_of_returning_garbage(sunbird_off, 
 
     engine = TTSEngine()
     assert engine._synthesize_cloud("Oli otya", TTSConfig(locale="lg")) == b""
+
+
+def test_tts_resamples_to_the_engine_rate(sunbird_off, monkeypatch):
+    """Sunbird serves 24 kHz; the engine streams 22.05 kHz.
+
+    Verified against the live API on 2026-08-31: /tasks/audio/speech returns
+    1ch 16-bit 24000Hz WAV. Handing those frames through unresampled would play
+    back ~9% fast and high-pitched, which on a clinical narration is a real
+    misread risk, so the ratio is pinned here.
+    """
+    sunbird_off.enabled = True
+    sunbird_off.api_token = SecretStr("token")
+
+    src_rate, src_frames = 24000, 24000  # 1.0s of audio
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(src_rate)
+        w.writeframes(np.zeros(src_frames, dtype=np.int16).tobytes())
+
+    monkeypatch.setattr(sb, "synthesize", lambda *a, **k: {"audio_url": "https://x/a.wav"})
+    monkeypatch.setattr(sb, "fetch_audio", lambda *a, **k: buf.getvalue())
+
+    engine = TTSEngine()  # default sample rate 22050
+    out = np.frombuffer(engine._synthesize_cloud("hi", TTSConfig(locale="en")), dtype=np.int16)
+    expected = int(src_frames * 22050 / src_rate)
+    assert len(out) == expected
+    # Same wall-clock duration at the new rate — the point of resampling.
+    assert abs(len(out) / 22050 - src_frames / src_rate) < 0.01
 
 
 def test_tts_returns_pcm_frames_from_a_wav_payload(sunbird_off, monkeypatch):
