@@ -77,7 +77,7 @@ jobs:
           echo "manifest_path=outputs/quantized/quantization_manifest.json" >> $GITHUB_OUTPUT
 
       - name: Upload quantized artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: quantized-models
           path: outputs/quantized/
@@ -121,7 +121,7 @@ jobs:
 
       - name: Upload quality gate report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: quality-gate-report
           path: outputs/quantized/quality_gate_report.json
