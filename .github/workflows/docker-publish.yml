@@ -42,7 +42,7 @@ jobs:
       # (actions/checkout#270). The explicit `git lfs pull` below
       # force-replaces every LFS pointer with the real binary — pytest
       # triggers FastAPI's lifespan, which torch.load()s the .pth.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           lfs: false
       - name: Smudge LFS objects into working tree
@@ -95,7 +95,7 @@ jobs:
             image: optiscan-ai
             tag: cpu
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           lfs: false
 
@@ -153,7 +153,7 @@ jobs:
     steps:
       # The deploy job runs on its own runner, so it must check out the repo to
       # get .github/scripts/crane_deploy.py. lfs:false skips the big model blobs.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           lfs: false
 

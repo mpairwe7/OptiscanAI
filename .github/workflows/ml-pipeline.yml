@@ -11,7 +11,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
@@ -37,7 +37,7 @@ jobs:
       # force-replaces every LFS pointer in the working tree with the real
       # binary — required because pytest triggers FastAPI's lifespan, which
       # torch.load()s models/model_vignn_rank1.pth (137 MB).
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           lfs: false
       - name: Smudge LFS objects into working tree
@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'

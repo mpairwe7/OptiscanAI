@@ -51,7 +51,7 @@ jobs:
       LOG_FORMAT: text
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Generate ephemeral CI credentials
         # `openssl rand` produces fresh per-run secrets. `::add-mask::` registers
