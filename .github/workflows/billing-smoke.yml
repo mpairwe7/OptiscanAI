@@ -84,7 +84,7 @@ jobs:
             postgres:16-alpine
 
       - name: Install uv (pinned for reproducible CI)
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v7
         with:
           # Pinned to the 0.5 line — bumping is intentional, not implicit.
           version: "0.5.18"
