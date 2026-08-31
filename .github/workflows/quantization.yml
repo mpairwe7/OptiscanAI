@@ -48,7 +48,7 @@ jobs:
       # (actions/checkout#270). The explicit `git lfs pull` below
       # force-replaces every LFS pointer with the real binary —
       # quantize_models.py torch.load()s models/model_vignn_rank1.pth (137 MB).
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           lfs: false
       - name: Smudge LFS objects into working tree
@@ -89,7 +89,7 @@ jobs:
     needs: quantize
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -132,7 +132,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: quantize
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Download quantized artifacts
         uses: actions/download-artifact@v8

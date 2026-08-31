@@ -12,7 +12,7 @@ jobs:
   dependency-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -38,7 +38,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build Docker image
         run: docker build -f deploy/Dockerfile.cpu -t mlops-scan:test .
@@ -60,7 +60,7 @@ jobs:
   sbom-generation:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Generate SBOM
         uses: anchore/sbom-action@v0
