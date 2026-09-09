@@ -46,8 +46,8 @@ severe over-confidence (expected calibration error 0.209), causing static decisi
 silence five diagnostic channels; isotonic recalibration mitigates this error to 0.003 without
 altering discriminative ranking. Third, while binary referral triage achieves an AUC of 0.952,
 projecting this operating point to primary-care clinical prevalence drops PPV from 0.93 to below
-0.30. Consequently, we articulate these findings as rigorous benchmark evidence and infrastructural
-feasibility analyses rather than clinical validation within Uganda.
+0.30. The design emphasizes a human-in-the-loop paradigm, traceability, and an explicit separation
+between benchmark performance and clinical readiness.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -83,8 +83,8 @@ sensitivity, specificity, PPV, FNR, and AUPRC with 95\% bootstrap confidence int
 ablation isolating retinal pretraining, LoRA adaptation, decision thresholding, and INT8 quantization
 under a shared training recipe. (iii) Diagnosis of a calibration failure that silences five disease
 channels, with a rank-preserving correction. (iv) Quantitative faithfulness testing of saliency maps
-and generated text via insertion/deletion metrics. (v) A prevalence-transfer model mapping benchmark
-triage metrics onto primary-care referral burdens.
+and generated text via insertion/deletion metrics. (v) A transparent evaluation framework that explicitly
+separates benchmark performance from clinical readiness, mapping triage metrics onto primary-care referral burdens.
 
 \section{Related Work}
 
@@ -183,7 +183,7 @@ MobileNetV3-Large student model (5.2\,M parameters) is knowledge-distilled using
 encompassing soft logits, hard ground-truth, intermediate feature alignment, and boundary-threshold consistency,
 and converted to an 8-bit INT8 ONNX binary (5.4\,MB, compressed from 20.8\,MB in FP32). Edge inference
 operates autonomously without telecommunications access, staging encrypted records for opportunistic synchronization
-upon network restoration. Comprehensive audit logging records all system inferences to support clinical governance.
+upon network restoration. All clinical interactions are immutably logged for audit traceability.
 
 \section{Experimental Setup}
 
@@ -397,9 +397,10 @@ foundation pretraining primarily confers parameter efficiency, while a fully fin
 attains higher rare-class retrieval (AUPRC 0.472 vs 0.392). The shipped threshold policy is recall-prioritising
 and silences five classes due to severe probability over-confidence (ECE 0.209); rank-preserving Platt scaling
 resolves this failure mode (ECE 0.003). Attribution maps pass deletion but fail insertion fidelity testing.
-Crucially, transferring triage operating points to primary-care prevalence cuts PPV by over half. We frame
-this study as benchmark evidence and deployment analysis, with local prospective validation the essential
-next step.
+Crucially, transferring triage operating points to primary-care prevalence cuts PPV by over half. The work
+positions itself deliberately as an initial step toward responsible, context-appropriate retinal screening,
+with prospective clinical validation on local cohorts, multi-stakeholder governance, and regulatory clearance
+as non-negotiable preconditions for clinical deployment.
 
 \section*{Acknowledgments}
 The authors express gratitude to the faculty and research leadership at Makerere University's College
