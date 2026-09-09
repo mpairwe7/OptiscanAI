@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import Response
 
@@ -171,6 +172,25 @@ app = FastAPI(
     description="Multi-label retinal disease classification with clinical knowledge graph reasoning",
     lifespan=lifespan,
 )
+
+
+# ── Database exception handler ──
+@app.exception_handler(SQLAlchemyError)
+async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
+    logger.error(
+        "Database exception",
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "error": str(exc),
+            "error_type": type(exc).__name__,
+        },
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Database service temporarily unavailable. Please retry shortly."},
+    )
 
 
 # ── Global exception handler ──

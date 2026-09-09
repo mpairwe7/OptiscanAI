@@ -80,9 +80,9 @@ export function ImageUpload() {
           <button
             onClick={() => predict.mutate(imageFile)}
             disabled={predict.isPending}
-            className="flex-1 bg-teal-600 text-white py-2.5 sm:py-3 px-4 rounded-lg font-semibold text-sm
-                       hover:bg-teal-700 active:bg-teal-800 disabled:opacity-50 transition-colors shadow-sm
-                       flex items-center justify-center gap-2"
+            className="flex-1 bg-teal-700 text-white py-2.5 sm:py-3 px-4 rounded-lg font-semibold text-sm
+                       hover:bg-teal-800 active:bg-teal-900 disabled:opacity-50 transition-colors shadow-sm
+                       flex items-center justify-center gap-2 min-h-[44px]"
           >
             {predict.isPending ? (
               <>

@@ -42,11 +42,114 @@ router = APIRouter(prefix="/api/v1/billing", tags=["billing"])
 
 # ── Public ──
 
+FALLBACK_PLANS: list[PlanResponse] = [
+    PlanResponse(
+        code="free",
+        display_name="Free",
+        description="Get started with 10 retinal scans per month and core Grad-CAM explainability.",
+        tagline="Try clinical screening with no commitment.",
+        monthly_price_cents=0,
+        annual_price_cents=0,
+        currency="USD",
+        scan_limit_monthly=10,
+        seat_limit=1,
+        is_contact_sales=False,
+        is_featured=False,
+        features={
+            "scans_per_month": "10",
+            "diseases": "45-disease detection",
+            "explainability": "Grad-CAM",
+            "report_retention_days": 7,
+            "watermark": True,
+            "support": "Community",
+            "audit_log": False,
+            "team_seats": False,
+            "dhis2_fhir": False,
+            "sso": False,
+        },
+    ),
+    PlanResponse(
+        code="clinician",
+        display_name="Clinician",
+        description="500 scans/month, every explainability method, clinical reasoning, PDF reports.",
+        tagline="For solo ophthalmologists and optometrists.",
+        monthly_price_cents=2900,
+        annual_price_cents=29000,
+        currency="USD",
+        scan_limit_monthly=500,
+        seat_limit=1,
+        is_contact_sales=False,
+        is_featured=True,
+        features={
+            "scans_per_month": "500",
+            "diseases": "45-disease detection",
+            "explainability": "All 5 methods",
+            "clinical_reasoning": True,
+            "pdf_reports": True,
+            "audit_log": True,
+            "support": "Priority email",
+            "team_seats": False,
+            "dhis2_fhir": False,
+            "sso": False,
+        },
+    ),
+    PlanResponse(
+        code="practice",
+        display_name="Practice",
+        description="Unlimited scans, 5 seats included, team review queue, priority support.",
+        tagline="For eye clinics and group practices.",
+        monthly_price_cents=9900,
+        annual_price_cents=99000,
+        currency="USD",
+        scan_limit_monthly=None,
+        seat_limit=5,
+        is_contact_sales=False,
+        is_featured=False,
+        features={
+            "scans_per_month": "Unlimited",
+            "diseases": "45-disease detection",
+            "explainability": "All 5 methods",
+            "team_seats": 5,
+            "review_queue": True,
+            "audit_log": True,
+            "pdf_reports": True,
+            "support": "Priority phone & email",
+            "dhis2_fhir": False,
+            "sso": False,
+        },
+    ),
+    PlanResponse(
+        code="health_system",
+        display_name="Health System",
+        description="Unlimited scans, custom seats, DHIS2/FHIR, dedicated CSM, SLA.",
+        tagline="For hospitals, NGOs, and regional screening programmes.",
+        monthly_price_cents=None,
+        annual_price_cents=None,
+        currency="USD",
+        scan_limit_monthly=None,
+        seat_limit=None,
+        is_contact_sales=True,
+        is_featured=False,
+        features={
+            "scans_per_month": "Unlimited",
+            "custom_seats": True,
+            "dhis2_fhir": True,
+            "dicom": True,
+            "sso_scim": True,
+            "sla": "99.9%",
+            "dedicated_csm": True,
+            "baa_pdp_act": True,
+        },
+    ),
+]
+
 
 @router.get("/plans", response_model=list[PlanResponse])
 async def list_plans(db: AsyncSession = Depends(get_db)) -> list[PlanResponse]:
     stmt = select(Plan).where(Plan.is_active.is_(True)).order_by(Plan.sort_order)
     plans = (await db.execute(stmt)).scalars().all()
+    if not plans:
+        return FALLBACK_PLANS
     return [
         PlanResponse(
             code=p.code,

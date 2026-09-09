@@ -177,6 +177,7 @@ export function useVoiceWebSocket(): UseVoiceWebSocketReturn {
   );
 
   const connectRef = useRef<() => void>(() => {});
+  const waveformCleanupRef = useRef<(() => void) | null | undefined>(null);
 
   // ── WebSocket connection with exponential backoff ──
   const connect = useCallback(() => {
@@ -228,6 +229,13 @@ export function useVoiceWebSocket(): UseVoiceWebSocketReturn {
     return () => {
       isUnmountedRef.current = true;
       clearTimeout(reconnectTimerRef.current);
+      waveformCleanupRef.current?.();
+      waveformCleanupRef.current = null;
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+      audioContextRef.current?.close().catch(() => {});
+      audioContextRef.current = null;
+      analyserRef.current = null;
       wsRef.current?.close();
       wsRef.current = null;
     };
@@ -284,6 +292,7 @@ export function useVoiceWebSocket(): UseVoiceWebSocketReturn {
         source.connect(analyser);
         analyserRef.current = analyser;
         cleanupWaveform = startWaveformLoop();
+        waveformCleanupRef.current = cleanupWaveform;
       } catch (audioErr) {
         console.warn("[VoiceWS] AudioContext unavailable, continuing without waveform:", audioErr);
       }
@@ -332,6 +341,9 @@ export function useVoiceWebSocket(): UseVoiceWebSocketReturn {
       mediaRecorderRef.current.stop();
     }
     mediaRecorderRef.current = null;
+
+    waveformCleanupRef.current?.();
+    waveformCleanupRef.current = null;
 
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
