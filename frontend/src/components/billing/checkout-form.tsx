@@ -38,15 +38,19 @@ export function CheckoutForm({ planCode }: { planCode: string }) {
       router.push("/app/checkout/success");
       return;
     }
-    if (["failed", "canceled"].includes(pendingIntent.status)) {
-      setError("Payment failed or was canceled. Please try again.");
-      setPendingIntent(null);
-      return;
-    }
     pollRef.current = setInterval(async () => {
       try {
         const res = await apiPollIntent(pendingIntent.id);
-        setPendingIntent(res);
+        if (res.status === "succeeded") {
+          qc.invalidateQueries({ queryKey: ["auth", "me"] });
+          qc.invalidateQueries({ queryKey: ["billing"] });
+          router.push("/app/checkout/success");
+        } else if (["failed", "canceled"].includes(res.status)) {
+          setError("Payment failed or was canceled. Please try again.");
+          setPendingIntent(null);
+        } else {
+          setPendingIntent(res);
+        }
       } catch {
         // ignore transient errors; user can refresh
       }
@@ -205,7 +209,7 @@ export function CheckoutForm({ planCode }: { planCode: string }) {
             onChange={(e) => setPhone(e.target.value)}
             placeholder="+256 77… / +256 78…"
             autoComplete="tel"
-            className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+            className="mt-1 w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 text-base sm:text-sm"
           />
           <p className="mt-1 text-xs text-slate-500">
             We&apos;ll send a USSD prompt to this number. Enter your MoMo PIN to confirm.
@@ -221,7 +225,7 @@ export function CheckoutForm({ planCode }: { planCode: string }) {
         <button
           onClick={handleSubscribe}
           disabled={submitting}
-          className="mt-6 w-full inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold rounded-lg bg-teal-600 hover:bg-teal-700 text-white disabled:opacity-50"
+          className="mt-6 w-full inline-flex items-center justify-center min-h-[44px] px-4 py-2.5 text-sm font-semibold rounded-lg bg-teal-600 hover:bg-teal-700 text-white disabled:opacity-50 transition-colors shadow-sm"
         >
           {submitting ? "Processing…" : `Send payment prompt — ${price}`}
         </button>

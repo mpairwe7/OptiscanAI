@@ -35,8 +35,7 @@ export default function ContactSalesPage() {
           href={waLink}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Chat with sales on WhatsApp"
-          className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[#25D366] hover:bg-[#1ebe57] text-white font-semibold text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2 min-h-[44px]"
+          className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[#25D366] hover:bg-[#1ebe57] text-slate-900 font-bold text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2 min-h-[44px]"
         >
           {/* WhatsApp icon */}
           <svg
@@ -74,7 +73,7 @@ export default function ContactSalesPage() {
         </a>
       </div>
 
-      <div className="mt-8 mb-3 flex items-center gap-3 text-xs uppercase tracking-wider font-semibold text-slate-400">
+      <div className="mt-8 mb-3 flex items-center gap-3 text-xs uppercase tracking-wider font-semibold text-slate-600">
         <div className="flex-1 h-px bg-slate-200" />
         <span>or send us the details</span>
         <div className="flex-1 h-px bg-slate-200" />
@@ -99,7 +98,7 @@ export default function ContactSalesPage() {
               autoComplete="name"
               required
               aria-required="true"
-              className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus-visible:outline-none min-h-[44px]"
+              className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus-visible:outline-none min-h-[44px] text-base sm:text-sm"
             />
           </div>
           <div>
@@ -114,7 +113,7 @@ export default function ContactSalesPage() {
               inputMode="email"
               required
               aria-required="true"
-              className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus-visible:outline-none min-h-[44px]"
+              className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus-visible:outline-none min-h-[44px] text-base sm:text-sm"
             />
           </div>
         </div>
@@ -143,7 +142,7 @@ export default function ContactSalesPage() {
               type="text"
               autoComplete="country-name"
               defaultValue="Uganda"
-              className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus-visible:outline-none min-h-[44px]"
+              className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus-visible:outline-none min-h-[44px] text-base sm:text-sm"
             />
           </div>
           <div>
@@ -153,7 +152,7 @@ export default function ContactSalesPage() {
             <select
               id="cs-volume"
               name="volume"
-              className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus-visible:outline-none min-h-[44px]"
+              className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus-visible:outline-none min-h-[44px] text-base sm:text-sm"
             >
               <option>&lt; 5,000</option>
               <option>5,000 – 20,000</option>
@@ -171,7 +170,7 @@ export default function ContactSalesPage() {
             name="message"
             rows={4}
             aria-describedby="cs-message-hint"
-            className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus-visible:outline-none"
+            className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus-visible:outline-none text-base sm:text-sm"
           />
           <p id="cs-message-hint" className="mt-1 text-xs text-slate-500">
             Mention any specific integrations (DHIS2, FHIR, DICOM) or compliance asks.
@@ -179,7 +178,7 @@ export default function ContactSalesPage() {
         </div>
         <button
           type="submit"
-          className="w-full inline-flex items-center justify-center px-4 py-3 text-sm font-semibold rounded-lg bg-teal-600 hover:bg-teal-700 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 min-h-[44px]"
+          className="w-full inline-flex items-center justify-center px-4 py-3 text-sm font-semibold rounded-lg bg-teal-700 hover:bg-teal-800 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 min-h-[44px] transition-colors shadow-sm"
         >
           Request a demo
         </button>

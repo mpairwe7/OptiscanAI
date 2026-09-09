@@ -47,8 +47,14 @@ body {
   background: #94a3b8;
 }
 
-/* ── Smooth transitions (exclude transforms to avoid layout thrash) ── */
-* {
+/* ── Smooth transitions on interactive elements (targeted to prevent layout thrash) ── */
+button,
+a,
+input,
+select,
+textarea,
+[role="button"],
+[role="tab"] {
   transition-property: background-color, border-color, color, opacity, box-shadow;
   transition-duration: 150ms;
   transition-timing-function: ease;
@@ -89,7 +95,8 @@ input[type="range"]:focus-visible {
 @media (pointer: coarse) {
   button,
   [role="button"],
-  a {
+  [role="tab"],
+  a:not(p a):not(li a):not(span a) {
     min-height: 44px;
     min-width: 44px;
   }
@@ -199,6 +206,11 @@ input[type="range"]:focus-visible {
 }
 
 /* ── Safe area for notch devices ── */
+@supports (padding: env(safe-area-inset-top)) {
+  .safe-top {
+    padding-top: calc(env(safe-area-inset-top) + 0.5rem);
+  }
+}
 @supports (padding: env(safe-area-inset-bottom)) {
   .safe-bottom {
     padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem);

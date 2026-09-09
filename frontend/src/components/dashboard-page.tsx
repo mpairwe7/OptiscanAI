@@ -16,12 +16,12 @@ function StatCard({ label, value, unit, trend, color = "teal" }: {
   };
   return (
     <div className={`rounded-xl border p-3 sm:p-4 ${colors[color] ?? colors.teal}`}>
-      <div className="text-[11px] sm:text-xs font-medium text-slate-500 mb-1">{label}</div>
+      <div className="text-xs font-medium text-slate-700 mb-1">{label}</div>
       <div className="flex items-baseline gap-1">
-        <span className="text-xl sm:text-2xl font-bold text-slate-800">{value}</span>
-        {unit && <span className="text-[10px] sm:text-xs text-slate-400">{unit}</span>}
+        <span className="text-xl sm:text-2xl font-bold text-slate-900">{value}</span>
+        {unit && <span className="text-xs text-slate-600 font-medium">{unit}</span>}
       </div>
-      {trend && <div className="text-[10px] sm:text-xs text-emerald-600 mt-1">{trend}</div>}
+      {trend && <div className="text-xs text-emerald-700 mt-1 font-medium">{trend}</div>}
     </div>
   );
 }
@@ -69,8 +69,8 @@ export function DashboardPage() {
         </div>
         <Link
           href="/app/screening"
-          className="px-4 py-2.5 bg-teal-600 text-white rounded-lg font-semibold text-sm
-                     hover:bg-teal-700 active:bg-teal-800 transition-colors shadow-sm w-full sm:w-auto inline-flex items-center justify-center"
+          className="px-4 py-2.5 bg-teal-700 text-white rounded-lg font-semibold text-sm
+                     hover:bg-teal-800 active:bg-teal-900 transition-colors shadow-sm w-full sm:w-auto inline-flex items-center justify-center min-h-[44px]"
         >
           New Screening
         </Link>
@@ -125,41 +125,41 @@ export function DashboardPage() {
                 <div className="text-center">
                   <div className="text-xl sm:text-2xl font-bold text-slate-800">
                     {modelHealth.data.latency_p50_ms.toFixed(1)}
-                    <span className="text-[10px] sm:text-xs font-normal text-slate-400 ml-0.5">ms</span>
+                    <span className="text-xs font-normal text-slate-600 ml-0.5">ms</span>
                   </div>
-                  <div className="text-[10px] sm:text-xs text-slate-500 mt-1">Latency P50</div>
+                  <div className="text-xs text-slate-600 mt-1 font-medium">Latency P50</div>
                 </div>
                 <div className="text-center">
                   <div className="text-xl sm:text-2xl font-bold text-slate-800">
                     {modelHealth.data.latency_p95_ms.toFixed(1)}
-                    <span className="text-[10px] sm:text-xs font-normal text-slate-400 ml-0.5">ms</span>
+                    <span className="text-xs font-normal text-slate-600 ml-0.5">ms</span>
                   </div>
-                  <div className="text-[10px] sm:text-xs text-slate-500 mt-1">Latency P95</div>
+                  <div className="text-xs text-slate-600 mt-1 font-medium">Latency P95</div>
                 </div>
                 <div className="text-center">
                   <div className="text-xl sm:text-2xl font-bold text-slate-800">
                     {modelHealth.data.throughput_rps.toFixed(1)}
-                    <span className="text-[10px] sm:text-xs font-normal text-slate-400 ml-0.5">rps</span>
+                    <span className="text-xs font-normal text-slate-600 ml-0.5">rps</span>
                   </div>
-                  <div className="text-[10px] sm:text-xs text-slate-500 mt-1">Throughput</div>
+                  <div className="text-xs text-slate-600 mt-1 font-medium">Throughput</div>
                 </div>
                 <div className="text-center">
                   <div className={`text-xl sm:text-2xl font-bold ${
-                    modelHealth.data.error_rate > 0.01 ? "text-red-600" : "text-emerald-600"
+                    modelHealth.data.error_rate > 0.01 ? "text-red-600" : "text-emerald-700"
                   }`}>
                     {(modelHealth.data.error_rate * 100).toFixed(2)}%
                   </div>
-                  <div className="text-[10px] sm:text-xs text-slate-500 mt-1">Error Rate</div>
+                  <div className="text-xs text-slate-600 mt-1 font-medium">Error Rate</div>
                 </div>
               </div>
             ) : (
-              <div className="text-sm text-slate-400 text-center py-6">Loading metrics...</div>
+              <div className="text-sm text-slate-600 font-medium text-center py-6">Loading metrics...</div>
             )}
 
             {/* Referral Distribution */}
             {analytics.data?.referral_distribution && Object.keys(analytics.data.referral_distribution).length > 0 && (
               <div className="mt-4 sm:mt-6 pt-4 sm:pt-5 border-t border-slate-100">
-                <h3 className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase mb-2 sm:mb-3">Referral Distribution</h3>
+                <h3 className="text-xs font-semibold text-slate-600 uppercase mb-2 sm:mb-3">Referral Distribution</h3>
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                   {Object.entries(analytics.data.referral_distribution).map(([priority, count]) => {
                     const total = Object.values(analytics.data!.referral_distribution).reduce((a, b) => a + b, 0);
@@ -171,8 +171,8 @@ export function DashboardPage() {
                     return (
                       <div key={priority} className="flex-1">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] sm:text-xs text-slate-600">{priority}</span>
-                          <span className="text-[10px] sm:text-xs font-mono text-slate-400">{pct}%</span>
+                          <span className="text-xs font-medium text-slate-700">{priority}</span>
+                          <span className="text-xs font-mono text-slate-600">{pct}%</span>
                         </div>
                         <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                           <div className={`h-full rounded-full ${colors[priority] ?? "bg-slate-400"}`}
@@ -207,16 +207,16 @@ export function DashboardPage() {
                 <ComplianceBadge label="Prediction Logging" status={String(sysInfo.data.compliance.prediction_logging)} />
               </>
             ) : (
-              <div className="text-sm text-slate-400 py-4 text-center">Loading...</div>
+              <div className="text-sm text-slate-600 font-medium py-4 text-center">Loading...</div>
             )}
           </div>
 
           {sysInfo.data && (
             <div className="px-4 sm:px-5 pb-4 sm:pb-5 pt-2 border-t border-slate-100">
-              <h3 className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase mb-2">Capabilities</h3>
+              <h3 className="text-xs font-semibold text-slate-600 uppercase mb-2">Capabilities</h3>
               <div className="flex flex-wrap gap-1.5">
                 {sysInfo.data.capabilities.explainability_methods.map((m) => (
-                  <span key={m} className="text-[10px] sm:text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                  <span key={m} className="text-xs bg-slate-100 text-slate-700 font-medium px-2.5 py-0.5 rounded-full">
                     {m}
                   </span>
                 ))}
@@ -230,18 +230,25 @@ export function DashboardPage() {
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-slate-100 flex items-center justify-between">
           <h2 className="font-semibold text-sm sm:text-base text-slate-800">Recent Scans</h2>
-          <span className="text-[10px] sm:text-xs text-slate-400">{scanHistory.length} in session</span>
+          <span className="text-xs text-slate-600 font-medium">{scanHistory.length} in session</span>
         </div>
         {scanHistory.length > 0 ? (
           <div className="divide-y divide-slate-100">
             {scanHistory.slice(0, 5).map((scan) => (
               <div key={scan.id} className="px-4 sm:px-5 py-3 flex items-center gap-3 sm:gap-4">
-                <img src={scan.imagePreview} alt="" className="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={scan.imagePreview}
+                  alt={`Scan at ${new Date(scan.timestamp).toLocaleTimeString()}`}
+                  width={40}
+                  height={40}
+                  className="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs sm:text-sm font-medium text-slate-700 truncate">
                     {scan.result.total_detected} disease{scan.result.total_detected !== 1 ? "s" : ""} detected
                   </div>
-                  <div className="text-[10px] sm:text-xs text-slate-400 truncate">
+                  <div className="text-xs text-slate-500 truncate">
                     {new Date(scan.timestamp).toLocaleTimeString()} | {scan.result.inference_ms}ms
                   </div>
                 </div>

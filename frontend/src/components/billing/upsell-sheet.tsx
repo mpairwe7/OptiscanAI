@@ -1,10 +1,21 @@
 "use client";
+import { useEffect } from "react";
 import Link from "next/link";
 import { useBillingStore } from "@/stores/billing-store";
 import { formatPrice, planById, type PlanId } from "@/lib/plans";
 
 export function UpsellSheet() {
   const { upsellOpen, upsellPayload, closeUpsell } = useBillingStore();
+
+  useEffect(() => {
+    if (!upsellOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeUpsell();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [upsellOpen, closeUpsell]);
+
   if (!upsellOpen || !upsellPayload) return null;
 
   const required = planById(upsellPayload.required_plan as PlanId);
@@ -15,12 +26,13 @@ export function UpsellSheet() {
       className="fixed inset-0 z-50 flex items-center justify-center p-4 mobile-overlay"
       role="dialog"
       aria-modal="true"
+      aria-labelledby="upsell-title"
     >
       <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 animate-slide-up">
         <button
           onClick={closeUpsell}
-          className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-          aria-label="Close"
+          className="absolute top-3 right-3 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+          aria-label="Close dialog"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -32,7 +44,7 @@ export function UpsellSheet() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
           </svg>
         </div>
-        <h2 className="mt-3 text-xl font-bold text-slate-900">
+        <h2 id="upsell-title" className="mt-3 text-xl font-bold text-slate-900">
           {required.name} feature
         </h2>
         <p className="mt-1.5 text-sm text-slate-600">{upsellPayload.message}</p>

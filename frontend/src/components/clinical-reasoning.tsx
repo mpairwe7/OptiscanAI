@@ -1,7 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "@/stores/app-store";
-import { explainReasoning, fetchDiseaseInfo, type DiseaseInfo } from "@/lib/api";
+import { explainReasoning, fetchDiseaseInfo } from "@/lib/api";
 import { useState } from "react";
 
 function SeverityBadge({ level }: { level: number }) {

@@ -73,9 +73,10 @@ function CapturePreview({
 }) {
   return (
     <div className="relative w-full h-full bg-black">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={imageDataUrl}
-        alt="Captured preview"
+        alt="Captured camera preview"
         className="w-full h-full object-contain"
       />
       <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-6">

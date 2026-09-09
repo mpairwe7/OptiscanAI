@@ -25,8 +25,15 @@ export function PaywallModal() {
   useEffect(() => {
     if (!paywallOpen) return;
     const t = setInterval(() => force((n) => n + 1), 1000);
-    return () => clearInterval(t);
-  }, [paywallOpen]);
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closePaywall();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [paywallOpen, closePaywall]);
 
   if (!paywallOpen || !paywallPayload) return null;
 
@@ -43,8 +50,8 @@ export function PaywallModal() {
       <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 animate-slide-up">
         <button
           onClick={closePaywall}
-          className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-          aria-label="Close"
+          className="absolute top-3 right-3 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+          aria-label="Close dialog"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

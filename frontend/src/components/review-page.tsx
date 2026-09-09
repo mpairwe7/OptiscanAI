@@ -50,11 +50,11 @@ export function ReviewPage() {
           <div className="text-xl sm:text-2xl font-bold text-amber-600">{stats.data?.pending ?? 0}</div>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
-          <div className="text-[10px] sm:text-xs text-slate-500 mb-1">Resolved</div>
+          <div className="text-xs font-medium text-slate-600 mb-1">Resolved</div>
           <div className="text-xl sm:text-2xl font-bold text-emerald-600">{stats.data?.resolved ?? 0}</div>
         </div>
         <div className="bg-white rounded-xl border border-red-200 bg-red-50/50 p-3 sm:p-4">
-          <div className="text-[10px] sm:text-xs text-slate-500 mb-1">Urgent</div>
+          <div className="text-xs font-medium text-slate-600 mb-1">Urgent</div>
           <div className="text-xl sm:text-2xl font-bold text-red-600">{stats.data?.by_priority?.urgent ?? 0}</div>
         </div>
       </div>
@@ -65,10 +65,10 @@ export function ReviewPage() {
           <button
             key={p ?? "all"}
             onClick={() => setFilterPriority(p)}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 ${
               filterPriority === p
-                ? "bg-teal-600 text-white shadow-sm"
-                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 active:bg-slate-100"
+                ? "bg-teal-700 text-white shadow-sm"
+                : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 active:bg-slate-100"
             }`}
           >
             {p ? p.charAt(0).toUpperCase() + p.slice(1) : "All"}
@@ -151,8 +151,8 @@ export function ReviewPage() {
             <svg className="mx-auto h-10 w-10 text-slate-200 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
             </svg>
-            <p className="text-sm text-slate-400">No pending reviews</p>
-            <p className="text-[11px] sm:text-xs text-slate-300 mt-1">Predictions requiring human oversight will appear here</p>
+            <p className="text-sm text-slate-600 font-medium">No pending reviews</p>
+            <p className="text-xs text-slate-500 mt-1">Predictions requiring human oversight will appear here</p>
           </div>
         )}
       </div>

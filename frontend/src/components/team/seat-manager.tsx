@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiGetSeats, apiUpdateSeats, type SeatStateDTO } from "@/lib/auth-api";
@@ -16,12 +16,6 @@ export function SeatManager() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
-
-  useEffect(() => {
-    if (seats.data && target === null) {
-      setTarget(seats.data.additional_seats);
-    }
-  }, [seats.data, target]);
 
   if (seats.isLoading) return <div className="skeleton h-32 rounded-2xl" />;
   if (!seats.data) return null;

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { apiGetSubscription } from "@/lib/auth-api";
@@ -16,18 +16,7 @@ interface BannerProps {
 
 export function RenewalBanner({ variant }: BannerProps) {
   const sub = useQuery({ queryKey: ["billing", "subscription"], queryFn: apiGetSubscription, retry: 0 });
-  const [dismissedKey, setDismissedKey] = useState<string | null>(null);
-
-  // Hydrate dismissed state once the query resolves
-  useEffect(() => {
-    if (variant !== "global" || !sub.data) return;
-    const key = `renewal-dismissed:${sub.data.current_period_end}`;
-    if (typeof window !== "undefined" && window.localStorage.getItem(key)) {
-      setDismissedKey(key);
-    } else {
-      setDismissedKey(null);
-    }
-  }, [variant, sub.data]);
+  const [dismissedPeriod, setDismissedPeriod] = useState<string | null>(null);
 
   const visibility = useMemo(() => {
     if (!sub.data) return null;
@@ -46,8 +35,16 @@ export function RenewalBanner({ variant }: BannerProps) {
     };
   }, [sub.data]);
 
-  if (!visibility) return null;
-  if (variant === "global" && dismissedKey) return null;
+  const isDismissed = useMemo(() => {
+    if (variant !== "global" || !visibility) return false;
+    if (dismissedPeriod === visibility.periodEnd) return true;
+    if (typeof window !== "undefined") {
+      return Boolean(window.localStorage.getItem(`renewal-dismissed:${visibility.periodEnd}`));
+    }
+    return false;
+  }, [variant, visibility, dismissedPeriod]);
+
+  if (!visibility || isDismissed) return null;
 
   const urgency =
     visibility.days <= 0
@@ -69,7 +66,7 @@ export function RenewalBanner({ variant }: BannerProps) {
       if (typeof window !== "undefined" && visibility) {
         const key = `renewal-dismissed:${visibility.periodEnd}`;
         window.localStorage.setItem(key, "1");
-        setDismissedKey(key);
+        setDismissedPeriod(visibility.periodEnd);
       }
     }
     return (

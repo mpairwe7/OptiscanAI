@@ -23,7 +23,8 @@ function GradCAMView() {
       <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <div>
           <div className="text-[9px] sm:text-[10px] text-slate-500 mb-1 font-medium uppercase tracking-wide">Original</div>
-          <img src={gradcamResult.original} alt="Original retinal image" className="w-full rounded-lg border border-slate-200" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={gradcamResult.original} alt="Original retinal fundus image" className="w-full h-auto aspect-square object-cover rounded-lg border border-slate-200" />
         </div>
         {gradcamResult.heatmaps.map((h) => (
           <div key={h.class_index}>
@@ -31,7 +32,8 @@ function GradCAMView() {
               {h.disease_name} <span className="font-mono text-teal-700 font-semibold">({(h.probability * 100).toFixed(1)}%)</span>
             </div>
             {h.heatmap ? (
-              <img src={h.heatmap} alt={`GradCAM heatmap for ${h.disease_name}`} className="w-full rounded-lg border border-slate-200" />
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={h.heatmap} alt={`GradCAM heatmap for ${h.disease_name}`} className="w-full h-auto aspect-square object-cover rounded-lg border border-slate-200" />
             ) : (
               <div className="w-full aspect-square bg-slate-50 rounded-lg flex items-center justify-center text-[10px] sm:text-xs text-slate-400 border border-slate-200">
                 {h.error ?? "No heatmap"}
@@ -258,14 +260,13 @@ export function ExplainabilityPanel() {
   };
 
   const hasCurrentResult = !!resultMap[activeXaiMethod];
-  const anyLoading = !gradcamResult && methodAvailability.gradcam;
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
       {/* Header — tabs only, no button */}
       <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-50 border-b border-slate-100 space-y-2 sm:space-y-3">
         <h3 className="font-semibold text-xs sm:text-sm text-slate-700">Model Explainability</h3>
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-1 px-1">
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-1 px-1" role="tablist" aria-label="Explainability methods">
           {METHODS.map((m) => {
             const active = activeXaiMethod === m.id;
             const available = methodAvailability[m.id];
@@ -274,9 +275,11 @@ export function ExplainabilityPanel() {
             return (
               <button
                 key={m.id}
+                role="tab"
+                aria-selected={active}
                 onClick={() => setActiveXaiMethod(m.id)}
                 disabled={!available}
-                className={`px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1
+                className={`px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1 min-h-[36px] sm:min-h-[32px]
                   ${active
                     ? "bg-teal-600 text-white shadow-sm"
                     : available
@@ -284,7 +287,6 @@ export function ExplainabilityPanel() {
                       : "bg-slate-50 text-slate-300 cursor-not-allowed"
                   }`}
                 aria-label={`${m.label} explainability method`}
-                aria-current={active ? "true" : undefined}
               >
                 {loading && <div className="w-2.5 h-2.5 border-[1.5px] border-current/30 border-t-current rounded-full animate-spin" />}
                 {done && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}

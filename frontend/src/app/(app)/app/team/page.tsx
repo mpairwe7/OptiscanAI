@@ -66,7 +66,7 @@ export default function TeamPage() {
         </p>
         <Link
           href="/app/checkout/practice?cycle=monthly"
-          className="mt-4 inline-flex items-center px-4 py-2 text-sm font-semibold rounded-lg bg-teal-600 hover:bg-teal-700 text-white"
+          className="mt-4 inline-flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-lg bg-teal-700 hover:bg-teal-800 text-white min-h-[44px] shadow-sm transition-colors"
         >
           Upgrade to Practice
         </Link>
@@ -94,7 +94,7 @@ export default function TeamPage() {
             required
             value={inviteEmail}
             onChange={(e) => setInviteEmail(e.target.value)}
-            className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+            className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 text-base sm:text-sm min-h-[44px]"
             placeholder="clinician@hospital.org"
           />
         </div>

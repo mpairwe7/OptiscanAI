@@ -7,15 +7,11 @@ import { apiJson } from "@/lib/api-fetch";
 export function VerifyEmail() {
   const params = useSearchParams();
   const token = params.get("token");
-  const [state, setState] = useState<"verifying" | "ok" | "error">("verifying");
-  const [message, setMessage] = useState<string | null>(null);
+  const [state, setState] = useState<"verifying" | "ok" | "error">(() => (!token ? "error" : "verifying"));
+  const [message, setMessage] = useState<string | null>(() => (!token ? "Missing token." : null));
 
   useEffect(() => {
-    if (!token) {
-      setState("error");
-      setMessage("Missing token.");
-      return;
-    }
+    if (!token) return;
     (async () => {
       try {
         await apiJson<{ status: string }>(
