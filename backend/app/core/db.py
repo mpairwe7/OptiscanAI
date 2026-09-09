@@ -12,6 +12,7 @@ import logging
 from typing import AsyncIterator, Optional
 
 from fastapi import HTTPException, status
+from sqlalchemy.exc import DBAPIError, InterfaceError, OperationalError
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -72,6 +73,13 @@ async def get_db() -> AsyncIterator[AsyncSession]:
     async with _SessionLocal() as session:
         try:
             yield session
+        except (OperationalError, InterfaceError, DBAPIError) as db_err:
+            await session.rollback()
+            logger.error("Database operational/connection failure: %s", db_err)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database service temporarily unavailable. Please retry shortly.",
+            ) from db_err
         except Exception:
             await session.rollback()
             raise

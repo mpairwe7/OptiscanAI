@@ -51,15 +51,18 @@ export const useAppStore = create<AppState>((set) => ({
   imageFile: null,
   imagePreview: null,
   setImage: (file) =>
-    set({
-      imageFile: file,
-      imagePreview: URL.createObjectURL(file),
-      result: null,
-      gradcamResult: null,
-      limeResult: null,
-      shapResult: null,
-      igResult: null,
-      eli5Result: null,
+    set((s) => {
+      if (s.imagePreview) URL.revokeObjectURL(s.imagePreview);
+      return {
+        imageFile: file,
+        imagePreview: URL.createObjectURL(file),
+        result: null,
+        gradcamResult: null,
+        limeResult: null,
+        shapResult: null,
+        igResult: null,
+        eli5Result: null,
+      };
     }),
   clearImage: () =>
     set((s) => {

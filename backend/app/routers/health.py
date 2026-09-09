@@ -5,8 +5,10 @@ from dataclasses import asdict
 import torch
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from backend.app.core.config import settings
+from backend.app.core.db import get_engine
 from backend.app.core.model_service import model_service
 from src.monitoring.health import HealthMonitor
 
@@ -29,7 +31,7 @@ async def health():
 
 @router.get("/health/ready")
 async def readiness():
-    """Readiness probe — 200 only once the model is loaded, else 503.
+    """Readiness probe — 200 only once the model is loaded and database is ready, else 503.
 
     The container HEALTHCHECK and Crane Cloud readiness probe point here so
     traffic isn't routed until inference is actually possible.
@@ -39,7 +41,26 @@ async def readiness():
             status_code=503,
             content={"status": "loading", "model_loaded": False},
         )
-    return {"status": "ready", "model_loaded": True}
+
+    db_ready = True
+    if settings.database.enabled:
+        engine = get_engine()
+        if engine is None:
+            return JSONResponse(
+                status_code=503,
+                content={"status": "starting", "model_loaded": True, "database_ready": False},
+            )
+        try:
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+        except Exception:
+            db_ready = False
+            return JSONResponse(
+                status_code=503,
+                content={"status": "degraded", "model_loaded": True, "database_ready": False},
+            )
+
+    return {"status": "ready", "model_loaded": True, "database_ready": db_ready}
 
 
 @router.get("/health/model")

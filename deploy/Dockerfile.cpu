@@ -175,7 +175,7 @@ command=/usr/local/bin/backend-start.sh
 directory=/app
 user=optiscan
 priority=20
-environment=HOME="/tmp",MODEL_PATH="models/model_vignn_rank1.pth",CUDA_VISIBLE_DEVICES="-1",DEVICE="cpu",API_PORT="8081",LOG_FORMAT="text",PYTHONPATH="/app",POSTGRES_HOST="127.0.0.1",POSTGRES_PORT="5432",POSTGRES_USER="optiscan"
+environment=HOME="/tmp",MODEL_PATH="models/model_vignn_rank1.pth",CUDA_VISIBLE_DEVICES="-1",DEVICE="cpu",API_PORT="8081",LOG_FORMAT="text",PYTHONPATH="/app",POSTGRES_HOST="127.0.0.1",POSTGRES_PORT="5432",POSTGRES_USER="optiscan",DATABASE__ENABLED="true",DATABASE__URL="postgresql+asyncpg://optiscan:optiscan@127.0.0.1:5432/optiscan",EMBEDDED_POSTGRES__ENABLED="true"
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr
@@ -217,6 +217,9 @@ SUPER
 ENV MODEL_PATH=models/model_vignn_rank1.pth \
     TRIAGE_MODEL_PATH=models/triage/triage_model.json \
     TRIAGE_MODEL_ENABLED=true \
+    DATABASE__ENABLED=true \
+    EMBEDDED_POSTGRES__ENABLED=true \
+    DATABASE__URL="postgresql+asyncpg://optiscan:optiscan@127.0.0.1:5432/optiscan" \
     API_HOST=0.0.0.0 \
     API_PORT=8081
 
