@@ -115,7 +115,14 @@ export function ReportsPage() {
               {scanHistory.map((scan) => (
                 <div key={scan.id} className="px-4 py-3 space-y-2">
                   <div className="flex items-center gap-3">
-                    <img src={scan.imagePreview} alt="" className="w-10 h-10 rounded-lg border object-cover shrink-0" />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={scan.imagePreview}
+                      alt={`Thumbnail for scan ${scan.id}`}
+                      width={40}
+                      height={40}
+                      className="w-10 h-10 rounded-lg border object-cover shrink-0"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-medium text-slate-700">
                         {scan.result.total_detected} disease{scan.result.total_detected !== 1 ? "s" : ""}
@@ -165,7 +172,14 @@ export function ReportsPage() {
                         {new Date(scan.timestamp).toLocaleTimeString()}
                       </td>
                       <td className="px-5 py-2.5">
-                        <img src={scan.imagePreview} alt="" className="w-8 h-8 rounded border object-cover" />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={scan.imagePreview}
+                          alt={`Thumbnail for scan ${scan.id}`}
+                          width={32}
+                          height={32}
+                          className="w-8 h-8 rounded border object-cover"
+                        />
                       </td>
                       <td className="px-5 py-2.5">
                         <span className="font-semibold text-slate-700">{scan.result.total_detected}</span>
@@ -200,7 +214,7 @@ export function ReportsPage() {
             </div>
           </>
         ) : (
-          <div className="px-4 sm:px-5 py-8 sm:py-10 text-center text-slate-400 text-sm">
+          <div className="px-4 sm:px-5 py-8 sm:py-10 text-center text-slate-600 font-medium text-sm">
             No scans recorded in this session yet.
           </div>
         )}

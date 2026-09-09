@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useMemo } from "react";
+import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import { useVoiceStore, type VoiceMode, type VoiceMessage } from "@/stores/voice-store";
 import { useVoiceWebSocket } from "@/hooks/useVoiceWebSocket";
 
@@ -156,14 +156,20 @@ function PulseRings({ mode }: { mode: VoiceMode }) {
 // ── Offline banner ──
 function OfflineBanner({ queueCount }: { queueCount: number }) {
   const { lastSyncTime, syncStatus } = useVoiceStore();
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
 
   const lastSyncLabel = useMemo(() => {
     if (!lastSyncTime) return "Never synced";
-    const diff = Date.now() - lastSyncTime;
+    const diff = now - lastSyncTime;
     if (diff < 60_000) return "Synced just now";
     if (diff < 3_600_000) return `Synced ${Math.floor(diff / 60_000)}m ago`;
     return `Synced ${Math.floor(diff / 3_600_000)}h ago`;
-  }, [lastSyncTime]);
+  }, [lastSyncTime, now]);
 
   return (
     <div
@@ -227,10 +233,13 @@ function MessageBubble({ message }: { message: VoiceMessage }) {
         }`}
       >
         {message.imageDataUrl && (
+          /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={message.imageDataUrl}
-            alt="Captured"
-            className="w-full max-w-[200px] rounded-lg mb-2"
+            alt="Captured fundus"
+            width={200}
+            height={150}
+            className="w-full max-w-[200px] h-auto rounded-lg mb-2 object-cover"
           />
         )}
         <p>{message.text}</p>

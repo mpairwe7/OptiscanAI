@@ -12,12 +12,12 @@ function ScreeningSettings() {
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 space-y-3 sm:space-y-4">
-      <h3 className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wide">Screening Parameters</h3>
+      <h2 className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Screening Parameters</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
-          <label className="text-xs font-medium text-slate-600 flex justify-between mb-1.5">
+          <label className="text-xs font-medium text-slate-700 flex justify-between mb-1.5">
             <span>Detection Threshold</span>
-            <span className="text-teal-600 font-mono">{threshold.toFixed(2)}</span>
+            <span className="text-teal-700 font-mono font-bold">{threshold.toFixed(2)}</span>
           </label>
           <input
             type="range" min={0.1} max={0.9} step={0.05}
@@ -26,15 +26,15 @@ function ScreeningSettings() {
             className="w-full accent-teal-600 h-1.5"
             aria-label={`Detection threshold: ${threshold.toFixed(2)}`}
           />
-          <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
+          <div className="flex justify-between text-xs text-slate-600 font-medium mt-0.5">
             <span>Sensitive</span>
             <span>Specific</span>
           </div>
         </div>
         <div>
-          <label className="text-xs font-medium text-slate-600 flex justify-between mb-1.5">
+          <label className="text-xs font-medium text-slate-700 flex justify-between mb-1.5">
             <span>Top K Predictions</span>
-            <span className="text-teal-600 font-mono">{topK}</span>
+            <span className="text-teal-700 font-mono font-bold">{topK}</span>
           </label>
           <input
             type="range" min={3} max={15} step={1}
@@ -83,7 +83,7 @@ export function ScreeningPage() {
               <svg className="mx-auto h-10 sm:h-12 w-10 sm:w-12 text-slate-200 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <p className="text-xs sm:text-sm text-slate-400">Upload and analyze an image to see results</p>
+              <p className="text-xs sm:text-sm text-slate-600 font-medium">Upload and analyze an image to see results</p>
             </div>
           )}
         </div>

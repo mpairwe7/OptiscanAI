@@ -33,7 +33,7 @@ function LatencyChart() {
             </span>
           </div>
         )}
-        {recent.map((scan, i) => {
+        {recent.map((scan) => {
           const pct = Math.max((scan.result.inference_ms / maxMs) * 100, 3);
           const overSla = scan.result.inference_ms > slaLine;
           return (

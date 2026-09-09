@@ -176,6 +176,8 @@ export function useVoiceWebSocket(): UseVoiceWebSocketReturn {
     ],
   );
 
+  const connectRef = useRef<() => void>(() => {});
+
   // ── WebSocket connection with exponential backoff ──
   const connect = useCallback(() => {
     if (isUnmountedRef.current || isOffline) return;
@@ -210,9 +212,13 @@ export function useVoiceWebSocket(): UseVoiceWebSocketReturn {
       const delay = Math.min(RECONNECT_BASE_MS * Math.pow(2, attempt), RECONNECT_MAX_MS);
       reconnectAttemptRef.current = attempt + 1;
 
-      reconnectTimerRef.current = setTimeout(connect, delay);
+      reconnectTimerRef.current = setTimeout(() => connectRef.current(), delay);
     };
   }, [isOffline, settings.language, handleMessage]);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   // ── Establish connection on mount ──
   useEffect(() => {

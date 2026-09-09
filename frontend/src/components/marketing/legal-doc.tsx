@@ -91,14 +91,14 @@ export function LegalDoc({
         {sections.map((s, i) => (
           <section key={s.id} id={s.id} className="scroll-mt-24">
             <h2 className="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight flex items-baseline gap-3">
-              <span className="text-xs font-mono text-teal-600">
+              <span className="text-xs font-mono font-bold text-teal-700">
                 {String(i + 1).padStart(2, "0")}
               </span>
               {s.title}
               <a
                 href={`#${s.id}`}
                 aria-label={`Anchor link to ${s.title}`}
-                className="text-slate-300 hover:text-teal-600 text-base"
+                className="text-slate-400 hover:text-teal-700 text-base"
               >
                 #
               </a>

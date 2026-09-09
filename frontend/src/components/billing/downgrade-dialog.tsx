@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiChangePlan } from "@/lib/auth-api";
 import { ApiError } from "@/lib/api-fetch";
@@ -14,6 +14,14 @@ export function DowngradeDialog({ currentPlanName, onClose }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
 
   async function confirm() {
     setSubmitting(true);
@@ -75,6 +83,7 @@ export function DowngradeDialog({ currentPlanName, onClose }: Props) {
       className="fixed inset-0 z-50 flex items-center justify-center p-4 mobile-overlay"
       role="dialog"
       aria-modal="true"
+      aria-labelledby="downgrade-title"
       onClick={onClose}
     >
       <div
@@ -86,7 +95,7 @@ export function DowngradeDialog({ currentPlanName, onClose }: Props) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
           </svg>
         </div>
-        <h2 className="mt-3 text-xl font-bold text-slate-900">
+        <h2 id="downgrade-title" className="mt-3 text-xl font-bold text-slate-900">
           Downgrade {currentPlanName} → Free?
         </h2>
         <p className="mt-2 text-sm text-slate-600">

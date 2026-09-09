@@ -1,6 +1,6 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { fetchSystemInfo, fetchModelHealth, fetchKnowledgeGraph, fetchAgentStatus, fetchAgentEvents } from "@/lib/api";
+import { fetchSystemInfo, fetchKnowledgeGraph, fetchAgentStatus, fetchAgentEvents } from "@/lib/api";
 import { BenchmarkPanel } from "@/components/benchmark-panel";
 
 function InfoRow({ label, value, badge }: { label: string; value: string | number | null; badge?: "green" | "amber" | "red" }) {
@@ -51,7 +51,7 @@ export function SystemPage() {
                          badge={sys.platform.regulatory_mode === "research" ? "amber" : "green"} />
               </>
             ) : (
-              <div className="py-4 text-sm text-slate-400 text-center">Loading...</div>
+              <div className="py-4 text-sm text-slate-600 font-medium text-center">Loading...</div>
             )}
           </div>
         </div>
@@ -73,7 +73,7 @@ export function SystemPage() {
                 <InfoRow label="Device" value={sys.infrastructure.device} />
               </>
             ) : (
-              <div className="py-4 text-sm text-slate-400 text-center">Loading...</div>
+              <div className="py-4 text-sm text-slate-600 font-medium text-center">Loading...</div>
             )}
           </div>
         </div>
@@ -94,7 +94,7 @@ export function SystemPage() {
                 <InfoRow label="Threshold Mode" value={sys.model.threshold_source} />
               </>
             ) : (
-              <div className="py-4 text-sm text-slate-400 text-center">Loading...</div>
+              <div className="py-4 text-sm text-slate-600 font-medium text-center">Loading...</div>
             )}
           </div>
         </div>
@@ -121,7 +121,7 @@ export function SystemPage() {
                          badge={sys.compliance.prediction_logging ? "green" : "red"} />
               </>
             ) : (
-              <div className="py-4 text-sm text-slate-400 text-center">Loading...</div>
+              <div className="py-4 text-sm text-slate-600 font-medium text-center">Loading...</div>
             )}
           </div>
         </div>

@@ -16,6 +16,15 @@ export function MarketingNav() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
   return (
     <header
       className={`sticky top-0 z-30 transition-all ${
@@ -64,7 +73,7 @@ export function MarketingNav() {
 
         {/* Mobile hamburger */}
         <button
-          className="md:hidden w-10 h-10 flex items-center justify-center rounded-lg text-slate-700 hover:bg-slate-100"
+          className="md:hidden min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-slate-700 hover:bg-slate-100"
           aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
@@ -83,22 +92,22 @@ export function MarketingNav() {
       {open && (
         <div className="md:hidden border-t border-slate-200 bg-white">
           <nav className="px-4 py-3 flex flex-col gap-1 text-sm font-medium">
-            <Link href="/#how-it-works" onClick={() => setOpen(false)} className="py-2 px-2 text-slate-700 hover:text-slate-900 rounded-lg hover:bg-slate-50">How it works</Link>
-            <Link href="/pricing" onClick={() => setOpen(false)} className="py-2 px-2 text-slate-700 hover:text-slate-900 rounded-lg hover:bg-slate-50">Pricing</Link>
-            <Link href="/#faq" onClick={() => setOpen(false)} className="py-2 px-2 text-slate-700 hover:text-slate-900 rounded-lg hover:bg-slate-50">FAQ</Link>
-            <Link href="/contact-sales" onClick={() => setOpen(false)} className="py-2 px-2 text-slate-700 hover:text-slate-900 rounded-lg hover:bg-slate-50">Contact sales</Link>
+            <Link href="/#how-it-works" onClick={() => setOpen(false)} className="flex items-center min-h-[44px] px-3 text-slate-700 hover:text-slate-900 rounded-lg hover:bg-slate-50">How it works</Link>
+            <Link href="/pricing" onClick={() => setOpen(false)} className="flex items-center min-h-[44px] px-3 text-slate-700 hover:text-slate-900 rounded-lg hover:bg-slate-50">Pricing</Link>
+            <Link href="/#faq" onClick={() => setOpen(false)} className="flex items-center min-h-[44px] px-3 text-slate-700 hover:text-slate-900 rounded-lg hover:bg-slate-50">FAQ</Link>
+            <Link href="/contact-sales" onClick={() => setOpen(false)} className="flex items-center min-h-[44px] px-3 text-slate-700 hover:text-slate-900 rounded-lg hover:bg-slate-50">Contact sales</Link>
             <div className="mt-2 pt-3 border-t border-slate-100 flex flex-col gap-2">
               <Link
                 href="/sign-in"
                 onClick={() => setOpen(false)}
-                className="px-3 py-2 text-sm font-semibold rounded-lg border border-slate-300 text-slate-700 text-center"
+                className="flex items-center justify-center min-h-[44px] px-3 text-sm font-semibold rounded-lg border border-slate-300 text-slate-700 text-center"
               >
                 Sign in
               </Link>
               <Link
                 href="/sign-up"
                 onClick={() => setOpen(false)}
-                className="px-3 py-2 text-sm font-semibold rounded-lg bg-slate-900 text-white text-center"
+                className="flex items-center justify-center min-h-[44px] px-3 text-sm font-semibold rounded-lg bg-slate-900 text-white text-center"
               >
                 Get started
               </Link>

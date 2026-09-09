@@ -47,10 +47,11 @@ export function ImageUpload() {
           />
           {imagePreview ? (
             <div className="space-y-2 sm:space-y-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={imagePreview}
                 alt="Retinal fundus preview"
-                className="mx-auto max-h-48 sm:max-h-56 rounded-lg shadow-md border border-slate-100"
+                className="mx-auto max-h-48 sm:max-h-56 w-auto rounded-lg shadow-md border border-slate-100 object-contain"
               />
               <div className="text-[10px] sm:text-xs text-slate-400 truncate px-2">
                 {imageFile?.name} ({((imageFile?.size ?? 0) / 1024).toFixed(0)} KB)
@@ -67,7 +68,7 @@ export function ImageUpload() {
                 <p className="text-xs sm:text-sm font-medium text-slate-600">
                   Drop retinal fundus image here
                 </p>
-                <p className="text-[10px] sm:text-xs text-slate-400 mt-1">or tap to browse (JPEG, PNG up to 10MB)</p>
+                <p className="text-xs text-slate-600 mt-1 font-medium">or tap to browse (JPEG, PNG up to 10MB)</p>
               </div>
             </div>
           )}

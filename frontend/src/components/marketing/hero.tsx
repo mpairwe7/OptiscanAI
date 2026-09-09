@@ -124,6 +124,7 @@ export function Hero() {
                   alt="OptiscanAI"
                   width={360}
                   height={360}
+                  sizes="(max-width: 640px) 180px, 240px"
                   priority
                   className="w-1/2 max-w-[240px] h-auto drop-shadow-[0_10px_30px_rgba(15,118,110,0.25)]"
                 />

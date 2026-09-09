@@ -49,10 +49,10 @@ export function MobileTopBar() {
   const pageLabel = current?.label ?? "Dashboard";
 
   return (
-    <header className="lg:hidden sticky top-0 z-30 bg-slate-900 px-4 py-3 flex items-center justify-between safe-bottom">
+    <header className="lg:hidden sticky top-0 z-30 bg-slate-900 px-4 py-3 flex items-center justify-between safe-top">
       <button
         onClick={() => setMobileMenuOpen(true)}
-        className="w-10 h-10 flex items-center justify-center rounded-lg text-slate-300 hover:bg-slate-800 active:bg-slate-700"
+        className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-slate-300 hover:bg-slate-800 active:bg-slate-700"
         aria-label="Open navigation menu"
       >
         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -147,8 +147,7 @@ export function NavSidebar() {
           ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
           w-64 nav-rail
         `}
-        role="navigation"
-        aria-label="Main navigation"
+        aria-label="Sidebar"
       >
         <div className="px-4 py-5 flex items-center gap-3 border-b border-slate-700/50">
           <Image src="/logo.png" alt="OptiscanAI" width={32} height={32} className="w-8 h-8 rounded-lg shrink-0" priority />
@@ -158,7 +157,7 @@ export function NavSidebar() {
           </div>
           <button
             onClick={() => setMobileMenuOpen(false)}
-            className="lg:hidden ml-auto w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+            className="lg:hidden ml-auto min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
             aria-label="Close navigation menu"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
