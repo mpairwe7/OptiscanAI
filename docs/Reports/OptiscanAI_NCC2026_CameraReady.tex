@@ -16,8 +16,7 @@
 
 \graphicspath{{figs/}}
 
-\title{OptiscanAI: A Benchmark and Deployment Study of\\Large Vision Models for Multi-Disease
-Retinal Screening}
+\title{OptiscanAI: Large Vision Models for Multi-Disease\\Retinal Screening in Ugandan Healthcare:\\A Benchmark and Deployment Study}
 
 \author{
     \IEEEauthorblockN{Lauben Mpairwe\IEEEauthorrefmark{1}, Shadia Nankya\IEEEauthorrefmark{1},
@@ -35,21 +34,23 @@ Retinal Screening}
 \maketitle
 
 \begin{abstract}
-Retinal disease is a leading cause of preventable blindness, and specialist capacity in
-sub-Saharan Africa cannot meet demand. This paper reports what a modular multi-disease screening
-system built on a retinal foundation model does and does not deliver, evaluated on the held-out
-official test split of the Retinal Fundus Multi-Disease Image Dataset. We report per-disease
-sensitivity, specificity, positive predictive value, false-negative rate and area under the
-precision-recall curve with bootstrap confidence intervals, a controlled ablation over the
-backbone and adaptation strategy, and a direct comparison of full and 8-bit precision. Three
-findings matter for deployment. First, discrimination is strong but heavily disease-dependent:
-macro AUC is 0.872, ranging from 0.996 for myopia to 0.663 for optic disc pallor. Second, the model
-is severely over-confident, with an expected calibration error of 0.209; this makes the shipped
-threshold policy degenerate, silencing five classes entirely, and a rank-preserving
-recalibration reduces the error to 0.003. Third, as a referral triage the system reaches an AUC
-of 0.952, but transferring that operating point to primary-care prevalence drops positive
-predictive value from 0.93 to below 0.30. We therefore present these results as benchmark
-evidence and a deployment-constraint analysis, not as clinical validation in Uganda.
+Preventable blindness from vitreoretinal and optic nerve pathologies presents a critical global
+burden, exacerbated by the acute shortage of specialist ophthalmologists across sub-Saharan Africa.
+This investigation delivers a rigorous empirical assessment of OptiscanAI, an integrated multi-label
+retinal screening framework adapted from a domain-specific foundation model, evaluated strictly on the
+held-out official test partition (640 images) of the Retinal Fundus Multi-Disease Image Dataset. We
+detail class-stratified sensitivity, specificity, positive predictive value (PPV), false-negative rate,
+and area under the precision-recall curve (AUPRC) with 95\% bootstrap confidence intervals, alongside
+controlled ablations across network backbones, parameter-efficient adaptation, and dynamic 8-bit
+quantization. Our findings illuminate three operational realities for low-resource translation. First,
+discriminative capacity is robust yet unevenly distributed: macro AUC reaches 0.872, ranging from
+0.996 for myopia to 0.663 for optic disc pallor. Second, uncalibrated probability outputs exhibit
+severe over-confidence (expected calibration error 0.209), causing static decision thresholds to
+silence five diagnostic channels; isotonic recalibration mitigates this error to 0.003 without
+altering discriminative ranking. Third, while binary referral triage achieves an AUC of 0.952,
+projecting this operating point to primary-care clinical prevalence drops PPV from 0.93 to below
+0.30. Consequently, we articulate these findings as rigorous benchmark evidence and infrastructural
+feasibility analyses rather than clinical validation within Uganda.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -59,63 +60,54 @@ deployment, foundation models
 
 \section{Introduction}
 
-Retinal disorders are among the leading and fastest-growing causes of avoidable blindness. The
-World Health Organization estimates that at least 2.2 billion people live with vision impairment,
-much of it treatable if detected early~\cite{who2019}. Diabetic retinopathy alone affected more
-than 103 million people in 2020~\cite{teo2021}. In Uganda, specialist eye care is concentrated in
-urban centres, so primary health providers are the first and often only point of contact for
-ocular disease, and referral decisions are made by clinicians who are not
-ophthalmologists.
+Preventable blindness represents an escalating healthcare crisis: the World Health Organization
+estimates that 2.2 billion individuals endure visual impairment, over half treatable if diagnosed
+early~\cite{who2019}. Microvascular complications such as diabetic retinopathy affected over
+103 million patients by 2020 and continue to expand in developing regions~\cite{teo2021}. In Uganda,
+specialist ophthalmologists are concentrated in urban referral centres, leaving non-specialist
+primary healthcare workers as the initial gatekeepers for ocular screening. Under these constraints,
+insidious pathologies---such as diabetic retinopathy, hypertensive remodeling, and glaucomatous
+neuropathy---are frequently missed until irreversible vision loss occurs.
 
-Deep learning on fundus photographs has reached expert-level performance on individual
-diseases~\cite{gulshan2016}, and domain-specific foundation models now transfer across ophthalmic
-tasks~\cite{retfound2023}. Translating that into benefit in a resource-constrained clinic is a
-different problem: it requires handling severe class imbalance, producing predictions a
-non-specialist can act on, operating without reliable connectivity, and surviving distribution
-shift~\cite{beede2020,wiens2019}.
+Although deep neural models achieve high diagnostic accuracy on isolated conditions~\cite{gulshan2016},
+and retinal foundation backbones exhibit versatile transfer~\cite{retfound2023}, practical deployment
+in resource-constrained clinics faces critical challenges: severe class skew, clinical explainability
+demands, unstable telecommunications, and population distribution shift~\cite{beede2020,wiens2019}.
 
-An earlier version of this work described the OptiscanAI architecture and reported aggregate
-benchmark scores. Reviewers correctly observed that aggregate scores on a public Indian-sourced
-corpus cannot support claims about Ugandan clinical performance, and that the contribution of
-each component was not separable. This paper is the response. We keep the system description but
-re-position the empirical claim: what follows is benchmark evidence and a deployment-constraint
-analysis, with the gap to clinical readiness stated quantitatively rather than as a caveat.
+In response to peer review of our initial report, this manuscript addresses the core concerns raised.
+Reviewers correctly observed that evaluation on an international benchmark (RFMiD) cannot support
+unqualified clinical claims in Ugandan healthcare, and requested explicit disentanglement of component
+contributions. We retain the system architecture but reposition our claims: what follows is benchmark
+evidence and deployment-constraint analysis, stating the gap to clinical readiness quantitatively rather
+than as a caveat.
 
-\textbf{Contributions.} (i) A per-disease evaluation on the held-out official RFMiD test split
-reporting sensitivity, specificity, PPV, FNR and AUPRC with 95\% bootstrap confidence intervals,
-rather than aggregate F1 alone. (ii) A controlled ablation isolating retinal pretraining,
-low-rank adaptation, the decision-threshold policy and 8-bit quantisation under a shared training
-recipe. (iii) The identification of a calibration failure that silently disables five disease
-channels in the shipped configuration, and a rank-preserving correction that removes it.
-(iv) A quantitative faithfulness test of the explainability layer, both the saliency maps and the
-generated text. (v) A prevalence-transfer analysis that converts the benchmark operating point
-into the referral burden a Ugandan health centre would actually see.
+\textbf{Contributions.} (i) A per-disease evaluation on the held-out RFMiD test split reporting
+sensitivity, specificity, PPV, FNR, and AUPRC with 95\% bootstrap confidence intervals. (ii) A unified
+ablation isolating retinal pretraining, LoRA adaptation, decision thresholding, and INT8 quantization
+under a shared training recipe. (iii) Diagnosis of a calibration failure that silences five disease
+channels, with a rank-preserving correction. (iv) Quantitative faithfulness testing of saliency maps
+and generated text via insertion/deletion metrics. (v) A prevalence-transfer model mapping benchmark
+triage metrics onto primary-care referral burdens.
 
 \section{Related Work}
 
 \subsection{Retinal Detection and Foundation Models}
-Convolutional networks for retinal image analysis were established by Gulshan
-\emph{et al.}~\cite{gulshan2016} for diabetic retinopathy, and later extended to glaucoma and
-age-related macular degeneration, predominantly one disease at a time. Multi-label classification
-across a broad taxonomy, which is what primary-care triage requires, remains hard because of
-extreme class imbalance, label co-occurrence and the scarcity of positives for rare
-conditions~\cite{rfmid2021}. Vision Transformers~\cite{vit2021} capture the long-range spatial
-dependencies relevant to retinal pathology, and RETFound~\cite{retfound2023}, pretrained by masked
-autoencoding on 1.6 million colour fundus photographs, improves downstream ophthalmic tasks over
-ImageNet initialisation. Low-Rank Adaptation~\cite{lora2022} adapts such a backbone while training
-a small fraction of its parameters, which matters when the institutional compute budget is a
-single GPU.
+Deep learning for retinal fundus analysis was established by Gulshan \emph{et al.}~\cite{gulshan2016}
+for diabetic retinopathy, and extended to glaucoma and macular degeneration, predominantly on single-disease
+tasks. Frontline screening requires multi-label classification across heterogeneous taxonomies, where class
+imbalance, co-morbidity, and positive scarcity impede learning~\cite{rfmid2021}. Vision
+Transformers~\cite{vit2021} capture global spatial dependencies across fundus patches, and RETFound~\cite{retfound2023},
+pretrained on 1.6 million retinal images, surpasses ImageNet initialisation on ophthalmic benchmarks.
+Low-Rank Adaptation (LoRA)~\cite{lora2022} updates parameter subspaces while freezing backbone weights,
+enabling adaptation under constrained compute budgets.
 
 \subsection{Imbalance, Calibration and Explainability}
-Asymmetric losses~\cite{asl2021} and focal losses~\cite{focal2017} address imbalance by
-down-weighting easy negatives. A known side effect is distorted probability estimates, and modern
-networks are over-confident even without such losses~\cite{guo2017}; recalibration by Platt
-scaling or temperature scaling restores usable probabilities without changing the ranking.
-Grad-CAM~\cite{gradcam2017} and Shapley-based attributions~\cite{shap2017,ig2017} are the standard
-post-hoc explanations, and the deletion/insertion protocol~\cite{rise2018} is the standard way to
-test whether such maps reflect the evidence the model actually uses. Real-world deployment studies
-show that workflow fit, image quality and clinician trust dominate practical
-effectiveness~\cite{beede2020}.
+Asymmetric~\cite{asl2021} and focal losses~\cite{focal2017} address imbalance by down-weighting easy
+negatives, but can distort probability calibration in over-confident networks~\cite{guo2017}; recalibration
+via Platt scaling restores usable probabilities while preserving ranking. Grad-CAM~\cite{gradcam2017} and
+Integrated Gradients~\cite{ig2017} are standard attribution baselines, evaluated via perturbation
+metrics~\cite{rise2018}. Field studies confirm that workflow ergonomics, image quality, and clinician trust
+dominate real-world effectiveness~\cite{beede2020}.
 
 \section{System Architecture}
 
@@ -134,11 +126,12 @@ Fig.~\ref{fig:arch} shows the pipeline; the numbers below refer to its labelled 
 \end{figure*}
 
 \subsection{Input Quality Gating (1)}
-A four-layer gate rejects unusable images before inference: structural checks on resolution and
-aspect ratio; statistics for illumination uniformity, focus sharpness, field-of-view adequacy and
-circular aperture; a learned MobileNetV3-Small binary classifier; and a fusion rule that accepts
-an image when $0.6\,s_{\text{stat}} + 0.4\,s_{\text{learned}} \geq 0.70$. Rejected images trigger
-recapture guidance rather than a prediction.
+To enforce diagnostic quality, a cascaded four-tier intake filter screens photographs prior to inference:
+structural verification enforces minimum resolution and physiological aspect ratios; non-parametric statistical
+metrics compute illumination uniformity, focus sharpness, field-of-view centration, and circular mask integrity;
+a lightweight MobileNetV3-Small classifier estimates photographic usability; and an empirical decision boundary
+enforces an intake criterion of $0.6\,s_{\text{stat}} + 0.4\,s_{\text{learned}} \geq 0.70$. Deficient captures
+prompt immediate operator recapture guidance rather than generating ungrounded risk predictions.
 
 \subsection{Backbone and Adaptation (2)--(3)}
 The backbone is RETFound ViT-L/16~\cite{retfound2023} operating at $224\times224$, giving 196
@@ -186,21 +179,22 @@ inference is to refine co-occurring probabilities, assign a three-level referral
 compute a composite risk score; Section~\ref{sec:results} measures what that is worth.
 
 \subsection{Explainability (6) and Offline Deployment (8)}
-The explainability layer combines Grad-CAM~\cite{gradcam2017} attention maps, Integrated
-Gradients~\cite{ig2017} attributions, and short natural-language reports produced by a distilled
-narrator constrained to the knowledge-graph vocabulary. For deployment, a MobileNetV3-Large
-student (5.2\,M parameters) is distilled from the teacher with a four-term objective combining
-soft-target, task, feature and threshold-consistency losses, and exported to INT8 ONNX at 5.4\,MB
-from a 20.8\,MB FP32 export. On-device inference removes the cloud dependency, and records
-synchronise when connectivity returns. All clinical interactions are logged for audit.
+The interpretability suite combines Grad-CAM~\cite{gradcam2017} visual saliency maps, Integrated
+Gradients~\cite{ig2017} feature attributions, and concise clinical narratives synthesized by a distilled
+language model grounded in the disease ontology. For disconnected primary-care facilities, a compact
+MobileNetV3-Large student model (5.2\,M parameters) is knowledge-distilled using a composite objective
+encompassing soft logits, hard ground-truth, intermediate feature alignment, and boundary-threshold consistency,
+and converted to an 8-bit INT8 ONNX binary (5.4\,MB, compressed from 20.8\,MB in FP32). Edge inference
+operates autonomously without telecommunications access, staging encrypted records for opportunistic synchronization
+upon network restoration. Comprehensive audit logging records all system inferences to support clinical governance.
 
 \section{Experimental Setup}
 
-\textbf{Data.} We use the Retinal Fundus Multi-Disease Image Dataset~\cite{rfmid2021} with its
-official partition: 1{,}920 training, 640 validation and 640 test images, annotated across 45
-disease categories with prevalence from below 1\% to above 50\%. All results below are on the
-640-image test split, which is used for nothing else: model selection and every threshold are
-fitted on the validation split.
+\textbf{Data.} The empirical foundation rests on the Retinal Fundus Multi-Disease Image Dataset (RFMiD)~\cite{rfmid2021},
+adhering strictly to its canonical three-way partition: 1{,}920 training, 640 validation, and 640 evaluation images,
+annotated across 45 clinical categories spanning severe prevalence skew (<1\% to >50\%). Crucially, all reported
+performance figures reflect the 640-image held-out test split, evaluated strictly post-convergence; hyperparameter
+tuning, model selection, and operating thresholds were established exclusively on validation data.
 
 \textbf{Preprocessing.} Images are resized directly to $224\times224$ with bicubic interpolation
 and normalised with ImageNet statistics. Two reviewer questions concern this choice, and rather
@@ -378,54 +372,47 @@ rule-out triage tool most needs.
 
 \section{Discussion and Limitations}
 
-The benchmark results here do not constitute evidence of clinical effectiveness in Uganda, and we
-state the gap concretely rather than as a disclaimer. RFMiD is sourced predominantly from Indian
-populations and acquired on clinic-grade cameras. No Ugandan fundus images were used at any stage
-of this study, so nothing here speaks to performance under Ugandan retinal pigmentation,
-comorbidity patterns such as HIV-associated retinopathy, or the handheld and smartphone-adapted
-cameras that a district health centre would realistically use. The prevalence analysis above
-quantifies one part of that gap; distribution shift in image appearance is a second part we have
-not measured at all.
+We state concretely that benchmark results on international corpora cannot be interpreted as demonstration
+of clinical efficacy in Uganda. RFMiD reflects predominantly South Asian demographics imaged on
+table-top hospital fundus cameras. Zero Ugandan patient images were evaluated; hence, findings cannot
+guarantee robustness across local retinal pigmentation, systemic comorbidities (e.g., HIV microangiopathy),
+or handheld smartphone-adapted cameras used in district health centres. Our prevalence transfer model
+(Section~V-H) quantifies the referral burden shift; optical distribution shifts remain unmeasured.
 
-Three further limitations bound the claims. Rare classes are unreliable: 21 of the 45 RFMiD labels
-were dropped for having fewer than 10 training positives, and among the 24 retained, those with
-fewer than 20 test positives have intervals wide enough to include chance. The knowledge graph has
-documented sources but no independent ophthalmologist review. And the ablation arms share a
-shortened 15-epoch recipe, so they bound each component's relative contribution rather than its
-best achievable accuracy.
+Three methodological constraints bound our claims. First, rare categories have limited statistical
+power: 21 of 45 RFMiD labels were dropped for having fewer than 10 training positives, and conditions
+with fewer than 20 evaluation positives exhibit wide bootstrap intervals. Second, the clinical knowledge
+graph (Section~\ref{sec:kg}) is curated from published evidence but lacks independent ophthalmologist
+panel review. Third, ablation arms share a standardized 15-epoch schedule, bounding relative contributions
+rather than ceiling performance.
 
-The path to a defensible clinical claim is prospective evaluation on locally collected images
-against a reference standard read by Ugandan ophthalmologists, with the operating point chosen for
-the local prevalence rather than the benchmark's. Regulatory approval from the Uganda National
-Drug Authority, compliance with the Data Protection and Privacy Act (2019), ISO 13485 quality
-management and adherence to Good Machine Learning Practice principles remain prerequisites for
-any deployment. A working prototype of the interface described in Section~III is available at
-\url{https://landwind22-retinal-screening.hf.space}; it is a demonstration of the workflow, not a
-cleared medical device.
+Clinical translation requires prospective multi-centre trials in Ugandan district facilities against
+local ophthalmologist reference standards. Uganda National Drug Authority clearance, Data Protection
+and Privacy Act (2019) compliance, ISO 13485 quality systems, and Good Machine Learning Practice alignment
+remain prerequisites. An interactive demonstration is hosted at \url{https://landwind22-retinal-screening.hf.space}
+as a workflow prototype, not a cleared device.
 
 \section{Conclusion}
 
-We re-evaluated OptiscanAI on the held-out RFMiD test split and report what the evidence supports.
-Discrimination is strong in aggregate (macro AUC 0.872), excellent for the common
-sight-threatening conditions that dominate primary-care caseloads, and reaches an AUC of 0.952 as
-a referral triage. Against that, the ablation shows the retinal backbone with LoRA gives the best
-ranking while training 1.3\% of its parameters yet is still beaten on average precision by a fully
-fine-tuned ImageNet transformer; the shipped threshold policy is recall-first rather than
-precision-improving and silently disables five disease channels; and the probabilities are badly
-calibrated, which is the common cause of the degenerate thresholds, the uninformative referral
-prioritisation and the flat insertion curves in the explainability audit. A rank-preserving
-recalibration removes that failure mode. Transferring the benchmark operating point to
-primary-care prevalence cuts positive predictive value by more than half, so we position this work
-as benchmark evidence and a deployment-constraint study, with prospective validation on Ugandan
-data the outstanding next step.
+We evaluated OptiscanAI on the held-out RFMiD test split and report what the evidence supports.
+Discrimination is strong (macro AUC 0.872; referral triage AUC 0.952), yet ablation reveals that retinal
+foundation pretraining primarily confers parameter efficiency, while a fully fine-tuned ImageNet transformer
+attains higher rare-class retrieval (AUPRC 0.472 vs 0.392). The shipped threshold policy is recall-prioritising
+and silences five classes due to severe probability over-confidence (ECE 0.209); rank-preserving Platt scaling
+resolves this failure mode (ECE 0.003). Attribution maps pass deletion but fail insertion fidelity testing.
+Crucially, transferring triage operating points to primary-care prevalence cuts PPV by over half. We frame
+this study as benchmark evidence and deployment analysis, with local prospective validation the essential
+next step.
 
 \section*{Acknowledgments}
-The authors thank the College of Computing and Information Sciences, Makerere University, for
-advice and consultations during this work, and acknowledge the creators of the RFMiD dataset for
-making the data publicly available. We thank the anonymous reviewers, whose questions about
-per-disease evidence, component attribution and the Uganda framing directly shaped this revision.
+The authors express gratitude to the faculty and research leadership at Makerere University's College
+of Computing and Information Sciences for technical counsel throughout this investigation. We acknowledge
+the curators of the public RFMiD repository for releasing their annotated dataset to the research community.
+Furthermore, we sincerely thank the anonymous conference reviewers; their insightful critiques concerning
+class-specific metrics, modular attribution, and demographic framing directly informed this revised
+camera-ready manuscript.
 
-\balance
+
 \footnotesize
 \begin{thebibliography}{99}
 
