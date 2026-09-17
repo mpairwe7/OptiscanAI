@@ -6,7 +6,8 @@
 # =============================================================================
 set -euo pipefail
 
-HF_SPACE="Mpairwe49/retinal-screening"
+HF_SPACE="${HF_SPACE:-landwind22/Retinal_Screening}"
+HF_USER="${HF_USER:-landwind22}"
 HF_REPO_URL="https://huggingface.co/spaces/${HF_SPACE}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -14,15 +15,19 @@ WORK_DIR=$(mktemp -d)
 
 trap "rm -rf $WORK_DIR" EXIT
 
-echo "=== RetinalAI → Hugging Face Spaces Deployment ==="
+echo "=== OptiscanAI → Hugging Face Spaces Deployment ==="
 echo "Space: ${HF_SPACE}"
 echo "URL:   ${HF_REPO_URL}"
 echo ""
 
 # Check HF token
 if [ -z "${HF_TOKEN:-}" ]; then
-    if [ -f ~/.huggingface/token ]; then
-        HF_TOKEN=$(cat ~/.huggingface/token)
+    if [ -f "$HOME/huggingface_cache/token" ]; then
+        HF_TOKEN=$(cat "$HOME/huggingface_cache/token")
+    elif [ -f "$HOME/.cache/huggingface/token" ]; then
+        HF_TOKEN=$(cat "$HOME/.cache/huggingface/token")
+    elif [ -f "$HOME/.huggingface/token" ]; then
+        HF_TOKEN=$(cat "$HOME/.huggingface/token")
     else
         echo "ERROR: Set HF_TOKEN or run 'huggingface-cli login' first"
         exit 1
@@ -30,31 +35,51 @@ if [ -z "${HF_TOKEN:-}" ]; then
 fi
 
 # Install HF CLI if needed
-if ! command -v huggingface-cli &>/dev/null; then
+if ! command -v huggingface-cli &>/dev/null && ! command -v hf &>/dev/null; then
     echo "Installing huggingface_hub..."
-    pip install -q huggingface_hub[cli]
+    pip install -q "huggingface_hub[cli]"
 fi
 
 echo "[1/5] Cloning Space repo..."
 cd "$WORK_DIR"
-GIT_LFS_SKIP_SMUDGE=1 git clone "https://Mpairwe49:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" space 2>/dev/null || {
-    echo "Space not found — creating it..."
-    python3 -c "
-from huggingface_hub import HfApi
-api = HfApi(token='${HF_TOKEN}')
-api.create_repo(
-    repo_id='${HF_SPACE}',
-    repo_type='space',
-    space_sdk='docker',
-    private=False,
-)
-print('Space created!')
-"
-    git clone "https://Mpairwe49:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" space
+GIT_LFS_SKIP_SMUDGE=1 git clone "https://${HF_USER}:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" space 2>/dev/null || {
+    echo "Space not found locally — initializing..."
+    mkdir -p space
+    cd space
+    git init
+    git remote add origin "https://${HF_USER}:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}"
+    cd ..
 }
 cd space
 
-echo "[2/5] Writing Space metadata..."
+# Ensure git user is configured
+git config user.email "ci@optiscan.makstartup.com"
+git config user.name "OptiscanAI CI"
+
+echo "[2/5] Syncing project files..."
+rsync -av --delete \
+    --exclude='.git' \
+    --exclude='README.md' \
+    --exclude='Dockerfile' \
+    --exclude='node_modules' \
+    --exclude='.next' \
+    --exclude='__pycache__' \
+    --exclude='.venv' \
+    --exclude='outputs' \
+    --exclude='data' \
+    --exclude='wandb' \
+    --exclude='mlruns' \
+    --exclude='.env' \
+    --exclude='.env.local' \
+    --exclude='*.onnx' \
+    --exclude='docs' \
+    --exclude='logs' \
+    --exclude='hf_space' \
+    --exclude='pretrained_weights' \
+    --exclude='ipynb_checkpoints' \
+    "${PROJECT_DIR}/" ./
+
+echo "[3/5] Writing Space metadata & Dockerfile..."
 cat > README.md << 'EOF'
 ---
 title: RetinalAI Clinical Screening
@@ -65,7 +90,7 @@ sdk: docker
 app_port: 7860
 pinned: true
 license: cc-by-4.0
-short_description: AI-powered retinal disease screening — 45 diseases, <200ms, clinical reasoning
+short_description: "AI retinal screening: 45 diseases, clinical reasoning"
 ---
 
 # RetinalAI: AI-Powered Retinal Disease Screening
@@ -80,28 +105,7 @@ Multi-label classification of 45 retinal diseases from fundus images using Graph
 - Sub-200ms inference latency
 EOF
 
-echo "[3/5] Syncing project files..."
-rsync -av --delete \
-    --exclude='.git' \
-    --exclude='node_modules' \
-    --exclude='.next' \
-    --exclude='__pycache__' \
-    --exclude='.venv' \
-    --exclude='outputs' \
-    --exclude='data' \
-    --exclude='wandb' \
-    --exclude='mlruns' \
-    --exclude='.env' \
-    --exclude='.env.local' \
-    --exclude='*.onnx' \
-    --exclude='docs/*.pdf' \
-    --exclude='logs' \
-    --exclude='hf_space' \
-    --exclude='pretrained_weights' \
-    --exclude='ipynb_checkpoints' \
-    "${PROJECT_DIR}/" ./
-
-# Use Dockerfile.hf as the Space Dockerfile (synced from deploy/ by rsync above)
+# Use Dockerfile.hf as the Space Dockerfile
 cp deploy/Dockerfile.hf Dockerfile
 
 echo "[4/5] Configuring Git LFS for model weights..."
@@ -119,7 +123,7 @@ fi
 
 COMMIT_MSG="Deploy $(date +%Y-%m-%d\ %H:%M) — $(cd "$PROJECT_DIR" && git log -1 --format='%h %s' 2>/dev/null || echo 'manual')"
 git commit -m "$COMMIT_MSG"
-git push
+git push origin HEAD:main
 
 echo ""
 echo "=== Deployment triggered! ==="

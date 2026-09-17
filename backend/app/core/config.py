@@ -495,7 +495,8 @@ class Settings(BaseSettings):
         # listing them keeps CORS happy during cert renewals or http-only probes).
         "http://www.optiscan.makstartup.com",
         "http://optiscan.makstartup.com",
-        # Legacy
+        # Legacy & HF Spaces
+        "https://landwind22-retinal-screening.hf.space",
         "https://mpairwe49-retinal-screening.hf.space",
         "https://huggingface.co",
     ]
