@@ -126,9 +126,12 @@ def build_fhir_bundle(
     patient_ref: str,
     predictions: list[dict],
     clinical_narrative: str = "",
+    performer_ref: str = "",
 ) -> dict:
     """Build a complete FHIR Bundle containing report + observations."""
-    report = build_diagnostic_report(scan_id, patient_ref, predictions, clinical_narrative)
+    report = build_diagnostic_report(
+        scan_id, patient_ref, predictions, clinical_narrative, performer_ref=performer_ref
+    )
 
     entries = [{"resource": report, "fullUrl": f"DiagnosticReport/{scan_id}"}]
 
