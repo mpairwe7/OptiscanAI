@@ -129,16 +129,28 @@ class EventBus:
         self._history: list[Event] = []
         self._max_history = max_history
         self._running = False
-        self._external_transport = None  # Phase 2: Kafka transport
+        self._external_transport = None  # Durable transport (NATS JetStream or Kafka)
 
     def set_external_transport(self, transport) -> None:
-        """Set an external transport (e.g., Kafka) for durable event delivery.
+        """Set an external transport (e.g., NATS JetStream or Kafka) for durable event delivery.
 
         The transport must implement an async ``publish(event: Event)`` method.
         In-process dispatch continues regardless; external transport is additive.
         """
         self._external_transport = transport
         logger.info(f"External event transport set: {type(transport).__name__}")
+
+    async def init_default_transport(self) -> None:
+        """Initialize external transport from environment settings (defaulting to NATS)."""
+        try:
+            from src.agents.event_transports import create_transport_from_config
+
+            transport = create_transport_from_config()
+            if transport:
+                await transport.connect()
+                self.set_external_transport(transport)
+        except Exception as e:
+            logger.warning(f"Could not auto-initialize external event transport: {e}")
 
     def subscribe(self, event_type: EventType, handler: EventHandler):
         """Register a handler for an event type."""
@@ -156,25 +168,24 @@ class EventBus:
             self._history = self._history[-self._max_history :]
 
         handlers = self._handlers.get(event.type, [])
-        if not handlers:
-            logger.debug(f"Event {event.type.value} from {event.source} — no subscribers")
-            return
+        if handlers:
+            logger.info(
+                f"Event {event.type.value} from {event.source} -> {len(handlers)} handler(s)",
+                extra={"event_id": event.event_id},
+            )
 
-        logger.info(
-            f"Event {event.type.value} from {event.source} -> {len(handlers)} handler(s)",
-            extra={"event_id": event.event_id},
-        )
+            for handler in handlers:
+                try:
+                    await handler(event)
+                except Exception as e:
+                    logger.error(
+                        f"Handler {handler.__qualname__} failed on {event.type.value}: {e}",
+                        exc_info=True,
+                    )
+        else:
+            logger.debug(f"Event {event.type.value} from {event.source} — no in-process subscribers")
 
-        for handler in handlers:
-            try:
-                await handler(event)
-            except Exception as e:
-                logger.error(
-                    f"Handler {handler.__qualname__} failed on {event.type.value}: {e}",
-                    exc_info=True,
-                )
-
-        # Phase 2: Publish to external transport (Kafka) if configured
+        # Publish to external durable transport (NATS JetStream / Kafka) if configured
         if self._external_transport is not None:
             try:
                 await self._external_transport.publish(event)

@@ -25,7 +25,7 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +45,52 @@ class SyncState(str, Enum):
 
 
 @dataclass
+class VersionVector:
+    """Logical vector clock tracking causality across distributed edge nodes."""
+
+    clock: Dict[str, int] = field(default_factory=dict)
+    timestamp: float = 0.0
+
+    def increment(self, node_id: str, ts: Optional[float] = None) -> None:
+        """Advance local clock tick for node_id."""
+        self.clock[node_id] = self.clock.get(node_id, 0) + 1
+        self.timestamp = ts or time.time()
+
+    def dominates(self, other: VersionVector) -> bool:
+        """True if self is strictly ahead of or equal to other across all nodes."""
+        all_nodes = set(self.clock.keys()) | set(other.clock.keys())
+        greater_or_equal = all(self.clock.get(n, 0) >= other.clock.get(n, 0) for n in all_nodes)
+        strictly_greater = any(self.clock.get(n, 0) > other.clock.get(n, 0) for n in all_nodes)
+        return greater_or_equal and strictly_greater
+
+    def is_concurrent(self, other: VersionVector) -> bool:
+        """True if neither vector dominates the other (concurrent offline branches)."""
+        if self.clock == other.clock:
+            return False
+        return not self.dominates(other) and not other.dominates(self)
+
+    def merge(self, other: VersionVector) -> VersionVector:
+        """Pointwise supremum merge of two vector clocks."""
+        all_nodes = set(self.clock.keys()) | set(other.clock.keys())
+        merged_clock = {n: max(self.clock.get(n, 0), other.clock.get(n, 0)) for n in all_nodes}
+        return VersionVector(clock=merged_clock, timestamp=max(self.timestamp, other.timestamp))
+
+    def resolve_lww(
+        self, other: VersionVector, self_val: Any, other_val: Any
+    ) -> Tuple[Any, VersionVector]:
+        """Last-Write-Wins deterministic conflict resolution for concurrent updates."""
+        if self.dominates(other):
+            return self_val, self
+        elif other.dominates(self):
+            return other_val, other
+        else:
+            # Concurrent: deterministic tie-breaking on physical timestamp
+            if other.timestamp > self.timestamp:
+                return other_val, self.merge(other)
+            return self_val, self.merge(other)
+
+
+@dataclass
 class ChunkDelta:
     """Describes a single chunk-level change."""
 
@@ -53,6 +99,7 @@ class ChunkDelta:
     old_hash: Optional[str] = None
     new_hash: Optional[str] = None
     size_bytes: int = 0
+    version_vector: Optional[VersionVector] = None
 
 
 @dataclass
@@ -165,7 +212,9 @@ class DeltaSyncEngine:
         self._retry_backoff_base_s = retry_backoff_base_s
 
         # State
+        self._node_id = os.getenv("OFFLINE_NODE_ID", "local_edge_node")
         self._local_manifest: Dict[str, str] = {}  # chunk_id -> sha256
+        self._vector_clocks: Dict[str, VersionVector] = {}  # chunk_id -> VersionVector
         self._state = SyncState.IDLE
         self._status = SyncStatus()
         self._bg_task: Optional[asyncio.Task[None]] = None
@@ -184,6 +233,14 @@ class DeltaSyncEngine:
                 with open(self._manifest_path, "r") as f:
                     data = json.load(f)
                 self._local_manifest = data.get("chunks", {})
+                raw_clocks = data.get("vector_clocks", {})
+                self._vector_clocks = {
+                    cid: VersionVector(
+                        clock=v.get("clock", {}),
+                        timestamp=float(v.get("timestamp", 0.0)),
+                    )
+                    for cid, v in raw_clocks.items()
+                }
                 self._status.local_manifest_chunks = len(self._local_manifest)
                 logger.info(
                     "Loaded sync manifest with %d chunks from %s",
@@ -193,6 +250,7 @@ class DeltaSyncEngine:
             except Exception as exc:
                 logger.warning("Failed to load sync manifest: %s", exc)
                 self._local_manifest = {}
+                self._vector_clocks = {}
         else:
             logger.info("No sync manifest found at %s -- starting fresh", self._manifest_path)
 
@@ -200,9 +258,14 @@ class DeltaSyncEngine:
         """Persist the local sync manifest to disk (atomic write with fsync)."""
         self._index_dir.mkdir(parents=True, exist_ok=True)
         payload = {
-            "version": 1,
+            "version": 2,
             "updated_at": time.time(),
+            "node_id": self._node_id,
             "chunks": self._local_manifest,
+            "vector_clocks": {
+                cid: {"clock": vv.clock, "timestamp": vv.timestamp}
+                for cid, vv in self._vector_clocks.items()
+            },
         }
         tmp_path = self._manifest_path.with_suffix(".tmp")
         try:
@@ -372,6 +435,9 @@ class DeltaSyncEngine:
                 if src:
                     local_by_id[chunk.chunk_id] = src
                     self._local_manifest[chunk.chunk_id] = chunk.new_hash or ""
+                    vv = chunk.version_vector or VersionVector()
+                    vv.increment(self._node_id)
+                    self._vector_clocks[chunk.chunk_id] = vv
 
             # Apply updates
             for chunk in delta.updates:
@@ -379,11 +445,17 @@ class DeltaSyncEngine:
                 if src:
                     local_by_id[chunk.chunk_id] = src
                     self._local_manifest[chunk.chunk_id] = chunk.new_hash or ""
+                    vv = self._vector_clocks.get(chunk.chunk_id, VersionVector())
+                    if chunk.version_vector:
+                        vv = vv.merge(chunk.version_vector)
+                    vv.increment(self._node_id)
+                    self._vector_clocks[chunk.chunk_id] = vv
 
             # Apply deletions
             for chunk in delta.deletions:
                 local_by_id.pop(chunk.chunk_id, None)
                 self._local_manifest.pop(chunk.chunk_id, None)
+                self._vector_clocks.pop(chunk.chunk_id, None)
 
             # Write updated passages
             self._index_dir.mkdir(parents=True, exist_ok=True)

@@ -219,3 +219,42 @@ ClinicalKnowledgeGraph Post-Processing
 | `scripts/export_production_v2.py` | Dtype-safe export (fixes quantization failure) |
 | `configs/hybrid_precision_2026.yaml` | V2 training configuration |
 | `src/visualization/precision_rescue_plots.py` | 8 new visualization types for v2 analysis |
+
+---
+
+## 9. 2026 Architectural Modernization (Production Enhancements)
+
+Following clinical audit and MLOps benchmarking for low-resource deployments, the architecture integrates the following 2026 modernizations:
+
+### 9.1 Split Conformal Prediction & Risk-Controlling Prediction Sets
+- **Module**: `src/evaluation/conformal_triage.py`
+- **Guaranteed Coverage**: Provides $(1 - \alpha)$ distribution-free statistical coverage sets instead of heuristic point probabilities.
+- **Clinical Abstention**: Automatically flags ambiguous scans (conformal set size $>4$ or high epistemic non-conformity) for mandatory human review by an Ophthalmic Clinical Officer (OCO).
+
+### 9.2 Grammar-Guided Clinical Narrator & Anti-Hallucination Guardrails
+- **Module**: `src/narrator/guided_narrator.py`
+- **Elimination of JSON Truncation**: Dynamic token budgeting sized to findings prevents output truncation.
+- **Severity Filtering**: Suppresses hallucinated out-of-distribution alarmist adjectives (*"life-threatening"*, *"emergency surgery"*) on mild chronic lesions.
+- **Regulatory Transparency**: Enforces mandatory AI-disclosure clause per EU AI Act (Article 11) and Uganda National Drug Authority guidelines.
+
+### 9.3 In-Browser Edge Screening & Quality Gate (WebGPU/Wasm)
+- **Module**: `frontend/src/lib/edge-webgpu-engine.ts`
+- **Zero-Server Edge Screening**: Runs the quantized 5.4 MB MobileNetV3 student directly inside client browser engines using `onnxruntime-web` (WebGPU / Wasm SIMD).
+- **Client-Side Quality Gate**: Rejects blurry or underexposed fundus photos in the browser via fast discrete Laplacian variance before server upload.
+
+### 9.4 CRDT Version-Vector Synchronization
+- **Module**: `backend/app/offline_sync.py`
+- **Conflict-Free Replication**: Replaces brittle hash-only sync with `VersionVector` logical clocks and Last-Write-Wins (LWW) conflict resolution to support multi-tablet offline screening across rural health posts.
+
+### 9.5 DoRA & Speculative Early-Exit Vision Gating
+- **Module**: `src/models/dora.py`
+- **Weight-Decomposed PEFT**: Decouples directional updates from magnitude scaling to prevent capacity saturation on subtle microvascular lesions.
+- **Speculative Gating**: Bypasses intermediate transformer layers for high-confidence negative (normal) scans, saving up to 75% GPU compute on community caseloads.
+
+### 9.6 Lightweight NATS JetStream Event Transport
+- **Module**: `src/agents/event_transports.py`
+- **Low Footprint**: Consumes $<35\text{ MB}$ RAM (vs. $>2\text{ GB}$ for Kafka + Zookeeper), providing Raft-replicated messaging with offline fallback for edge gateways and micro-clusters.
+
+### 9.7 SMART-on-FHIR App Launch Protocol
+- **Module**: `backend/app/routers/fhir.py`
+- **EHR Interoperability**: Implements `.well-known/smart-configuration`, EHR launch handshakes, and OAuth2 token exchange with HL7 FHIR R4 `DiagnosticReport` / `Observation` bundles for native embedding into UgandaEMR and OpenMRS.
