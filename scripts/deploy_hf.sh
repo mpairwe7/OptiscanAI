@@ -11,7 +11,7 @@ HF_USER="${HF_USER:-landwind22}"
 HF_REPO_URL="https://huggingface.co/spaces/${HF_SPACE}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-WORK_DIR=$(mktemp -d)
+WORK_DIR=$(mktemp -d -p "$HOME")
 
 trap "rm -rf $WORK_DIR" EXIT
 
